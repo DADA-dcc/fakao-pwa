@@ -1,10 +1,10 @@
 const CACHE_NAME = 'fakao-v1';
 const PRECACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/questions.json',
-  '/knowledge.json'
+  './',
+  './index.html',
+  './manifest.json',
+  './questions.json',
+  './knowledge.json'
 ];
 
 self.addEventListener('install', (event) => {
