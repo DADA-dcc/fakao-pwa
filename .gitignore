@@ -1,0 +1,7 @@
+node_modules/
+.bin/
+*.log
+.page-*.yml
+console-*.log
+.vite/
+.DS_Store

@@ -1,0 +1,368 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e7] [cursor=pointer]: 登录
+    - generic [ref=e9]:
+      - link "首页" [ref=e11] [cursor=pointer]:
+        - /url: /site/hd/index.html
+      - link "免费课堂" [ref=e13] [cursor=pointer]:
+        - /url: /site/hd/resources/views/free/freeHome.html
+      - link "学习包" [ref=e15] [cursor=pointer]:
+        - /url: /site/hd/resources/views/book/studyBag.html
+      - link "精品网课 网课" [ref=e17] [cursor=pointer]:
+        - /url: /site/hd/resources/views/360/home360.html
+        - text: 精品网课
+        - generic [ref=e18]: 网课
+      - link "厚大面授" [ref=e20] [cursor=pointer]:
+        - /url: javascript:;
+      - link "师资介绍" [ref=e22] [cursor=pointer]:
+        - /url: /site/hd/resources/views/teacher/teacherHome.html
+      - link "带学群" [ref=e24] [cursor=pointer]:
+        - /url: /site/hd/resources/views/free/addGroup.html
+      - link "爱题库" [ref=e26] [cursor=pointer]:
+        - /url: javascript:;
+      - link "厚大商城" [ref=e28] [cursor=pointer]:
+        - /url: /site/hd/resources/views/book/bookHome.html
+      - link "全国分校" [ref=e30] [cursor=pointer]:
+        - /url: /site/hd/resources/views/school/schoolHome.html
+      - link "模拟机考" [ref=e32] [cursor=pointer]:
+        - /url: javascript:;
+      - link "法条检索" [ref=e34] [cursor=pointer]:
+        - /url: /site/hd/resources/zgtExam/law/law.html
+      - link "客服中心" [ref=e36] [cursor=pointer]:
+        - /url: /site/hd/resources/views/service/serviceHome.html
+  - text:      
+  - generic [ref=e39] [cursor=pointer]:
+    - generic [ref=e40]:
+      - paragraph [ref=e42]: 在线
+      - paragraph [ref=e43]: 咨询
+    - generic [ref=e45]:
+      - paragraph [ref=e47]: 客服
+      - paragraph [ref=e48]: 热线
+  - generic [ref=e50]:
+    - generic [ref=e52]:
+      - generic:
+        - link:
+          - /url: https://detail.youzan.com/show/goods?alias=3euothi3mu5n1hs&activity_alias=undefined
+      - link [ref=e54] [cursor=pointer]:
+        - /url: https://detail.youzan.com/show/goods?alias=2fzhidx8po8i50t&activity_alias=undefined
+      - generic:
+        - link:
+          - /url: https://detail.youzan.com/show/goods?alias=2xjez5sw7bcfxid&activity_alias=undefined
+      - generic:
+        - link:
+          - /url: https://mp.weixin.qq.com/s/CQ-cNEL8pwC05ZBfYM6OGA?mpshare=1&scene=1&srcid=0416YLBSloyRF9tTlEZtmkIo&sharer_shareinfo=d07f03f3ef4f7789a151abc6a4883440&sharer_shareinfo_first=d07f03f3ef4f7789a151abc6a4883440&version=5.0.7.99844&platform=mac#rd
+      - generic:
+        - link:
+          - /url: https://detail.youzan.com/show/goods?alias=3f3bx218cvf3xap&activity_alias=undefined
+      - generic:
+        - link:
+          - /url: ""
+      - generic:
+        - link:
+          - /url: https://detail.youzan.com/show/goods?alias=271yyxt6p2ood3l&activity_alias=undefined
+      - generic:
+        - link:
+          - /url: https://mp.weixin.qq.com/s/PlAsawB2OQA9FUCFMOOIzg?mpshare=1&scene=1&srcid=0402iYylR0m29MIy4LbBnA19&sharer_shareinfo=ea291997bccbbad1f9f05428d4daf7e0&sharer_shareinfo_first=ea291997bccbbad1f9f05428d4daf7e0&version=5.0.7.99844&platform=mac#rd
+      - generic:
+        - link:
+          - /url: https://detail.youzan.com/show/goods?alias=2oko9i9tx57jh4g&activity_alias=undefined
+      - generic:
+        - link:
+          - /url: https://detail.youzan.com/show/goods?alias=3nksrncy244l9zy&activity_alias=undefined
+      - generic:
+        - link:
+          - /url: https://detail.youzan.com/show/goods?alias=2xbzck4rbi6vhsy&activity_alias=undefined
+      - generic:
+        - link:
+          - /url: https://detail.youzan.com/show/goods?alias=3euothi3mu5n1hs&activity_alias=undefined
+      - generic:
+        - link:
+          - /url: https://detail.youzan.com/show/goods?alias=2fzhidx8po8i50t&activity_alias=undefined
+    - generic [ref=e58]:
+      - heading "免费网络课堂" [level=3] [ref=e60]
+      - link "更多课程" [ref=e61] [cursor=pointer]:
+        - /url: /site/hd/resources/views/free/freeHome.html
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - heading "学习包" [level=3] [ref=e76]
+        - link "查看更多" [ref=e77] [cursor=pointer]:
+          - /url: /site/hd/resources/views/book/bookHome.html
+      - generic [ref=e78]:
+        - generic [ref=e79] [cursor=pointer]:
+          - term [ref=e80]
+          - definition [ref=e81]:
+            - heading "26年主客一体学习包" [level=6] [ref=e82]
+            - paragraph:
+              - generic [ref=e83]: ￥989
+        - generic [ref=e84] [cursor=pointer]:
+          - term [ref=e85]
+          - definition [ref=e86]:
+            - heading "26年客观题学习包" [level=6] [ref=e87]
+            - paragraph:
+              - generic [ref=e88]: ￥819
+        - generic [ref=e89] [cursor=pointer]:
+          - term [ref=e90]
+          - definition [ref=e91]:
+            - heading "2026主观二战｜学习包" [level=6] [ref=e92]
+            - paragraph:
+              - generic [ref=e93]: ￥768
+      - generic [ref=e94]:
+        - heading "精品网课" [level=3] [ref=e96]
+        - link "查看更多" [ref=e97] [cursor=pointer]:
+          - /url: /site/hd/resources/views/book/bookHome.html
+      - generic [ref=e98]:
+        - generic [ref=e99] [cursor=pointer]:
+          - term [ref=e100]
+          - definition [ref=e101]:
+            - heading "2026主客一体｜在职全程班【二期】" [level=6] [ref=e102]
+            - paragraph:
+              - generic [ref=e103]: ￥7800
+        - generic [ref=e104] [cursor=pointer]:
+          - term [ref=e105]
+          - definition [ref=e106]:
+            - heading "2026主客一体｜在职先锋班【二期】" [level=6] [ref=e107]
+            - paragraph:
+              - generic [ref=e108]: ￥4580
+        - generic [ref=e109] [cursor=pointer]:
+          - term [ref=e110]
+          - definition [ref=e111]:
+            - heading "2026法考｜在职周末直播班" [level=6] [ref=e112]
+            - paragraph:
+              - generic [ref=e113]: ￥3880
+        - generic [ref=e114] [cursor=pointer]:
+          - term [ref=e115]
+          - definition [ref=e116]:
+            - heading "2026主客一体｜私教九对一【二期】" [level=6] [ref=e117]
+            - paragraph:
+              - generic [ref=e118]: ￥17800
+        - generic [ref=e119] [cursor=pointer]:
+          - term [ref=e120]
+          - definition [ref=e121]:
+            - heading "26年主客一体私教课" [level=6] [ref=e122]
+            - paragraph:
+              - generic [ref=e123]: ￥6280
+        - generic [ref=e124] [cursor=pointer]:
+          - term [ref=e125]
+          - definition [ref=e126]:
+            - heading "主客一体尊享双年班（重读模式）" [level=6] [ref=e127]
+            - paragraph:
+              - generic [ref=e128]: ￥19800
+        - generic [ref=e129] [cursor=pointer]:
+          - term [ref=e130]
+          - definition [ref=e131]:
+            - heading "2026客观题｜在职全程班【二期】" [level=6] [ref=e132]
+            - paragraph:
+              - generic [ref=e133]: ￥6800
+        - generic [ref=e134] [cursor=pointer]:
+          - term [ref=e135]
+          - definition [ref=e136]:
+            - heading "2026客观题｜在职先锋班【二期】" [level=6] [ref=e137]
+            - paragraph:
+              - generic [ref=e138]: ￥3580
+      - generic [ref=e139]:
+        - heading "高端面授" [level=3] [ref=e141]
+        - link "查看更多" [ref=e142] [cursor=pointer]:
+          - /url: /site/hd/resources/views/book/bookHome.html
+      - generic [ref=e143]:
+        - generic [ref=e144] [cursor=pointer]:
+          - term [ref=e145]
+          - definition [ref=e146]:
+            - heading "2026斯巴达计划【北京高端面授】" [level=6] [ref=e147]
+            - paragraph:
+              - generic [ref=e148]: ￥29800
+        - generic [ref=e149] [cursor=pointer]:
+          - term [ref=e150]
+          - definition [ref=e151]:
+            - heading "2026客观｜集训系列【上海高端面授】" [level=6] [ref=e152]
+            - paragraph:
+              - generic [ref=e153]: ￥16800
+        - generic [ref=e154] [cursor=pointer]:
+          - term [ref=e155]
+          - definition [ref=e156]:
+            - heading "2026大成系列【广州高端面授】" [level=6] [ref=e157]
+            - paragraph:
+              - generic [ref=e158]: ￥21800
+        - generic [ref=e159] [cursor=pointer]:
+          - term [ref=e160]
+          - definition [ref=e161]:
+            - heading "2026周末系列【西安高端面授】" [level=6] [ref=e162]
+            - paragraph:
+              - generic [ref=e163]: ￥13800
+        - generic [ref=e164] [cursor=pointer]:
+          - term [ref=e165]
+          - definition [ref=e166]:
+            - heading "2026大成集训系列【郑州高端面授】" [level=6] [ref=e167]
+            - paragraph:
+              - generic [ref=e168]: ￥14800
+        - generic [ref=e169] [cursor=pointer]:
+          - term [ref=e170]
+          - definition [ref=e171]:
+            - heading "2026暑期系列【成都高端面授】" [level=6] [ref=e172]
+            - paragraph:
+              - generic [ref=e173]: ￥11800
+        - generic [ref=e174] [cursor=pointer]:
+          - term [ref=e175]
+          - definition [ref=e176]:
+            - heading "2026暑期系列【广州高端面授】" [level=6] [ref=e177]
+            - paragraph:
+              - generic [ref=e178]: ￥11800
+        - generic [ref=e179] [cursor=pointer]:
+          - term [ref=e180]
+          - definition [ref=e181]:
+            - heading "2026客观｜集训系列【上海高端面授】" [level=6] [ref=e182]
+            - paragraph:
+              - generic [ref=e183]: ￥16800
+    - generic [ref=e185]:
+      - generic [ref=e186]:
+        - generic [ref=e187]: 厚大中国
+        - generic [ref=e188]:
+          - generic [ref=e189] [cursor=pointer]: 北京
+          - generic [ref=e190] [cursor=pointer]: 上海
+          - generic [ref=e191] [cursor=pointer]: 新疆
+          - generic [ref=e192] [cursor=pointer]: 吉林
+          - generic [ref=e193] [cursor=pointer]: 黑龙江
+          - generic [ref=e194] [cursor=pointer]: 辽宁
+          - generic [ref=e195] [cursor=pointer]: 内蒙古
+          - generic [ref=e196] [cursor=pointer]: 天津
+          - generic [ref=e197] [cursor=pointer]: 河北
+          - generic [ref=e198] [cursor=pointer]: 湖北
+          - generic [ref=e199] [cursor=pointer]: 宁夏
+          - generic [ref=e200] [cursor=pointer]: 山西
+          - generic [ref=e201] [cursor=pointer]: 青海
+          - generic [ref=e202] [cursor=pointer]: 山东
+          - generic [ref=e203] [cursor=pointer]: 甘肃
+          - generic [ref=e204] [cursor=pointer]: 河南
+          - generic [ref=e205] [cursor=pointer]: 陕西
+          - generic [ref=e206] [cursor=pointer]: 江苏
+          - generic [ref=e207] [cursor=pointer]: 安徽
+          - generic [ref=e208] [cursor=pointer]: 西藏
+          - generic [ref=e209] [cursor=pointer]: 四川
+          - generic [ref=e210] [cursor=pointer]: 重庆
+          - generic [ref=e211] [cursor=pointer]: 浙江
+          - generic [ref=e212] [cursor=pointer]: 江西
+          - generic [ref=e213] [cursor=pointer]: 湖南
+          - generic [ref=e214] [cursor=pointer]: 贵州
+          - generic [ref=e215] [cursor=pointer]: 福建
+          - generic [ref=e216] [cursor=pointer]: 云南
+          - generic [ref=e217] [cursor=pointer]: 广西
+          - generic [ref=e218] [cursor=pointer]: 广东
+          - link "了解更多" [ref=e219] [cursor=pointer]:
+            - /url: /site/hd/resources/views/school/schoolHome.html
+      - list [ref=e221]:
+        - listitem [ref=e222]:
+          - strong [ref=e223]: 北京
+        - listitem [ref=e225]:
+          - generic [ref=e226]: 类型：
+          - generic [ref=e227]: 直营面授
+        - listitem [ref=e228]:
+          - generic [ref=e229]: 电话：
+          - generic [ref=e230]: "18610642281"
+        - listitem [ref=e231]:
+          - generic [ref=e232]: 地址：
+          - generic [ref=e233]: 海淀区花园东路旷怡大厦10层厚大教育
+    - generic [ref=e234]:
+      - generic [ref=e235]:
+        - heading "法考信息速递" [level=3] [ref=e237]
+        - list [ref=e238]:
+          - listitem [ref=e239] [cursor=pointer]: 最新法考讯息
+          - listitem [ref=e241] [cursor=pointer]: 客观备考攻略
+          - listitem [ref=e242] [cursor=pointer]: 主观备考攻略
+          - listitem [ref=e243] [cursor=pointer]: 法考星期天
+        - link "查看更多" [ref=e244] [cursor=pointer]:
+          - /url: /site/hd/resources/views/info/infoHome.html
+      - generic [ref=e245]:
+        - generic [ref=e246] [cursor=pointer]:
+          - heading "26白斌主观私塾班会直播课" [level=6] [ref=e247]: 26白斌主观私塾班会直播课
+          - paragraph [ref=e249]: 时间：2026.04.07 19:00
+        - generic [ref=e250] [cursor=pointer]:
+          - heading "厚大师说——大帝、大白畅谈研究生求学经历" [level=6] [ref=e251]: 厚大师说——大帝、大白畅谈研究生求学经历
+          - paragraph [ref=e253]: 时间：2026.04.09 19:00
+        - generic [ref=e254] [cursor=pointer]:
+          - heading "民刑法备考全攻略" [level=6] [ref=e255]: 民刑法备考全攻略
+          - paragraph [ref=e257]: 时间：2026.04.05 19:00
+        - generic [ref=e258] [cursor=pointer]:
+          - heading "26年主客一体在职周末班班会课" [level=6] [ref=e259]: 26年主客一体在职周末班班会课
+          - paragraph [ref=e261]: 时间：2026.03.13 19:30
+        - generic [ref=e262] [cursor=pointer]:
+          - heading "厚大过儿节" [level=6] [ref=e263]: 厚大过儿节
+          - paragraph [ref=e265]: 时间：2026.03.12 19:00
+        - generic [ref=e266] [cursor=pointer]:
+          - heading "26年崔崔私塾 带背直播课03" [level=6] [ref=e267]: 26年崔崔私塾 带背直播课03
+          - paragraph [ref=e269]: 时间：2026.03.08 00:00
+  - generic [ref=e270]:
+    - generic [ref=e271]:
+      - generic [ref=e272]:
+        - heading "厚大学习软件" [level=6] [ref=e273]
+        - link "厚大法考" [ref=e275] [cursor=pointer]:
+          - /url: javascript:;
+        - link "厚大爱题库" [ref=e277] [cursor=pointer]:
+          - /url: javascript:;
+        - link "厚大法硕" [ref=e279] [cursor=pointer]:
+          - /url: javascript:;
+      - generic [ref=e280]:
+        - heading "新手指南" [level=6] [ref=e281]
+        - link "最新资讯" [ref=e282] [cursor=pointer]:
+          - /url: /site/hd/resources/views/info/infoHome.html
+        - link "客服中心" [ref=e283] [cursor=pointer]:
+          - /url: /site/hd/resources/views/service/serviceHome.html
+      - generic [ref=e284]:
+        - heading "友情链接" [level=6] [ref=e285]
+        - paragraph [ref=e286]:
+          - link "经济师考试" [ref=e287] [cursor=pointer]:
+            - /url: http://www.jjsedu.org/
+          - link "免费课堂" [ref=e288] [cursor=pointer]:
+            - /url: http://www.houdask.com/site/hd/resources/views/free/freeHome.html
+          - link "报名在线网" [ref=e289] [cursor=pointer]:
+            - /url: https://www.edu84.com/
+      - generic [ref=e290]:
+        - heading "关注我们" [level=6] [ref=e291]
+        - link "厚大法考微博" [ref=e293] [cursor=pointer]:
+          - /url: javascript:;
+        - link "厚大法考公众号" [ref=e295] [cursor=pointer]:
+          - /url: javascript:;
+        - link "厚大教育旗舰店" [ref=e297] [cursor=pointer]:
+          - /url: https://houdaedu.tmall.com
+        - link "关于我们" [ref=e299] [cursor=pointer]:
+          - /url: /site/hd/resources/views/home/about.html
+    - generic [ref=e300]:
+      - paragraph [ref=e301]: Copyright © 2013 Beijing Houda Xuancheng Education Technology Corp.
+      - paragraph [ref=e302]:
+        - link "版权所有：北京厚大轩成教育科技股份公司" [ref=e303] [cursor=pointer]:
+          - /url: /site/hd/resources/views/home/license.html
+        - link "京ICP备14048010号-1" [ref=e304] [cursor=pointer]:
+          - /url: https://beian.miit.gov.cn
+          - text: 京ICP备14048010号-1
+          - img [ref=e305]
+        - link "京公网安备 11010802038043号" [ref=e306] [cursor=pointer]:
+          - /url: http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010802038043
+          - img [ref=e307]
+          - text: 京公网安备 11010802038043号
+  - generic [ref=e310] [cursor=pointer]:
+    - link "北京斯巴达咨询" [ref=e311]:
+      - /url: javascript:;
+    - link "上海面授咨询" [ref=e312]:
+      - /url: javascript:;
+    - link "广州暑期班咨询" [ref=e313]:
+      - /url: javascript:;
+    - link "在线360网课" [ref=e314]:
+      - /url: javascript:;
+    - link "26成都面授" [ref=e315]:
+      - /url: javascript:;
+    - link "26上海面授咨询" [ref=e316]:
+      - /url: javascript:;
+    - link "26广州主观面授咨询" [ref=e317]:
+      - /url: javascript:;
+    - link "北京集训面授" [ref=e318]:
+      - /url: javascript:;
+    - link "26深圳周末班咨询" [ref=e319]:
+      - /url: javascript:;
+    - link "杭州面授咨询" [ref=e320]:
+      - /url: javascript:;
+    - link "26上海周末班咨询" [ref=e321]:
+      - /url: javascript:;
+    - link "西安面授" [ref=e322]:
+      - /url: javascript:;
+    - link "郑州面授" [ref=e323]:
+      - /url: javascript:;
+    - link "南京面授" [ref=e324]:
+      - /url: javascript:;

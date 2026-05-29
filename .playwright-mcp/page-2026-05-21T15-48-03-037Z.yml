@@ -1,0 +1,197 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - img [ref=e4]
+    - generic [ref=e5]:
+      - link "首页" [ref=e6] [cursor=pointer]:
+        - /url: /hdapp/static/www/index.html
+      - link "我的VIP" [ref=e7] [cursor=pointer]:
+        - /url: javascript:;
+      - link "VIP课程" [ref=e8] [cursor=pointer]:
+        - /url: /hdapp/static/www/pages/shop/shop.html
+      - link "真题速刷" [ref=e9] [cursor=pointer]:
+        - /url: /hdapp/static/www/pages/sushua/sushua.html
+      - link "错题本" [ref=e10] [cursor=pointer]:
+        - /url: /hdapp/static/www/pages/error/error.html
+      - link "收藏本" [ref=e11] [cursor=pointer]:
+        - /url: /hdapp/static/www/pages/collect/collect.html
+      - link "笔记本" [ref=e12] [cursor=pointer]:
+        - /url: /hdapp/static/www/pages/note/note.html
+      - link "记忆本" [ref=e13] [cursor=pointer]:
+        - /url: /hdapp/static/www/pages/memory/memory.html
+      - link "黑名单" [ref=e14] [cursor=pointer]:
+        - /url: /hdapp/static/www/pages/blacklist/blacklist.html
+      - link "下载APP" [ref=e15] [cursor=pointer]:
+        - /url: /hdapp/static/www/pages/loveQuestion/loveQuestion.html
+    - textbox [ref=e17]
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - link [ref=e23] [cursor=pointer]:
+        - /url: https://j.youzan.com/V4FOAg
+      - generic [ref=e24]:
+        - paragraph [ref=e25]: 客观题倒计时115天
+        - paragraph [ref=e26]: 主观题倒计时144天
+        - link "我的回复 题目疑问，教师解惑" [ref=e28] [cursor=pointer]:
+          - /url: ./pages/reply/reply.html
+          - heading "我的回复" [level=6] [ref=e29]
+          - text: 题目疑问，教师解惑
+      - generic [ref=e30]:
+        - list:
+          - listitem [ref=e31]:
+            - paragraph [ref=e32]: 做题数
+            - paragraph [ref=e33]: "0"
+          - listitem [ref=e34]:
+            - paragraph [ref=e35]: 完成率
+            - paragraph [ref=e36]: 0%
+          - listitem [ref=e37]:
+            - paragraph [ref=e38]: 准确率
+            - paragraph [ref=e39]: 0%
+        - paragraph [ref=e40]:
+          - text: 已有1300041人参与刷题，您超过0%
+          - link "查看详情" [ref=e41] [cursor=pointer]:
+            - /url: ./pages/analysis/analysis.html
+    - generic [ref=e42]:
+      - link "了解更多 不知道刷什么题 不知道刷多少题 不知道怎么刷题 不知道自己的不足，不知道如何解决... 不知道训练能力如何转化为... 刷题后如何化零为整... ... 七大专属服务打造个性题库" [ref=e44] [cursor=pointer]:
+        - /url: /hdapp/static/www/pages/nobuy/nobuy.html
+        - generic [ref=e45]: 了解更多
+        - list [ref=e46]:
+          - listitem [ref=e47]: 不知道刷什么题
+          - listitem [ref=e48]: 不知道刷多少题
+          - listitem [ref=e49]: 不知道怎么刷题
+          - listitem [ref=e50]: 不知道自己的不足，不知道如何解决...
+          - listitem [ref=e51]: 不知道训练能力如何转化为...
+          - listitem [ref=e52]: 刷题后如何化零为整...
+          - listitem [ref=e53]: ...
+        - paragraph [ref=e54]: 七大专属服务打造个性题库
+      - generic [ref=e55]:
+        - heading "免费刷题群" [level=5] [ref=e56]
+        - paragraph [ref=e57]: 一起刷题，一起通关
+        - link "立即加入" [ref=e58] [cursor=pointer]:
+          - /url: /hdapp/static/www/pages/addGroup/addGroup.html
+      - generic [ref=e59]:
+        - heading "今日任务" [level=6] [ref=e60]
+        - paragraph [ref=e61]: 您暂时未制定计划
+        - paragraph [ref=e63]
+        - link "制定计划" [ref=e64] [cursor=pointer]:
+          - /url: ./pages/planadd/planadd.html
+  - generic [ref=e65]:
+    - generic [ref=e66]:
+      - text: 智能出题
+      - link "答题历史" [ref=e68] [cursor=pointer]:
+        - /url: ./pages/keHistory/keHistory.html?type=ZNDK,ZNZJ
+    - generic [ref=e69]:
+      - link "单科出题" [ref=e70] [cursor=pointer]:
+        - /url: javascript:;
+      - link "智能组卷" [ref=e71] [cursor=pointer]:
+        - /url: javascript:;
+  - generic [ref=e72]:
+    - generic [ref=e73]:
+      - heading "客观题" [level=6] [ref=e74]
+      - list [ref=e75]:
+        - listitem [ref=e76] [cursor=pointer]: 真题
+        - listitem [ref=e77] [cursor=pointer]: 模拟题
+    - list [ref=e78]:
+      - listitem [ref=e79] [cursor=pointer]:
+        - heading "刑法" [level=6] [ref=e80]
+        - paragraph [ref=e81]
+        - generic [ref=e82]:
+          - text: 0%
+          - generic [ref=e83]: 0/921题
+      - listitem [ref=e84] [cursor=pointer]:
+        - heading "民法" [level=6] [ref=e85]
+        - paragraph [ref=e86]
+        - generic [ref=e87]:
+          - text: 0%
+          - generic [ref=e88]: 0/1106题
+      - listitem [ref=e89] [cursor=pointer]:
+        - heading "行政法" [level=6] [ref=e90]
+        - paragraph [ref=e91]
+        - generic [ref=e92]:
+          - text: 0%
+          - generic [ref=e93]: 0/597题
+      - listitem [ref=e94] [cursor=pointer]:
+        - heading "民诉" [level=6] [ref=e95]
+        - paragraph [ref=e96]
+        - generic [ref=e97]:
+          - text: 0%
+          - generic [ref=e98]: 0/739题
+      - listitem [ref=e99] [cursor=pointer]:
+        - heading "刑诉" [level=6] [ref=e100]
+        - paragraph [ref=e101]
+        - generic [ref=e102]:
+          - text: 0%
+          - generic [ref=e103]: 0/783题
+      - listitem [ref=e104] [cursor=pointer]:
+        - heading "商经法" [level=6] [ref=e105]
+        - paragraph [ref=e106]
+        - generic [ref=e107]:
+          - text: 0%
+          - generic [ref=e108]: 0/949题
+      - listitem [ref=e109] [cursor=pointer]:
+        - heading "理论法" [level=6] [ref=e110]
+        - paragraph [ref=e111]
+        - generic [ref=e112]:
+          - text: 0%
+          - generic [ref=e113]: 0/1086题
+      - listitem [ref=e114] [cursor=pointer]:
+        - heading "三国法" [level=6] [ref=e115]
+        - paragraph [ref=e116]
+        - generic [ref=e117]:
+          - text: 0%
+          - generic [ref=e118]: 0/630题
+    - generic [ref=e119]:
+      - heading "主观题" [level=6] [ref=e120]
+      - list [ref=e121]:
+        - listitem [ref=e122] [cursor=pointer]: 真题
+        - listitem [ref=e123] [cursor=pointer]: 模拟题
+    - list [ref=e124]:
+      - listitem [ref=e125] [cursor=pointer]:
+        - heading "刑法" [level=6] [ref=e126]
+        - paragraph [ref=e127]
+        - generic [ref=e128]:
+          - text: 0%
+          - generic [ref=e129]: 0/24题
+      - listitem [ref=e130] [cursor=pointer]:
+        - heading "民法" [level=6] [ref=e131]
+        - paragraph [ref=e132]
+        - generic [ref=e133]:
+          - text: 0%
+          - generic [ref=e134]: 0/21题
+      - listitem [ref=e135] [cursor=pointer]:
+        - heading "行政法" [level=6] [ref=e136]
+        - paragraph [ref=e137]
+        - generic [ref=e138]:
+          - text: 0%
+          - generic [ref=e139]: 0/23题
+      - listitem [ref=e140] [cursor=pointer]:
+        - heading "民诉" [level=6] [ref=e141]
+        - paragraph [ref=e142]
+        - generic [ref=e143]:
+          - text: 0%
+          - generic [ref=e144]: 0/17题
+      - listitem [ref=e145] [cursor=pointer]:
+        - heading "刑诉" [level=6] [ref=e146]
+        - paragraph [ref=e147]
+        - generic [ref=e148]:
+          - text: 0%
+          - generic [ref=e149]: 0/24题
+      - listitem [ref=e150] [cursor=pointer]:
+        - heading "商经法" [level=6] [ref=e151]
+        - paragraph [ref=e152]
+        - generic [ref=e153]:
+          - text: 0%
+          - generic [ref=e154]: 0/19题
+      - listitem [ref=e155] [cursor=pointer]:
+        - heading "理论法" [level=6] [ref=e156]
+        - paragraph [ref=e157]
+        - generic [ref=e158]:
+          - text: 0%
+          - generic [ref=e159]: 0/26题
+      - listitem [ref=e160] [cursor=pointer]:
+        - heading "学科融合" [level=6] [ref=e161]
+        - paragraph [ref=e162]
+        - generic [ref=e163]:
+          - text: 0%
+          - generic [ref=e164]: 0/11题
+  - generic [ref=e165]:
+    - generic [ref=e166]: 客观题VIP推荐
+    - generic [ref=e170]: 主观题VIP推荐

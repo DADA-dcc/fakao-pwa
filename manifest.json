@@ -1,0 +1,22 @@
+{
+  "name": "法考刷题助手",
+  "short_name": "法考刷题",
+  "description": "法考备考刷题练习助手，支持民法、刑法、行政法等多科目",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#1a3a6b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e7] [cursor=pointer]: 登录
+    - generic [ref=e9]:
+      - link "首页" [ref=e11] [cursor=pointer]:
+        - /url: /site/hd/index.html
+      - link "免费课堂" [ref=e13] [cursor=pointer]:
+        - /url: /site/hd/resources/views/free/freeHome.html
+      - link "学习包" [ref=e15] [cursor=pointer]:
+        - /url: /site/hd/resources/views/book/studyBag.html
+      - link "精品网课 网课" [ref=e17] [cursor=pointer]:
+        - /url: /site/hd/resources/views/360/home360.html
+        - text: 精品网课
+        - generic [ref=e18]: 网课
+      - link "厚大面授" [ref=e20] [cursor=pointer]:
+        - /url: javascript:;
+      - link "师资介绍" [ref=e22] [cursor=pointer]:
+        - /url: /site/hd/resources/views/teacher/teacherHome.html
+      - link "带学群" [ref=e24] [cursor=pointer]:
+        - /url: /site/hd/resources/views/free/addGroup.html
+      - link "爱题库" [ref=e26] [cursor=pointer]:
+        - /url: javascript:;
+      - link "厚大商城" [ref=e28] [cursor=pointer]:
+        - /url: /site/hd/resources/views/book/bookHome.html
+      - link "全国分校" [ref=e30] [cursor=pointer]:
+        - /url: /site/hd/resources/views/school/schoolHome.html
+      - link "模拟机考" [ref=e32] [cursor=pointer]:
+        - /url: javascript:;
+      - link "法条检索" [ref=e34] [cursor=pointer]:
+        - /url: /site/hd/resources/zgtExam/law/law.html
+      - link "客服中心" [ref=e36] [cursor=pointer]:
+        - /url: /site/hd/resources/views/service/serviceHome.html
+  - text:      
+  - generic [ref=e39] [cursor=pointer]:
+    - generic [ref=e40]:
+      - paragraph [ref=e42]: 在线
+      - paragraph [ref=e43]: 咨询
+    - generic [ref=e45]:
+      - paragraph [ref=e47]: 客服
+      - paragraph [ref=e48]: 热线
+  - generic [ref=e50]:
+    - generic [ref=e56]:
+      - heading "免费网络课堂" [level=3] [ref=e58]
+      - link "更多课程" [ref=e59] [cursor=pointer]:
+        - /url: /site/hd/resources/views/free/freeHome.html
+    - generic [ref=e64]: 厚大中国
+    - generic [ref=e67]:
+      - heading "法考信息速递" [level=3] [ref=e69]
+      - list [ref=e70]:
+        - listitem [ref=e71] [cursor=pointer]: 最新法考信息
+        - listitem [ref=e73] [cursor=pointer]: 客观题攻略
+      - link "查看更多" [ref=e74] [cursor=pointer]:
+        - /url: /site/hd/resources/views/info/infoHome.html
+  - generic [ref=e75]:
+    - generic [ref=e76]:
+      - generic [ref=e77]:
+        - heading "厚大学习软件" [level=6] [ref=e78]
+        - link "厚大法考" [ref=e80] [cursor=pointer]:
+          - /url: javascript:;
+        - link "厚大爱题库" [ref=e82] [cursor=pointer]:
+          - /url: javascript:;
+        - link "厚大法硕" [ref=e84] [cursor=pointer]:
+          - /url: javascript:;
+      - generic [ref=e85]:
+        - heading "新手指南" [level=6] [ref=e86]
+        - link "最新资讯" [ref=e87] [cursor=pointer]:
+          - /url: /site/hd/resources/views/info/infoHome.html
+        - link "客服中心" [ref=e88] [cursor=pointer]:
+          - /url: /site/hd/resources/views/service/serviceHome.html
+      - generic [ref=e89]:
+        - heading "友情链接" [level=6] [ref=e90]
+        - paragraph [ref=e91]:
+          - link "经济师考试" [ref=e92] [cursor=pointer]:
+            - /url: http://www.jjsedu.org/
+          - link "免费课堂" [ref=e93] [cursor=pointer]:
+            - /url: http://www.houdask.com/site/hd/resources/views/free/freeHome.html
+          - link "报名在线网" [ref=e94] [cursor=pointer]:
+            - /url: https://www.edu84.com/
+      - generic [ref=e95]:
+        - heading "关注我们" [level=6] [ref=e96]
+        - link "厚大法考微博" [ref=e98] [cursor=pointer]:
+          - /url: javascript:;
+        - link "厚大法考公众号" [ref=e100] [cursor=pointer]:
+          - /url: javascript:;
+        - link "厚大教育旗舰店" [ref=e102] [cursor=pointer]:
+          - /url: https://houdaedu.tmall.com
+        - link "关于我们" [ref=e104] [cursor=pointer]:
+          - /url: /site/hd/resources/views/home/about.html
+    - generic [ref=e105]:
+      - paragraph [ref=e106]: Copyright © 2013 Beijing Houda Xuancheng Education Technology Corp.
+      - paragraph [ref=e107]:
+        - link "版权所有：北京厚大轩成教育科技股份公司" [ref=e108] [cursor=pointer]:
+          - /url: /site/hd/resources/views/home/license.html
+        - link "京ICP备14048010号-1" [ref=e109] [cursor=pointer]:
+          - /url: https://beian.miit.gov.cn
+          - text: 京ICP备14048010号-1
+          - img [ref=e110]
+        - link "京公网安备 11010802038043号" [ref=e111] [cursor=pointer]:
+          - /url: http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010802038043
+          - img [ref=e112]
+          - text: 京公网安备 11010802038043号
+  - generic [ref=e115] [cursor=pointer]:
+    - link "北京斯巴达咨询" [ref=e116]:
+      - /url: javascript:;
+    - link "上海面授咨询" [ref=e117]:
+      - /url: javascript:;
+    - link "广州暑期班咨询" [ref=e118]:
+      - /url: javascript:;
+    - link "在线360网课" [ref=e119]:
+      - /url: javascript:;
+    - link "26成都面授" [ref=e120]:
+      - /url: javascript:;
+    - link "26上海面授咨询" [ref=e121]:
+      - /url: javascript:;
+    - link "26广州主观面授咨询" [ref=e122]:
+      - /url: javascript:;
+    - link "北京集训面授" [ref=e123]:
+      - /url: javascript:;
+    - link "26深圳周末班咨询" [ref=e124]:
+      - /url: javascript:;
+    - link "杭州面授咨询" [ref=e125]:
+      - /url: javascript:;
+    - link "26上海周末班咨询" [ref=e126]:
+      - /url: javascript:;
+    - link "西安面授" [ref=e127]:
+      - /url: javascript:;
+    - link "郑州面授" [ref=e128]:
+      - /url: javascript:;
+    - link "南京面授" [ref=e129]:
+      - /url: javascript:;
