@@ -240,6 +240,13 @@ body {
   box-shadow: var(--sh-md);
   padding: 32px 28px; flex: 1;
   border: 1px solid var(--border-lt);
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--c-primary), var(--c-accent), var(--c-purple));
 }
 
 .question-meta { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -287,15 +294,22 @@ body {
 .option.disabled { pointer-events: none; opacity: .9; }
 
 .option-label {
-  flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
   border: 2px solid var(--border);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 13px; color: var(--txt-3);
-  transition: var(--ease);
+  background: var(--surface-2);
+  transition: all .25s cubic-bezier(.4,0,.2,1);
 }
-.option.selected .option-label { border-color: var(--c-accent); color: var(--c-accent); background: var(--c-accent-lt); }
-.option.correct  .option-label { border-color: var(--c-success); color: var(--c-success); background: var(--c-success-lt); }
-.option.wrong    .option-label { border-color: var(--c-danger);  color: var(--c-danger);  background: var(--c-danger-lt); }
+/* 四选项独立配色 */
+.option:nth-child(1) .option-label { border-color: #e8c8c8; color: #b04040; background: #fef6f6; }
+.option:nth-child(2) .option-label { border-color: #b8cce0; color: #3060a0; background: #f4f8fd; }
+.option:nth-child(3) .option-label { border-color: #b8d4b8; color: #387040; background: #f4faf4; }
+.option:nth-child(4) .option-label { border-color: #d0c0e0; color: #604080; background: #faf4fd; }
+.option:hover .option-label   { transform: scale(1.12); }
+.option.selected .option-label { border-color: var(--c-accent); color: var(--c-accent); background: var(--c-accent-lt); box-shadow: 0 0 0 4px rgba(59,108,180,.12); }
+.option.correct  .option-label { border-color: var(--c-success); color: var(--c-success); background: var(--c-success-lt); box-shadow: 0 0 0 4px rgba(56,161,105,.15); animation: popIn .35s ease; }
+.option.wrong    .option-label { border-color: var(--c-danger);  color: var(--c-danger);  background: var(--c-danger-lt); box-shadow: 0 0 0 4px rgba(229,62,62,.15);  animation: shake .4s ease; }
 
 /* ── Analysis ── */
 .analysis {
@@ -350,18 +364,35 @@ body {
 /* ── Result Banner ── */
 .result-banner {
   text-align: center; font-size: 17px; font-weight: 700;
-  margin-bottom: 16px; display: none;
-  padding: 10px 16px; border-radius: var(--r-md);
-  animation: fadeIn .3s ease;
+  margin-bottom: 12px; display: none;
+  padding: 12px 20px; border-radius: var(--r-md);
+  animation: slideUp .3s ease;
 }
 .result-banner.show { display: block; }
 .result-banner.right {
   color: var(--c-success); background: var(--c-success-lt);
-  border: 1px solid rgba(56,161,105,.2);
+  border: 1px solid rgba(56,161,105,.25);
 }
 .result-banner.wrong {
   color: var(--c-danger); background: var(--c-danger-lt);
-  border: 1px solid rgba(229,62,62,.2);
+  border: 1px solid rgba(229,62,62,.25);
+}
+
+/* ── Progress Bar ── */
+.progress-wrap {
+  margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
+}
+.progress-bar {
+  flex: 1; height: 5px; background: var(--border);
+  border-radius: var(--r-full); overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: var(--r-full);
+  background: linear-gradient(90deg, var(--c-accent), var(--c-primary), var(--c-purple));
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+.progress-text {
+  font-size: 12px; color: var(--txt-3); font-weight: 500; white-space: nowrap;
 }
 
 /* ── Actions ── */
@@ -562,6 +593,9 @@ body {
   font-size: 14px; line-height: 1.7; animation: fadeIn .3s ease;
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popIn  { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 .chat-bubble.user {
   align-self: flex-end; background: var(--c-primary); color: #fff;
   border-bottom-right-radius: 4px; box-shadow: 0 2px 8px rgba(26,58,107,.2);
@@ -1010,6 +1044,10 @@ body {
   <!-- Question Card -->
   <div class="card" id="questionCard">
     <div id="resultBanner" class="result-banner"></div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <span class="progress-text" id="progressText"></span>
+    </div>
     <div class="question-meta" id="questionMeta"></div>
     <div class="question-text" id="questionText"></div>
     <div class="options" id="optionsContainer"></div>
@@ -1207,6 +1245,15 @@ if ('serviceWorker' in navigator) {
     $answeredCount.textContent = total;
     $correctCount.textContent = correct;
     $accuracy.textContent = total > 0 ? Math.round((correct / total) * 100) + '%' : '—';
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const total = filteredQuestions.length;
+    const cur = currentIndex + 1;
+    const pct = Math.min(Math.round((cur / total) * 100), 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressText').textContent = cur + ' / ' + total;
   }
 
   function renderBookmarks() {
@@ -1242,6 +1289,7 @@ if ('serviceWorker' in navigator) {
   function nextQuestion() {
     if (filteredQuestions.length === 0) return;
     currentIndex++;
+    updateProgress();
     if (currentIndex >= filteredQuestions.length) {
       // In redo mode, refresh question pool and check if all cleared
       if (isRedoMode) {
@@ -1260,6 +1308,7 @@ if ('serviceWorker' in navigator) {
         filteredQuestions = shuffle(filteredQuestions);
       }
       currentIndex = 0;
+      updateProgress();
     }
     renderQuestion(filteredQuestions[currentIndex]);
   }
