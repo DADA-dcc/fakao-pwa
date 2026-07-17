@@ -1,15 +1,23 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="auto">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
 <title>法考刷题助手</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1a3a6b" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" id="themeColorMeta" content="#1a3a6b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="法考刷题助手">
 <link rel="apple-touch-icon" href="icon-192.png">
+<!-- iOS splash screens — inline SVG, auto-adapts to device -->
+<link rel="apple-touch-startup-image" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1170 2532'%3E%3Crect fill='%231a3a6b' width='1170' height='2532'/%3E%3Ctext fill='white' font-family='sans-serif' font-size='64' text-anchor='middle' x='585' y='1200'%3E⚖️%3C/text%3E%3Ctext fill='white' font-family='sans-serif' font-weight='bold' font-size='48' text-anchor='middle' x='585' y='1280'%3E法考刷题助手%3C/text%3E%3Ctext fill='rgba(255,255,255,0.6)' font-family='sans-serif' font-size='30' text-anchor='middle' x='585' y='1330'%3E在线刷题 · 智能解析%3C/text%3E%3C/svg%3E" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1284 2778'%3E%3Crect fill='%231a3a6b' width='1284' height='2778'/%3E%3Ctext fill='white' font-family='sans-serif' font-size='72' text-anchor='middle' x='642' y='1320'%3E⚖️%3C/text%3E%3Ctext fill='white' font-family='sans-serif' font-weight='bold' font-size='52' text-anchor='middle' x='642' y='1400'%3E法考刷题助手%3C/text%3E%3Ctext fill='rgba(255,255,255,0.6)' font-family='sans-serif' font-size='34' text-anchor='middle' x='642' y='1450'%3E在线刷题 · 智能解析%3C/text%3E%3C/svg%3E" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1125 2436'%3E%3Crect fill='%231a3a6b' width='1125' height='2436'/%3E%3Ctext fill='white' font-family='sans-serif' font-size='64' text-anchor='middle' x='562' y='1160'%3E⚖️%3C/text%3E%3Ctext fill='white' font-family='sans-serif' font-weight='bold' font-size='46' text-anchor='middle' x='562' y='1230'%3E法考刷题助手%3C/text%3E%3Ctext fill='rgba(255,255,255,0.6)' font-family='sans-serif' font-size='28' text-anchor='middle' x='562' y='1275'%3E在线刷题 · 智能解析%3C/text%3E%3C/svg%3E" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
+<!-- Generic fallback for other devices -->
+<link rel="apple-touch-startup-image" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 750 1334'%3E%3Crect fill='%231a3a6b' width='750' height='1334'/%3E%3Ctext fill='white' font-family='sans-serif' font-size='48' text-anchor='middle' x='375' y='640'%3E⚖️%3C/text%3E%3Ctext fill='white' font-family='sans-serif' font-weight='bold' font-size='36' text-anchor='middle' x='375' y='695'%3E法考刷题助手%3C/text%3E%3Ctext fill='rgba(255,255,255,0.6)' font-family='sans-serif' font-size='22' text-anchor='middle' x='375' y='730'%3E在线刷题 · 智能解析%3C/text%3E%3C/svg%3E">
+<!-- iPad splash (portrait) -->
+<link rel="apple-touch-startup-image" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1668 2388'%3E%3Crect fill='%231a3a6b' width='1668' height='2388'/%3E%3Ctext fill='white' font-family='sans-serif' font-size='80' text-anchor='middle' x='834' y='1140'%3E⚖️%3C/text%3E%3Ctext fill='white' font-family='sans-serif' font-weight='bold' font-size='56' text-anchor='middle' x='834' y='1220'%3E法考刷题助手%3C/text%3E%3Ctext fill='rgba(255,255,255,0.6)' font-family='sans-serif' font-size='36' text-anchor='middle' x='834' y='1280'%3E在线刷题 · 智能解析%3C/text%3E%3C/svg%3E" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)">
 <style>
 /* ═══════════════════════════════════════════
    CSS 自定义属性 — 统一主题令牌
@@ -55,9 +63,40 @@
   --ease: all .2s cubic-bezier(.4,0,.2,1);
 }
 
-/* ── 深色模式 ── */
+/* ── 深色模式变量 ── */
+:root[data-theme="dark"] {
+  --c-primary:    #4a7fd4;
+  --c-primary-h:  #5b8fe0;
+  --c-primary-lt: #1e2d45;
+  --c-accent:     #6b9fe8;
+  --c-accent-lt:  #1a2a40;
+  --c-success:    #48bb78;
+  --c-success-lt: #1a2e25;
+  --c-danger:     #fc8181;
+  --c-danger-lt:  #2d1f1f;
+  --c-warning:    #f6e05e;
+  --c-warning-lt: #2a2110;
+  --c-purple:     #9f7aea;
+  --c-purple-lt:  #2d2145;
+  --bg:        #111827;
+  --surface:   #1f2937;
+  --surface-2: #1a2333;
+  --border:    #374151;
+  --border-lt: #2d3748;
+  --txt-1: #f9fafb;
+  --txt-2: #d1d5db;
+  --txt-3: #9ca3af;
+  --txt-ph: #6b7280;
+  --sh-sm: 0 1px 3px rgba(0,0,0,.3),  0 1px 2px rgba(0,0,0,.2);
+  --sh-md: 0 4px 16px rgba(0,0,0,.35),0 1px 4px rgba(0,0,0,.2);
+  --sh-lg: 0 8px 32px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.2);
+  --sh-xl: 0 20px 60px rgba(0,0,0,.5),0 4px 16px rgba(0,0,0,.3);
+  --glass-bg: rgba(31, 41, 55, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+/* Auto mode: follow system */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root[data-theme="auto"] {
     --c-primary:    #4a7fd4;
     --c-primary-h:  #5b8fe0;
     --c-primary-lt: #1e2d45;
@@ -71,22 +110,21 @@
     --c-warning-lt: #2a2110;
     --c-purple:     #9f7aea;
     --c-purple-lt:  #2d2145;
-
     --bg:        #111827;
     --surface:   #1f2937;
     --surface-2: #1a2333;
     --border:    #374151;
     --border-lt: #2d3748;
-
     --txt-1: #f9fafb;
     --txt-2: #d1d5db;
     --txt-3: #9ca3af;
     --txt-ph: #6b7280;
-
     --sh-sm: 0 1px 3px rgba(0,0,0,.3),  0 1px 2px rgba(0,0,0,.2);
     --sh-md: 0 4px 16px rgba(0,0,0,.35),0 1px 4px rgba(0,0,0,.2);
     --sh-lg: 0 8px 32px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.2);
     --sh-xl: 0 20px 60px rgba(0,0,0,.5),0 4px 16px rgba(0,0,0,.3);
+    --glass-bg: rgba(31, 41, 55, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -97,6 +135,7 @@ body {
   background: var(--bg);
   color: var(--txt-1);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
 }
@@ -108,12 +147,37 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ── Header ── */
 .header {
   text-align: center;
   padding: 40px 0 26px;
+  position: relative;
+}
+.theme-toggle-btn {
+  position: absolute;
+  top: 6px;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--ease);
+  box-shadow: var(--sh-sm);
+  z-index: 10;
+}
+.theme-toggle-btn:hover {
+  border-color: var(--c-accent);
+  box-shadow: var(--sh-md);
+  transform: rotate(15deg);
 }
 .header h1 {
   font-size: 28px;
@@ -544,6 +608,8 @@ body {
   background: rgba(0,0,0,.45); z-index: 300;
   display: none; align-items: center; justify-content: center;
   backdrop-filter: blur(4px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .modal-overlay.show { display: flex; }
 .modal {
@@ -551,6 +617,7 @@ body {
   padding: 28px; width: 420px; max-width: 92vw;
   box-shadow: var(--sh-xl); border: 1px solid var(--border-lt);
   animation: slideUp .3s ease;
+  margin: auto;
 }
 .modal h3 { font-size: 18px; color: var(--c-primary); margin-bottom: 6px; font-weight: 700; }
 .modal .hint { font-size: 12px; color: var(--txt-3); margin-bottom: 16px; line-height: 1.7; }
@@ -669,14 +736,18 @@ body {
   background: rgba(10,18,40,.88); z-index: 500;
   display: none; align-items: center; justify-content: center;
   backdrop-filter: blur(6px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .knowledge-overlay.show { display: flex; }
 .knowledge-dialog {
   background: var(--surface); border-radius: 20px;
   width: 700px; max-width: 95vw; max-height: 90vh;
+  max-height: 90dvh;
   display: flex; flex-direction: column;
   box-shadow: var(--sh-xl); border: 1px solid var(--border-lt);
   animation: slideUp .4s cubic-bezier(.16,1,.3,1);
+  margin: auto;
 }
 @keyframes slideUp { from { opacity: 0; transform: translateY(32px); } to { opacity: 1; transform: translateY(0); } }
 .knowledge-header {
@@ -871,13 +942,14 @@ body {
 @media (max-width: 600px) {
   .app { padding: 12px 10px 32px; }
   .header { padding: 20px 0 14px; }
-  .header h1 { font-size: 22px; }
+  .header h1 { font-size: 20px; }
   .header .subtitle { font-size: 12px; }
-  .filter-bar { gap: 5px; }
-  .filter-btn { padding: 6px 12px; font-size: 12px; }
-  .card { padding: 20px 14px; }
+  .filter-bar { gap: 4px; }
+  .filter-btn { padding: 6px 10px; font-size: 11px; }
+  .card { padding: 18px 12px; }
   .question-text { font-size: 15px; line-height: 1.75; }
   .option { padding: 10px 12px; font-size: 14px; }
+  .option-label { width: 26px; height: 26px; font-size: 11px; }
   .stats-row { flex-direction: column; border-radius: var(--r-lg); }
   .stat-item + .stat-item { border-left: none; border-top: 1px solid var(--border-lt); }
   .stat-value { font-size: 16px; }
@@ -886,9 +958,53 @@ body {
   .wrong-panel { padding: 14px 16px; }
   .wrong-item { font-size: 13px; }
   .search-input { font-size: 13px; padding: 9px 14px 9px 36px; }
-  .modal-content { width: 95%; max-width: 400px; margin: 10vh auto; }
-  .knowledge-grid { columns: 1; }
+  .modal { width: 95%; max-width: 400px; padding: 20px; }
+  .knowledge-grid { columns: 1; padding: 14px 16px; }
+  .knowledge-header { padding: 20px 20px 14px; }
+  .knowledge-header h2 { font-size: 18px; }
+  .knowledge-footer { padding: 12px 20px 20px; }
+  .knowledge-footer .btn-start { padding: 11px 32px; font-size: 14px; }
   .type-toggle { flex-wrap: wrap; border-radius: var(--r-xl); }
+  .ai-settings-btn { top: 8px; right: 8px; width: 34px; height: 34px; font-size: 16px; }
+  .chat-panel { margin-top: 12px; }
+  .chat-messages { max-height: 240px; }
+  .subjective-q { padding: 14px 16px; }
+  .subjective-answer { padding: 14px 16px; }
+  .kr-panel-header h2 { font-size: 18px; }
+  .kr-subject-header { padding: 10px 14px; }
+  .kr-subject-header .kr-subject-name { font-size: 14px; }
+  .kr-point-card { padding: 10px 12px; }
+}
+
+/* ── Touch optimization ── */
+.filter-btn, .option, .btn, .type-toggle-btn, .knowledge-card,
+.kr-point-card, .kr-subject-header, .goto-btn, .remove-btn,
+.self-rate-btn, .reference-header, .chat-bubble {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── iPad / tablet breakpoint ── */
+@media (min-width: 768px) and (max-width: 1300px) {
+  .app { max-width: 720px; padding: 28px 24px 48px; }
+}
+
+/* ── Extra small screens (iPhone SE, etc.) ── */
+@media (max-width: 374px) {
+  .app { padding: 8px 6px 24px; }
+  .header { padding: 14px 0 10px; }
+  .header h1 { font-size: 18px; }
+  .card { padding: 14px 10px; }
+  .question-text { font-size: 14px; }
+  .option { padding: 8px 10px; font-size: 13px; gap: 8px; }
+  .option-label { width: 24px; height: 24px; font-size: 10px; }
+  .btn { padding: 8px 12px; font-size: 13px; }
+  .filter-btn { padding: 5px 8px; font-size: 10px; }
+  .stats-row .stat-item { padding: 8px 0; font-size: 12px; }
+  .stat-value { font-size: 14px; }
+  .wrong-panel { padding: 10px 12px; }
+  .knowledge-header h2 { font-size: 16px; }
+  .knowledge-footer .btn-start { padding: 10px 24px; font-size: 13px; }
 }
 
 /* ═══════════════════════════════════════════
@@ -898,13 +1014,6 @@ body {
   --ease-fluid: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   --glass-bg: rgba(255, 255, 255, 0.65);
   --glass-border: rgba(255, 255, 255, 0.4);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --glass-bg: rgba(31, 41, 55, 0.65);
-    --glass-border: rgba(255, 255, 255, 0.08);
-  }
 }
 
 /* Background Liquid Orbs */
@@ -920,6 +1029,10 @@ body {
   pointer-events: none;
   opacity: 0.75;
 }
+/* Disable orbs on mobile — blur filter with animations kills GPU */
+@media (max-width: 768px) {
+  .liquid-orbs { display: none; }
+}
 
 .liquid-orb {
   position: absolute;
@@ -928,8 +1041,12 @@ body {
   animation: float 20s infinite ease-in-out;
 }
 
+:root[data-theme="dark"] .liquid-orb {
+  mix-blend-mode: screen;
+  opacity: 0.4;
+}
 @media (prefers-color-scheme: dark) {
-  .liquid-orb {
+  :root[data-theme="auto"] .liquid-orb {
     mix-blend-mode: screen;
     opacity: 0.4;
   }
@@ -980,7 +1097,7 @@ body {
 body {
   background: var(--bg);
   background-attachment: fixed;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .app, .knowledge-dialog, .modal, .chat-panel {
@@ -1006,6 +1123,21 @@ body {
   transform: translateY(-4px) scale(1.01);
   box-shadow: 0 12px 30px rgba(59, 108, 180, 0.15) !important;
   border-color: rgba(59, 108, 180, 0.4) !important;
+}
+
+/* Kill backdrop-filter on mobile — causes extreme lag on iOS Safari */
+@media (max-width: 768px) {
+  .app, .knowledge-dialog, .modal, .chat-panel,
+  .card, .knowledge-card, .kr-subject-group {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+  }
+  .card:hover, .knowledge-card:hover {
+    transform: none;
+    box-shadow: var(--sh-md) !important;
+  }
 }
 
 /* Fluid Scrollbars */
@@ -1147,6 +1279,7 @@ body {
 
 <div class="app">
   <div class="header">
+    <button class="theme-toggle-btn" id="themeToggleBtn" title="切换主题" aria-label="切换深色/浅色模式">🌓</button>
     <h1>国家统一法律职业资格考试</h1>
     <div class="subtitle">在线刷题 · 智能解析</div>
   </div>
@@ -1154,7 +1287,7 @@ body {
   <!-- Search Bar -->
   <div class="search-container" id="searchContainer">
     <span class="search-icon">🔍</span>
-    <input type="text" class="search-input" id="searchInput" placeholder="搜索题目关键词..." autocomplete="off">
+    <input type="text" class="search-input" id="searchInput" placeholder="搜索题目关键词..." autocomplete="off" inputmode="search" enterkeyhint="search">
     <div class="search-results" id="searchResults"></div>
     <div class="search-overlay" id="searchOverlay"></div>
   </div>
@@ -1253,7 +1386,7 @@ body {
       </div>
     </div>
     <div class="chat-input-row">
-      <input type="text" id="chatInput" placeholder="输入你的问题..." maxlength="500">
+      <input type="text" id="chatInput" placeholder="输入你的问题..." maxlength="500" inputmode="text" enterkeyhint="send">
       <button class="btn-send" id="chatSendBtn">➤</button>
     </div>
   </div>
@@ -1278,76 +1411,264 @@ body {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');
 }
+
+// ── iOS viewport height fix (100vh doesn't account for Safari chrome) ──
+(function() {
+  var setVH = function() {
+    var vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', vh + 'px');
+  };
+  setVH();
+  window.addEventListener('resize', setVH);
+  window.addEventListener('orientationchange', function() { setTimeout(setVH, 100); });
+})();
+
+// ── Theme toggle ──
+(function() {
+  var html = document.documentElement;
+  var saved = localStorage.getItem('fakao_theme') || 'auto';
+  html.setAttribute('data-theme', saved);
+  updateThemeColor();
+
+  function updateThemeColor() {
+    var meta = document.getElementById('themeColorMeta');
+    var isDark = html.getAttribute('data-theme') === 'dark' ||
+      (html.getAttribute('data-theme') === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    meta.content = isDark ? '#111827' : '#1a3a6b';
+  }
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+    if (html.getAttribute('data-theme') === 'auto') updateThemeColor();
+  });
+
+  document.getElementById('themeToggleBtn').addEventListener('click', function() {
+    var cur = html.getAttribute('data-theme');
+    var next = { auto: 'dark', dark: 'light', light: 'auto' }[cur] || 'auto';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('fakao_theme', next);
+    updateThemeColor();
+    // Update icon
+    var icons = { auto: '🌓', dark: '🌙', light: '☀️' };
+    this.textContent = icons[next] || '🌓';
+  });
+
+  // Set initial icon
+  var icons = { auto: '🌓', dark: '🌙', light: '☀️' };
+  document.getElementById('themeToggleBtn').textContent = icons[saved] || '🌓';
+})();
 </script>
 
 <script>
 (async function() {
-  // ── IndexedDB 题库缓存 ──
+  // ── IndexedDB 题库缓存 (per-subject stores) ──
   const DB_NAME = 'fakao_cache';
-  const DB_VERSION = 1;
+  const DB_VERSION = 3;
 
   function openDB() {
     return new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
-        if (!req.result.objectStoreNames.contains('questions')) {
-          req.result.createObjectStore('questions', { keyPath: 'id' });
+      req.onupgradeneeded = function() {
+        // v3: per-subject stores + meta store
+        if (!req.result.objectStoreNames.contains('meta')) {
+          req.result.createObjectStore('meta', { keyPath: 'key' });
+        }
+        if (!req.result.objectStoreNames.contains('questions_by_subject')) {
+          req.result.createObjectStore('questions_by_subject', { keyPath: 'subject' });
         }
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror = function() { reject(req.error); };
     });
   }
 
-  async function loadQuestionsFromCache() {
-    const db = await openDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction('questions', 'readonly');
-      const store = tx.objectStore('questions');
-      const getAll = store.getAll();
-      getAll.onsuccess = () => {
-        db.close();
-        resolve(getAll.result.length > 0 ? getAll.result : null);
-      };
-      getAll.onerror = () => { db.close(); resolve(null); };
+  async function getCachedSubject(db, subject) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction('questions_by_subject', 'readonly');
+      var store = tx.objectStore('questions_by_subject');
+      var req = store.get(subject);
+      req.onsuccess = function() { resolve(req.result ? req.result.questions : null); };
+      req.onerror = function() { resolve(null); };
     });
   }
 
-  async function saveQuestionsToCache(qs) {
-    const db = await openDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction('questions', 'readwrite');
-      const store = tx.objectStore('questions');
-      for (const q of qs) { store.put(q); }
-      tx.oncomplete = () => { db.close(); resolve(); };
-      tx.onerror = () => { db.close(); resolve(); };
+  async function cacheSubject(db, subject, questions) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction('questions_by_subject', 'readwrite');
+      var store = tx.objectStore('questions_by_subject');
+      store.put({ subject: subject, questions: questions });
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror = function() { resolve(); };
     });
   }
 
-  // ── Load questions ──
-  let questions = [];
+  async function getMeta(db, key) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction('meta', 'readonly');
+      var store = tx.objectStore('meta');
+      var req = store.get(key);
+      req.onsuccess = function() { resolve(req.result ? req.result.value : null); };
+      req.onerror = function() { resolve(null); };
+    });
+  }
+
+  async function setMeta(db, key, value) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction('meta', 'readwrite');
+      var store = tx.objectStore('meta');
+      store.put({ key: key, value: value });
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror = function() { resolve(); };
+    });
+  }
+
+  // ── Load questions: per-subject lazy loading ──
+  var SUBJECTS_ALL = ['民法','刑法','行政法','刑诉法','民诉法','知识产权法','商法','经济法','宪法','法学综合'];
+  var questions = [];
+
+  function showLoading(msg) {
+    document.getElementById('questionText').innerHTML =
+      '<div style="text-align:center;padding:40px 0;color:var(--txt-3);">' +
+      '<div style="font-size:32px;margin-bottom:12px;">⏳</div>' +
+      '<div style="font-size:15px;">' + msg + '</div>' +
+      '<div style="margin-top:12px;font-size:12px;color:var(--txt-ph);">首次加载需下载题库，请耐心等待</div>' +
+      '</div>';
+    document.getElementById('optionsContainer').innerHTML = '';
+    document.getElementById('bookmarkBtn').style.display = 'none';
+    document.getElementById('nextBtn').style.display = 'none';
+  }
+
+  function hideLoading() {
+    document.getElementById('bookmarkBtn').style.display = '';
+    document.getElementById('nextBtn').style.display = '';
+  }
+
   try {
-    const cached = await loadQuestionsFromCache();
-    if (cached) {
-      questions = cached;
-    } else {
-      const res = await fetch('questions.json');
-      questions = await res.json();
-      saveQuestionsToCache(questions).catch(() => {});
+    var db = await openDB();
+
+    // Load subject index
+    var indexData;
+    try {
+      var idxRes = await fetch('questions/index.json');
+      indexData = await idxRes.json();
+    } catch(e) {
+      indexData = null;
     }
-  } catch {
+
+    // Determine which subjects are needed (all on first load)
+    var cachedVersion = await getMeta(db, 'questions_version');
+    var needReload = (cachedVersion !== 'v2');
+
+    if (needReload) {
+      // Load all subjects, cache each one
+      showLoading('正在下载题库...');
+      var loadedCount = 0;
+      var totalSubjects = SUBJECTS_ALL.length;
+
+      // Load subjects in parallel batches of 4
+      for (var batch = 0; batch < SUBJECTS_ALL.length; batch += 4) {
+        var batchSubjects = SUBJECTS_ALL.slice(batch, batch + 4);
+        var batchPromises = batchSubjects.map(function(subject) {
+          return getCachedSubject(db, subject).then(function(cached) {
+            if (cached) { loadedCount++; return cached; }
+            return fetch('questions/' + subject + '.json')
+              .then(function(r) { return r.json(); })
+              .then(function(qs) {
+                loadedCount++;
+                showLoading('正在下载题库... (' + loadedCount + '/' + totalSubjects + ' 科)');
+                return cacheSubject(db, subject, qs).then(function() { return qs; });
+              });
+          });
+        });
+        var batchResults = await Promise.all(batchPromises);
+        batchResults.forEach(function(qs) {
+          if (qs) { questions = questions.concat(qs); }
+        });
+      }
+
+      if (questions.length > 0) {
+        await setMeta(db, 'questions_version', 'v2');
+        await setMeta(db, 'question_count', questions.length);
+      }
+      showLoading('题库加载完成，初始化中...');
+    } else {
+      // Load from cache
+      for (var i = 0; i < SUBJECTS_ALL.length; i++) {
+        var cached = await getCachedSubject(db, SUBJECTS_ALL[i]);
+        if (cached) { questions = questions.concat(cached); }
+      }
+      // Fallback: if cache empty, reload
+      if (questions.length === 0) {
+        needReload = true;
+        showLoading('正在下载题库...');
+        for (var b2 = 0; b2 < SUBJECTS_ALL.length; b2 += 4) {
+          var bSubjects2 = SUBJECTS_ALL.slice(b2, b2 + 4);
+          var bPromises2 = bSubjects2.map(function(subject) {
+            return fetch('questions/' + subject + '.json')
+              .then(function(r) { return r.json(); })
+              .then(function(qs) {
+                return cacheSubject(db, subject, qs).then(function() { return qs; });
+              });
+          });
+          var bResults2 = await Promise.all(bPromises2);
+          bResults2.forEach(function(qs) {
+            if (qs) { questions = questions.concat(qs); }
+          });
+        }
+        if (questions.length > 0) {
+          await setMeta(db, 'questions_version', 'v2');
+          await setMeta(db, 'question_count', questions.length);
+        }
+      }
+    }
+
+    db.close();
+
+    if (questions.length === 0) throw new Error('题库为空');
+    hideLoading();
+  } catch (err) {
     document.getElementById('questionCard').innerHTML =
-      '<div class="empty-state">⚠ 题库加载失败，请检查网络连接</div>';
+      '<div class="empty-state">⚠ 题库加载失败，请检查网络连接<br><small style="color:var(--txt-3)">' +
+      (err.message || '未知错误') + '</small></div>';
     return;
   }
 
   // ── State ──
-  let activeSubject = '全部';
+  let activeSubject = localStorage.getItem('fakao_activeSubject') || '全部';
+  let activeType = localStorage.getItem('fakao_activeType') || '全部';
   let filteredQuestions = [...questions];
   let currentIndex = -1;
-  let history = [];        // { qid, chosen, correct }
+  let history = JSON.parse(localStorage.getItem('fakao_history') || '[]');
   let answered = false;
   let bookmarks = JSON.parse(localStorage.getItem('fakao_bookmarks') || '[]');
+  let isRedoMode = false;
+
+  // Persist helpers
+  function saveProgress() {
+    var q = filteredQuestions[currentIndex];
+    var state = {
+      activeSubject: activeSubject,
+      activeType: activeType,
+      history: history,
+      currentQid: q ? q.id : null,
+      isRedoMode: isRedoMode
+    };
+    localStorage.setItem('fakao_progress', JSON.stringify(state));
+    localStorage.setItem('fakao_history', JSON.stringify(history));
+    localStorage.setItem('fakao_activeSubject', activeSubject);
+    localStorage.setItem('fakao_activeType', activeType);
+  }
+
+  function restoreProgress() {
+    try {
+      var saved = JSON.parse(localStorage.getItem('fakao_progress'));
+      if (!saved) return;
+      if (saved.activeSubject) activeSubject = saved.activeSubject;
+      if (saved.activeType) activeType = saved.activeType;
+      if (saved.history) history = saved.history;
+      isRedoMode = saved.isRedoMode || false;
+      return saved.currentQid;
+    } catch(e) { return null; }
+  }
 
   // ── DOM refs ──
   const $filterBar = document.getElementById('filterBar');
@@ -1376,7 +1697,6 @@ if ('serviceWorker' in navigator) {
   const $referenceBody = document.getElementById('referenceBody');
   const $referenceSource = document.getElementById('referenceSource');
   const $typeToggle = document.getElementById('typeToggle');
-  let activeType = '全部';
 
   // ── Helpers ──
   function shuffle(arr) {
@@ -1409,6 +1729,7 @@ if ('serviceWorker' in navigator) {
       $emptyState.style.display = 'none';
       nextQuestion();
     }
+    saveProgress();
   }
 
   function updateStats() {
@@ -1418,6 +1739,7 @@ if ('serviceWorker' in navigator) {
     $correctCount.textContent = correct;
     $accuracy.textContent = total > 0 ? Math.round((correct / total) * 100) + '%' : '—';
     updateProgress();
+    saveProgress();
   }
 
   function updateProgress() {
@@ -1455,6 +1777,8 @@ if ('serviceWorker' in navigator) {
   function saveBookmarks() {
     localStorage.setItem('fakao_bookmarks', JSON.stringify(bookmarks));
     renderBookmarks();
+    updateRedoBadge();
+    saveProgress();
   }
 
   // ── Render question ──
@@ -1467,12 +1791,14 @@ if ('serviceWorker' in navigator) {
       if (isRedoMode) {
         const remaining = getRedoQuestions();
         if (remaining.length === 0) {
+          isRedoMode = false;
           $questionCard.innerHTML = `
             <div class="empty-state" style="font-size:18px;color:#38a169;">
               🎉 恭喜！错题已全部清除！
             </div>
           `;
           $redoBanner.classList.remove('show');
+          saveProgress();
           return;
         }
         filteredQuestions = shuffle([...remaining]);
@@ -1760,6 +2086,41 @@ if ('serviceWorker' in navigator) {
     filterQuestions();
   });
 
+  // ── Redo mode button (created early, appended to DOM later) ──
+  const redoBtn = document.createElement('button');
+  redoBtn.className = 'filter-btn redo';
+  redoBtn.textContent = '🔴 错题重做 (' + bookmarks.length + '题)';
+
+  // ── Redo mode functions ──
+  function getRedoQuestions() {
+    return questions.filter(function(q) { return bookmarks.includes(q.id); });
+  }
+
+  function updateRedoBadge() {
+    redoBtn.textContent = '🔴 错题重做 (' + bookmarks.length + '题)';
+  }
+
+  function enterRedoMode() {
+    if (bookmarks.length === 0) return;
+    isRedoMode = true;
+    activeSubject = '全部';
+    $filterBar.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    $filterBar.querySelector('[data-subject="全部"]').classList.add('active');
+    $redoBanner.classList.add('show');
+    filteredQuestions = shuffle(getRedoQuestions());
+    currentIndex = -1;
+    answered = false;
+    multiSelections.clear();
+    nextQuestion();
+    saveProgress();
+  }
+
+  function exitRedoMode() {
+    isRedoMode = false;
+    $redoBanner.classList.remove('show');
+    saveProgress();
+  }
+
   // ── Filter ──
   $filterBar.addEventListener('click', function(e) {
     const btn = e.target.closest('.filter-btn');
@@ -1807,12 +2168,34 @@ if ('serviceWorker' in navigator) {
   });
 
   // ── Init ──
-  const redoBtn = document.createElement('button');
-  redoBtn.className = 'filter-btn redo';
-  redoBtn.textContent = `🔴 错题重做 (${bookmarks.length}题)`;
   $filterBar.appendChild(redoBtn);
+
+  // Restore saved filter/type state in UI
+  var savedQid = restoreProgress();
+  if (activeSubject !== '全部') {
+    $filterBar.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    var targetBtn = $filterBar.querySelector('[data-subject="' + activeSubject + '"]');
+    if (targetBtn) targetBtn.classList.add('active');
+  }
+  if (activeType !== '全部') {
+    $typeToggle.querySelectorAll('.type-toggle-btn').forEach(function(b) { b.classList.remove('active'); });
+    var typeBtn = $typeToggle.querySelector('[data-type="' + activeType + '"]');
+    if (typeBtn) typeBtn.classList.add('active');
+  }
+
   filterQuestions();
+  // Try to resume from saved question
+  if (savedQid && filteredQuestions.length > 0) {
+    var foundIdx = -1;
+    for (var fi = 0; fi < filteredQuestions.length; fi++) {
+      if (filteredQuestions[fi].id === savedQid) { foundIdx = fi; break; }
+    }
+    if (foundIdx >= 0) {
+      currentIndex = foundIdx - 1; // nextQuestion will increment
+    }
+  }
   renderBookmarks();
+  updateStats();
 
   // ═══════════════════════════════════════════
   //  Daily Knowledge Cards
@@ -1927,6 +2310,13 @@ if ('serviceWorker' in navigator) {
 
   $knowledgeStartBtn.addEventListener('click', function() {
     $knowledgeOverlay.classList.remove('show');
+  });
+
+  // Close knowledge overlay on backdrop click
+  $knowledgeOverlay.addEventListener('click', function(e) {
+    if (e.target === $knowledgeOverlay) {
+      $knowledgeOverlay.classList.remove('show');
+    }
   });
 
   // Load knowledge and show on startup

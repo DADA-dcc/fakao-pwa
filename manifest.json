@@ -3,20 +3,25 @@
   "short_name": "法考刷题",
   "description": "法考备考刷题练习助手，支持民法、刑法、行政法等多科目",
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
-  "background_color": "#f0f4f8",
+  "background_color": "#1a3a6b",
   "theme_color": "#1a3a6b",
   "orientation": "portrait-primary",
+  "categories": ["education", "utilities"],
+  "lang": "zh-CN",
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
