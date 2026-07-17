@@ -5,6 +5,7 @@ const PRECACHE = [
   './manifest.json',
   './questions/index.json',
   './knowledge.json',
+  './case_library.json',
   './icon-192.png',
   './icon-512.png'
 ];
