@@ -323,6 +323,13 @@ body {
 .tag-type-subj{ background: var(--c-purple-lt);  color: var(--c-purple); }
 .tag-year     { background: #e8f5e9; color: #2e7d32; }
 .tag-id       { background: #f3e5f5; color: #7b1fa2; }
+.difficulty-badge {
+  display: inline-block; padding: 3px 10px;
+  border-radius: var(--r-sm); font-size: 12px; font-weight: 700; letter-spacing: .3px;
+}
+.difficulty-badge.easy   { background: #e8f5e9; color: #2e7d32; }
+.difficulty-badge.medium { background: #fff8e1; color: #f57f17; }
+.difficulty-badge.hard   { background: #ffebee; color: #c62828; }
 
 .question-text {
   font-size: 17px; line-height: 1.85;
@@ -634,6 +641,38 @@ body {
 .modal-status.show { display: block; }
 .modal-status.ok  { color: var(--c-success); }
 .modal-status.err { color: var(--c-danger); }
+
+/* ── Sync Modal ── */
+.sync-tab { flex:1; padding:10px; border:none; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; transition:var(--ease); }
+.sync-tab.active { background:var(--c-primary); color:#fff; }
+.sync-tab:not(.active) { background:transparent; color:var(--txt-2); }
+.sync-tab:not(.active):hover { color:var(--c-primary); background:var(--c-primary-lt); }
+.sync-code-input { width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:var(--r-md); font-size:13px; font-family:inherit; outline:none; background:var(--surface); color:var(--txt-1); resize:vertical; min-height:80px; transition:var(--ease); box-sizing:border-box; }
+.sync-code-input:focus { border-color:var(--c-accent); box-shadow:0 0 0 3px rgba(59,108,180,.1); }
+.sync-file-label { display:block; padding:20px; border:2px dashed var(--border); border-radius:var(--r-md); text-align:center; cursor:pointer; font-size:14px; color:var(--txt-3); transition:var(--ease); margin-bottom:12px; }
+.sync-file-label:hover { border-color:var(--c-accent); color:var(--c-accent); background:var(--c-accent-lt); }
+.sync-file-label input { display:none; }
+.sync-file-name { font-size:12px; color:var(--c-success); text-align:center; margin-bottom:12px; display:none; }
+.sync-file-name.show { display:block; }
+
+/* ── Difficulty filter (same style as type toggle) ── */
+.diff-filter {
+  display: flex; gap: 4px; justify-content: center; margin-bottom: 14px;
+  background: var(--surface); border: 1px solid var(--border-lt);
+  border-radius: var(--r-full); padding: 4px;
+  width: fit-content; margin-left: auto; margin-right: auto;
+  box-shadow: var(--sh-sm);
+}
+.diff-filter-btn {
+  padding: 6px 18px; border-radius: var(--r-full); border: none;
+  background: transparent; color: var(--txt-3); font-size: 13px;
+  cursor: pointer; font-family: inherit; transition: var(--ease); font-weight: 500;
+}
+.diff-filter-btn:hover { color: var(--c-primary); }
+.diff-filter-btn.active {
+  background: var(--c-primary); color: #fff;
+  box-shadow: 0 2px 8px rgba(26,58,107,.25);
+}
 
 /* ── Chat Panel ── */
 .chat-panel {
@@ -1194,6 +1233,237 @@ body {
 .app {
   animation: fluidSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* ── Question Timer ── */
+.question-timer {
+  text-align: right;
+  font-size: 13px;
+  color: var(--txt-3);
+  margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+  transition: color .3s;
+  letter-spacing: .5px;
+}
+.question-timer.warning { color: var(--c-warning); font-weight: 600; }
+.question-timer.danger { color: var(--c-danger); font-weight: 700; }
+
+/* ── Exam Mode ── */
+.exam-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, var(--c-danger-lt), #fff5e6);
+  border: 1px solid var(--c-danger);
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 600;
+}
+:root[data-theme="dark"] .exam-banner {
+  background: linear-gradient(135deg, #2d1f1f, #2a2110);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] .exam-banner {
+    background: linear-gradient(135deg, #2d1f1f, #2a2110);
+  }
+}
+.exam-countdown {
+  color: var(--c-danger);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+}
+.exam-countdown.warning { color: var(--c-warning); }
+.exam-countdown.urgent { color: var(--c-danger); animation: examPulse 1s infinite; }
+.exam-progress { color: var(--txt-2); font-weight: 500; }
+.exam-exit-btn {
+  padding: 4px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-danger);
+  background: transparent;
+  color: var(--c-danger);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  transition: var(--ease);
+}
+.exam-exit-btn:hover { background: var(--c-danger-lt); }
+@keyframes examPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+/* ── Exam Results ── */
+.exam-results {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-md);
+  padding: 32px 28px;
+  border: 1px solid var(--border-lt);
+  margin-bottom: 20px;
+  animation: slideUp .4s ease;
+}
+.exam-results-header {
+  text-align: center;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-lt);
+  margin-bottom: 24px;
+}
+.exam-results-header .score {
+  font-size: 48px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--c-primary), var(--c-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.exam-results-header .score-label { font-size: 14px; color: var(--txt-3); margin-top: 4px; }
+.exam-results-header .score-pct {
+  font-size: 18px;
+  color: var(--txt-2);
+  margin-top: 4px;
+}
+.exam-results-header .pass-badge {
+  display: inline-block;
+  padding: 4px 16px;
+  border-radius: var(--r-full);
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+.pass-badge.pass { background: var(--c-success-lt); color: var(--c-success); }
+.pass-badge.fail { background: var(--c-danger-lt); color: var(--c-danger); }
+
+.exam-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Per-subject breakdown */
+.exam-subject-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-lt);
+}
+.exam-subject-row:last-child { border-bottom: none; }
+.exam-subject-row .subject-name {
+  width: 80px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt-1);
+  flex-shrink: 0;
+}
+.exam-subject-row .subject-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: var(--border);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+.exam-subject-row .subject-bar-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, var(--c-success), #48bb78);
+  transition: width .8s cubic-bezier(.16,1,.3,1);
+}
+.exam-subject-row .subject-bar-fill.low { background: linear-gradient(90deg, var(--c-danger), #fc8181); }
+.exam-subject-row .subject-bar-fill.medium { background: linear-gradient(90deg, var(--c-warning), #f6e05e); }
+.exam-subject-row .subject-stat {
+  font-size: 12px;
+  color: var(--txt-3);
+  white-space: nowrap;
+  width: 70px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Time stats */
+.exam-time-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.exam-time-card {
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  padding: 14px;
+  text-align: center;
+  border: 1px solid var(--border-lt);
+}
+.exam-time-card .time-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-primary);
+  font-variant-numeric: tabular-nums;
+}
+.exam-time-card .time-label {
+  font-size: 11px;
+  color: var(--txt-3);
+  margin-top: 4px;
+}
+
+/* Exam results actions */
+.exam-results-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.exam-note {
+  text-align: center;
+  font-size: 13px;
+  color: var(--txt-3);
+  margin-top: 16px;
+  padding: 10px;
+  background: var(--c-success-lt);
+  border-radius: var(--r-md);
+}
+
+/* Exam config modal select */
+.modal select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 16px;
+  background: var(--surface);
+  color: var(--txt-1);
+  transition: var(--ease);
+  cursor: pointer;
+}
+.modal select:focus {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px rgba(59,108,180,.1);
+}
+
+/* Compact exam wrapper for mobile exam mode */
+.question-timer.exam-mode {
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .exam-results { padding: 18px 14px; }
+  .exam-results-header .score { font-size: 36px; }
+  .exam-time-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .exam-time-card { padding: 10px; }
+  .exam-time-card .time-value { font-size: 16px; }
+  .exam-subject-row .subject-name { width: 60px; font-size: 12px; }
+  .exam-subject-row .subject-stat { width: 55px; font-size: 11px; }
+  .exam-banner { font-size: 12px; padding: 8px 12px; flex-wrap: wrap; gap: 4px; }
+}
 </style>
 </head>
 <body>
@@ -1244,6 +1514,31 @@ body {
     <div class="deco-item"><span class="deco-icon">📜</span><span class="deco-name">高铭暄</span><span class="deco-sub">1928– · 刑法学泰斗</span></div>
     <div class="deco-item"><span class="deco-icon">📜</span><span class="deco-name">马克昌</span><span class="deco-sub">1926–2011 · 刑法学家</span></div>
     <div class="deco-item"><span class="deco-icon">📜</span><span class="deco-name">陈光中</span><span class="deco-sub">1930– · 刑事诉讼法奠基人</span></div>
+  </div>
+
+  <!-- Exam Config Modal -->
+  <div class="modal-overlay" id="examConfigModal">
+    <div class="modal">
+      <h3>📝 模拟考试设置</h3>
+      <div class="hint">选择考试类型和参数，开始限时模拟考试</div>
+      <label style="display:block;font-size:13px;font-weight:600;color:var(--txt-2);margin-bottom:6px;">卷别</label>
+      <select id="examPaperSelect">
+        <option value="客观题卷一">客观题卷一（民法·民诉·商经知·三国法·宪法·法理·司法制度）</option>
+        <option value="客观题卷二">客观题卷二（刑法·刑诉·行政法·理论法·国际法·司法制度）</option>
+        <option value="自定义" selected>自定义（所有科目混合）</option>
+      </select>
+      <label style="display:block;font-size:13px;font-weight:600;color:var(--txt-2);margin-bottom:6px;">题数</label>
+      <input type="number" id="examQuestionCount" value="100" min="10" max="200">
+      <label style="display:block;font-size:13px;font-weight:600;color:var(--txt-2);margin-bottom:6px;">时间（分钟）</label>
+      <input type="number" id="examTimeLimit" value="180" min="10" max="480">
+      <div style="font-size:12px;color:var(--txt-3);margin-bottom:16px;line-height:1.7;">
+        💡 建议：卷一 100题/180分钟，卷二 100题/180分钟
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="examConfigCancel">取消</button>
+        <button class="btn btn-primary" id="examConfigStart">开始考试</button>
+      </div>
+    </div>
   </div>
 
   <!-- Knowledge Modal -->
@@ -1316,6 +1611,9 @@ body {
     <button class="filter-btn review-mode" id="sm2ReviewBtn" style="background:var(--c-purple-lt);color:var(--c-purple);border-color:var(--c-purple);font-weight:600;">
       🧠 智能复习 <span id="sm2DueBadge" style="display:none;background:var(--c-danger);color:#fff;border-radius:50%;padding:1px 6px;font-size:11px;margin-left:4px;">0</span>
     </button>
+    <button class="filter-btn" id="examBtn" style="background:var(--c-success-lt);color:var(--c-success);border-color:var(--c-success);font-weight:600;">
+      📝 模拟考试
+    </button>
   </div>
 
   <!-- Type Toggle -->
@@ -1323,6 +1621,14 @@ body {
     <button class="type-toggle-btn active" data-type="全部">全部题型</button>
     <button class="type-toggle-btn" data-type="客观题">客观题</button>
     <button class="type-toggle-btn" data-type="主观题">主观题</button>
+  </div>
+
+  <!-- Difficulty Filter -->
+  <div class="diff-filter" id="difficultyFilter">
+    <button class="diff-filter-btn active" data-difficulty="全部难度">全部难度</button>
+    <button class="diff-filter-btn" data-difficulty="易">🟢 易</button>
+    <button class="diff-filter-btn" data-difficulty="中">🟡 中</button>
+    <button class="diff-filter-btn" data-difficulty="难">🔴 难</button>
   </div>
 
   <!-- Stats -->
@@ -1334,7 +1640,7 @@ body {
   </div>
 
   <!-- Knowledge Review Toggle -->
-  <div class="kr-toggle-row">
+  <div class="kr-toggle-row" id="krToggleRow">
     <button class="btn-kr" id="krToggleBtn">📚 知识点回顾</button>
   </div>
 
@@ -1361,10 +1667,16 @@ body {
   <!-- Question Card -->
   <div class="card" id="questionCard">
     <div id="resultBanner" class="result-banner"></div>
+    <div class="exam-banner" id="examBanner" style="display:none;">
+      <span class="exam-countdown" id="examCountdown">⏱ 180:00</span>
+      <span class="exam-progress" id="examProgress">1/100</span>
+      <button class="exam-exit-btn" id="examExitBtn">✕ 交卷</button>
+    </div>
     <div class="progress-wrap" id="progressWrap">
       <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
       <span class="progress-text" id="progressText"></span>
     </div>
+    <div class="question-timer" id="questionTimer">⏱ 00:00</div>
     <div class="question-meta" id="questionMeta"></div>
     <div class="question-text" id="questionText"></div>
     <div class="options" id="optionsContainer"></div>
@@ -1415,11 +1727,51 @@ body {
     <div class="empty-state" id="wrongEmpty">暂无错题记录，继续加油！</div>
   </div>
 
+  <!-- Sync Modal -->
+  <div class="modal-overlay" id="syncModal">
+    <div class="modal" style="width:480px;max-width:92vw;">
+      <h3>☁️ 跨设备同步</h3>
+      <div class="hint">在设备间同步学习数据（历史记录、错题本、复习数据），支持导出文件和同步码两种方式</div>
+      <div style="display:flex;gap:0;margin-bottom:16px;background:var(--surface);border:1px solid var(--border-lt);border-radius:var(--r-md);overflow:hidden;">
+        <button class="sync-tab active" data-tab="export">📤 导出</button>
+        <button class="sync-tab" data-tab="import">📥 导入</button>
+      </div>
+      <div id="syncExportTab">
+        <p style="font-size:13px;color:var(--txt-2);margin-bottom:12px;line-height:1.6;">将学习数据导出为JSON文件，或复制同步码到剪贴板。在另一台设备上打开此页面，点击"导入"即可同步。</p>
+        <div class="modal-actions" style="justify-content:center;">
+          <button class="btn btn-primary" id="syncExportBtn">📥 导出为文件</button>
+          <button class="btn btn-outline" id="syncCopyBtn">📋 复制同步码</button>
+        </div>
+        <div class="modal-status" id="syncExportStatus"></div>
+      </div>
+      <div id="syncImportTab" style="display:none;">
+        <p style="font-size:13px;color:var(--txt-2);margin-bottom:12px;line-height:1.6;">选择之前导出的JSON文件，或将复制的同步码粘贴到下方输入框中。</p>
+        <label class="sync-file-label" id="syncFileLabel">
+          📂 点击选择同步文件
+          <input type="file" id="syncFileInput" accept=".json">
+        </label>
+        <div class="sync-file-name" id="syncFileName"></div>
+        <textarea class="sync-code-input" id="syncCodeInput" placeholder="或在此粘贴同步码（Base64编码数据）..."></textarea>
+        <div class="modal-actions" style="justify-content:center;margin-top:12px;">
+          <button class="btn btn-primary" id="syncImportBtn">🔄 导入并合并</button>
+        </div>
+        <div class="modal-status" id="syncImportStatus"></div>
+      </div>
+      <div class="modal-actions" style="margin-top:16px;">
+        <button class="btn btn-outline" id="syncCloseBtn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exam Results -->
+  <div class="exam-results" id="examResults" style="display:none;"></div>
+
   <div class="footer">
     法考刷题助手 · 仅供学习参考
     <span style="margin-left:12px;">|</span>
     <button class="export-btn" id="exportJsonBtn" title="导出学习数据">📥 导出数据</button>
     <button class="export-btn" id="exportCsvBtn" title="导出错题 CSV">📊 导出错题CSV</button>
+    <button class="export-btn" id="syncOpenBtn" title="跨设备同步">☁️ 同步</button>
   </div>
 </div>
 
@@ -1654,14 +2006,39 @@ if ('serviceWorker' in navigator) {
   // ── State ──
   let activeSubject = localStorage.getItem('fakao_activeSubject') || '全部';
   let activeType = localStorage.getItem('fakao_activeType') || '全部';
+  let activeDifficulty = '全部难度';
   let filteredQuestions = [...questions];
   let currentIndex = -1;
   let history = JSON.parse(localStorage.getItem('fakao_history') || '[]');
   let answered = false;
   let bookmarks = JSON.parse(localStorage.getItem('fakao_bookmarks') || '[]');
   let isRedoMode = false;
+  let caseLibrary = [];
+
+  // Load AI case library
+  (function() {
+    fetch('case_library.json')
+      .then(function(r) { return r.json(); })
+      .then(function(data) { caseLibrary = data; })
+      .catch(function() { caseLibrary = []; });
+  })();
   let knowledgePoints = [];
   const DAILY_COUNT = 10;
+
+  // ── Per-question timer state ──
+  var questionTimerInterval = null;
+  var questionStartTime = null;
+
+  // ── Exam mode state ──
+  var isExamMode = false;
+  var examQuestions = [];
+  var examCurrentIndex = -1;
+  var examAnswers = [];
+  var examStartTime = null;
+  var examTimeLimit = 180 * 60;
+  var examTimeRemaining = 0;
+  var examTimerInterval = null;
+  var examSubmitted = false;
 
   // ═══════════════════════════════════════════
   //  SM-2 Spaced Repetition Algorithm
@@ -1755,6 +2132,7 @@ if ('serviceWorker' in navigator) {
     localStorage.setItem('fakao_history', JSON.stringify(history));
     localStorage.setItem('fakao_activeSubject', activeSubject);
     localStorage.setItem('fakao_activeType', activeType);
+    localStorage.setItem('fakao_activeDifficulty', activeDifficulty);
   }
 
   function restoreProgress() {
@@ -1767,6 +2145,458 @@ if ('serviceWorker' in navigator) {
       isRedoMode = saved.isRedoMode || false;
       return saved.currentQid;
     } catch(e) { return null; }
+  }
+
+  // ═══════════════════════════════════════════
+  //  Per-Question Timer
+  // ═══════════════════════════════════════════
+
+  function startQuestionTimer() {
+    stopQuestionTimer();
+    questionStartTime = Date.now();
+    updateQuestionTimer();
+    questionTimerInterval = setInterval(updateQuestionTimer, 1000);
+  }
+
+  function stopQuestionTimer() {
+    if (questionTimerInterval) {
+      clearInterval(questionTimerInterval);
+      questionTimerInterval = null;
+    }
+  }
+
+  function getQuestionElapsed() {
+    if (!questionStartTime) return 0;
+    return Math.floor((Date.now() - questionStartTime) / 1000);
+  }
+
+  function updateQuestionTimer() {
+    var elapsed = getQuestionElapsed();
+    var mins = Math.floor(elapsed / 60);
+    var secs = elapsed % 60;
+    var display = ('0' + mins).slice(-2) + ':' + ('0' + secs).slice(-2);
+    var el = document.getElementById('questionTimer');
+    if (el) {
+      el.textContent = '⏱ ' + display;
+      el.className = 'question-timer';
+      if (isExamMode) el.classList.add('exam-mode');
+      if (elapsed >= 180) {
+        el.classList.add('danger');
+      } else if (elapsed >= 120) {
+        el.classList.add('warning');
+      }
+    }
+  }
+
+  function formatTimer(seconds) {
+    var m = Math.floor(seconds / 60);
+    var s = seconds % 60;
+    return ('0' + m).slice(-2) + ':' + ('0' + s).slice(-2);
+  }
+
+  // ═══════════════════════════════════════════
+  //  Exam Mode
+  // ═══════════════════════════════════════════
+
+  function showExamConfig() {
+    document.getElementById('examConfigModal').classList.add('show');
+  }
+
+  function hideExamConfig() {
+    document.getElementById('examConfigModal').classList.remove('show');
+  }
+
+  function startExam() {
+    var paperType = document.getElementById('examPaperSelect').value;
+    var count = parseInt(document.getElementById('examQuestionCount').value) || 100;
+    var timeMin = parseInt(document.getElementById('examTimeLimit').value) || 180;
+
+    count = Math.max(10, Math.min(200, count));
+    timeMin = Math.max(10, Math.min(480, timeMin));
+
+    hideExamConfig();
+
+    // Determine subject filter based on paper type
+    var paperSubjects;
+    if (paperType === '客观题卷一') {
+      paperSubjects = ['民法', '民诉法', '知识产权法', '商法', '经济法', '宪法', '法学综合'];
+    } else if (paperType === '客观题卷二') {
+      paperSubjects = ['刑法', '刑诉法', '行政法'];
+    } else {
+      paperSubjects = ['民法', '刑法', '行政法', '刑诉法', '民诉法', '知识产权法', '商法', '经济法', '宪法', '法学综合'];
+    }
+
+    // Filter questions
+    var pool = questions.filter(function(q) {
+      return paperSubjects.indexOf(q.subject) !== -1 && (q.type === '单选' || q.type === '多选');
+    });
+
+    // Shuffle and pick count
+    pool = shuffle(pool);
+    if (pool.length > count) {
+      pool = pool.slice(0, count);
+    }
+    if (pool.length === 0) {
+      alert('所选卷别无题目可用');
+      return;
+    }
+
+    // Set exam state
+    isExamMode = true;
+    examQuestions = pool;
+    examAnswers = [];
+    examCurrentIndex = -1;
+    examStartTime = Date.now();
+    examTimeLimit = timeMin * 60;
+    examTimeRemaining = examTimeLimit;
+    examSubmitted = false;
+
+    // Override filteredQuestions with exam questions
+    filteredQuestions = examQuestions;
+    currentIndex = -1;
+    answered = false;
+
+    // Hide normal elements, show exam elements
+    document.getElementById('examBanner').style.display = 'flex';
+    document.getElementById('examBtn').classList.add('active');
+    document.getElementById('bookmarkBtn').style.display = 'none';
+    document.getElementById('wrongPanel').style.display = 'none';
+    document.getElementById('examResults').style.display = 'none';
+    document.getElementById('searchContainer').style.display = 'none';
+    document.getElementById('statsRow').style.display = 'none';
+    document.getElementById('typeToggle').style.display = 'none';
+    document.getElementById('krToggleRow') && (document.getElementById('krToggleRow').style.display = 'none');
+    document.getElementById('difficultyFilter') && (document.getElementById('difficultyFilter').style.display = 'none');
+    document.getElementById('knowledgeReviewPanel') && (document.getElementById('knowledgeReviewPanel').style.display = 'none');
+    document.getElementById('progressWrap').style.display = 'none';
+    var qtEl = document.getElementById('questionTimer');
+    if (qtEl) qtEl.classList.add('exam-mode');
+
+    // Start exam timer
+    startExamTimer();
+    nextExamQuestion();
+    saveProgress();
+  }
+
+  function nextExamQuestion() {
+    examCurrentIndex++;
+    if (examCurrentIndex >= examQuestions.length) {
+      submitExam();
+      return;
+    }
+    currentIndex = examCurrentIndex;
+    answered = false;
+    multiSelections.clear();
+    renderExamQuestion();
+    updateExamProgress();
+  }
+
+  function renderExamQuestion() {
+    var q = examQuestions[examCurrentIndex];
+    if (!q) { submitExam(); return; }
+
+    // Reset answer state for this question
+    answered = false;
+
+    // Hide analysis/result
+    document.getElementById('resultBanner').className = 'result-banner';
+    document.getElementById('resultBanner').textContent = '';
+    document.getElementById('analysisBox').className = 'analysis';
+    document.getElementById('analysisBox').innerHTML = '';
+    document.getElementById('referenceBox') && document.getElementById('referenceBox').classList.remove('show');
+
+    // Set question text
+    document.getElementById('questionText').textContent = q.question;
+
+    // Set meta
+    var typeMap = { '单选': '单选题', '多选': '多选题', '主观题': '主观题' };
+    document.getElementById('questionMeta').innerHTML =
+      '<span class="tag tag-subject">' + q.subject + '</span>' +
+      '<span class="tag tag-type">' + (typeMap[q.type] || q.type) + '</span>' +
+      '<span class="tag tag-year">' + q.year + '年</span>' +
+      '<span class="tag tag-id">#' + q.id + '</span>';
+
+    // Render options
+    var labels = ['A', 'B', 'C', 'D'];
+    document.getElementById('optionsContainer').innerHTML = labels.map(function(l) {
+      var text = q.options[l];
+      if (!text) return '';
+      return '<div class="option" data-option="' + l + '">' +
+        '<div class="option-label">' + l + '</div>' +
+        '<div>' + text + '</div>' +
+        '</div>';
+    }).join('');
+
+    // Restore previously selected answer if any
+    var prevAnswer = examAnswers[examCurrentIndex];
+    if (prevAnswer) {
+      var opts = document.getElementById('optionsContainer').querySelectorAll('.option');
+      if (q.type === '多选') {
+        var chosenSet = {};
+        for (var ci = 0; ci < prevAnswer.chosen.length; ci++) {
+          chosenSet[prevAnswer.chosen[ci]] = true;
+        }
+        opts.forEach(function(el) {
+          if (chosenSet[el.dataset.option]) {
+            el.classList.add('selected');
+            multiSelections.add(el.dataset.option);
+          }
+        });
+      } else {
+        opts.forEach(function(el) {
+          if (el.dataset.option === prevAnswer.chosen) {
+            el.classList.add('selected');
+          }
+        });
+      }
+    }
+
+    // Start per-question timer
+    startQuestionTimer();
+
+    // Update next/submit button
+    if (examCurrentIndex >= examQuestions.length - 1) {
+      document.getElementById('nextBtn').textContent = '📝 提交答卷';
+      document.getElementById('nextBtn').style.display = '';
+    } else {
+      document.getElementById('nextBtn').textContent = '下一题 →';
+      document.getElementById('nextBtn').style.display = '';
+    }
+
+    // Show question card
+    document.getElementById('questionCard').style.display = 'block';
+    document.getElementById('emptyState').style.display = 'none';
+  }
+
+  function updateExamProgress() {
+    var total = examQuestions.length;
+    var current = examCurrentIndex + 1;
+    document.getElementById('examProgress').textContent = current + '/' + total;
+
+    // Update progress fill too
+    var pct = Math.min(Math.round((current / total) * 100), 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressText').textContent = current + ' / ' + total;
+  }
+
+  function startExamTimer() {
+    stopExamTimer();
+    updateExamTimerDisplay();
+    examTimerInterval = setInterval(updateExamTimer, 1000);
+  }
+
+  function stopExamTimer() {
+    if (examTimerInterval) {
+      clearInterval(examTimerInterval);
+      examTimerInterval = null;
+    }
+  }
+
+  function updateExamTimer() {
+    if (examSubmitted) { stopExamTimer(); return; }
+    var elapsed = Math.floor((Date.now() - examStartTime) / 1000);
+    examTimeRemaining = Math.max(0, examTimeLimit - elapsed);
+    updateExamTimerDisplay();
+    if (examTimeRemaining <= 0) {
+      // Time's up - auto-submit
+      submitExam();
+    }
+  }
+
+  function updateExamTimerDisplay() {
+    var remaining = examTimeRemaining;
+    var mins = Math.floor(remaining / 60);
+    var secs = remaining % 60;
+    var display = ('0' + mins).slice(-2) + ':' + ('0' + secs).slice(-2);
+    var el = document.getElementById('examCountdown');
+    if (el) {
+      el.textContent = '⏱ ' + display;
+      el.className = 'exam-countdown';
+      if (remaining <= 60) {
+        el.classList.add('urgent');
+      } else if (remaining <= 300) {
+        el.classList.add('warning');
+      }
+    }
+  }
+
+  function submitExam() {
+    if (examSubmitted) return;
+    examSubmitted = true;
+    stopExamTimer();
+    stopQuestionTimer();
+
+    // Ensure last question's answer is recorded
+    if (examAnswers.length <= examCurrentIndex && examCurrentIndex >= 0) {
+      var q = examQuestions[examCurrentIndex];
+      if (q && q.type === '多选') {
+        examAnswers[examCurrentIndex] = {
+          qid: q.id,
+          chosen: [...multiSelections].sort().join(''),
+          time: getQuestionElapsed()
+        };
+      }
+    }
+
+    // Calculate results
+    var total = examQuestions.length;
+    var correct = 0;
+    var subjectStats = {};
+    var timeAll = [];
+
+    examQuestions.forEach(function(q, i) {
+      var answer = examAnswers[i];
+      if (!answer) {
+        // Unanswered = wrong
+        if (!subjectStats[q.subject]) {
+          subjectStats[q.subject] = { correct: 0, total: 0 };
+        }
+        subjectStats[q.subject].total++;
+        timeAll.push({ qid: q.id, time: 0, subject: q.subject });
+        return;
+      }
+      var isCorrect = (answer.chosen === q.answer);
+      if (isCorrect) correct++;
+
+      if (!subjectStats[q.subject]) {
+        subjectStats[q.subject] = { correct: 0, total: 0 };
+      }
+      subjectStats[q.subject].total++;
+      if (isCorrect) subjectStats[q.subject].correct++;
+
+      timeAll.push({ qid: q.id, time: answer.time || 0, subject: q.subject });
+    });
+
+    var avgTime = timeAll.length > 0 ? Math.round(timeAll.reduce(function(s, t) { return s + t.time; }, 0) / timeAll.length) : 0;
+    var fastest = timeAll.length > 0 ? timeAll.reduce(function(min, t) { return t.time < min.time ? t : min; }, timeAll[0]) : { time: 0 };
+    var slowest = timeAll.length > 0 ? timeAll.reduce(function(max, t) { return t.time > max.time ? t : max; }, timeAll[0]) : { time: 0 };
+
+    // Add wrong questions to bookmarks
+    examQuestions.forEach(function(q, i) {
+      var answer = examAnswers[i];
+      if (!answer || answer.chosen !== q.answer) {
+        if (!bookmarks.includes(q.id)) {
+          bookmarks.push(q.id);
+        }
+      }
+    });
+    saveBookmarks();
+
+    // Save exam history to localStorage
+    var examRecord = {
+      date: new Date().toISOString(),
+      paperType: document.getElementById('examPaperSelect').value,
+      total: total,
+      correct: correct,
+      timeLimit: examTimeLimit,
+      timeUsed: Math.floor((Date.now() - examStartTime) / 1000),
+      questions: examQuestions.map(function(q, i) {
+        var answer = examAnswers[i];
+        return {
+          qid: q.id,
+          chosen: answer ? answer.chosen : '',
+          correct: answer ? answer.chosen === q.answer : false,
+          time: answer ? answer.time : 0
+        };
+      })
+    };
+    var examHistory = JSON.parse(localStorage.getItem('fakao_exam_history') || '[]');
+    examHistory.push(examRecord);
+    localStorage.setItem('fakao_exam_history', JSON.stringify(examHistory));
+
+    // Render results
+    renderExamResults(examRecord, subjectStats, avgTime, fastest, slowest);
+  }
+
+  function renderExamResults(record, subjectStats, avgTime, fastest, slowest) {
+    var pct = Math.round((record.correct / record.total) * 100);
+    var passed = pct >= 60;
+
+    var timeUsedMins = Math.floor(record.timeUsed / 60);
+    var timeUsedSecs = record.timeUsed % 60;
+
+    var html = '';
+    html += '<div class="exam-results-header">';
+    html += '<div class="score">' + record.correct + '/' + record.total + '</div>';
+    html += '<div class="score-pct">' + pct + '%</div>';
+    html += '<div class="pass-badge ' + (passed ? 'pass' : 'fail') + '">' + (passed ? '🎉 合格' : '💪 未合格') + '</div>';
+    html += '<div class="score-label">模拟考试结果 · ' + formatTimer(record.timeUsed) + ' / ' + formatTimer(record.timeLimit) + '</div>';
+    html += '</div>';
+
+    // Per-subject breakdown
+    html += '<div class="exam-section-title">📊 各科目正确率</div>';
+    html += '<div id="examSubjectBreakdown">';
+    var subjOrder = ['民法','刑法','行政法','刑诉法','民诉法','知识产权法','商法','经济法','宪法','法学综合'];
+    subjOrder.forEach(function(subject) {
+      var stats = subjectStats[subject];
+      if (!stats || stats.total === 0) return;
+      var subPct = Math.round((stats.correct / stats.total) * 100);
+      var barClass = subPct < 40 ? 'low' : (subPct < 60 ? 'medium' : '');
+      html += '<div class="exam-subject-row">';
+      html += '<span class="subject-name">' + subject + '</span>';
+      html += '<div class="subject-bar-wrap"><div class="subject-bar-fill ' + barClass + '" style="width:' + subPct + '%"></div></div>';
+      html += '<span class="subject-stat">' + stats.correct + '/' + stats.total + ' (' + subPct + '%)</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // Time stats
+    html += '<div class="exam-section-title" style="margin-top:24px;">⏱ 时间统计</div>';
+    html += '<div class="exam-time-grid">';
+    html += '<div class="exam-time-card"><div class="time-value">' + formatTimer(avgTime) + '</div><div class="time-label">平均每题</div></div>';
+    html += '<div class="exam-time-card"><div class="time-value">' + formatTimer(fastest.time) + '</div><div class="time-label">最快</div></div>';
+    html += '<div class="exam-time-card"><div class="time-value">' + formatTimer(slowest.time) + '</div><div class="time-label">最慢</div></div>';
+    html += '</div>';
+
+    // Note and actions
+    html += '<div class="exam-note">📝 错题已自动加入错题本</div>';
+    html += '<div class="exam-results-actions">';
+    html += '<button class="btn btn-outline" id="examReviewWrongBtn">📖 查看错题</button>';
+    html += '<button class="btn btn-primary" id="examBackBtn">返回刷题</button>';
+    html += '</div>';
+
+    document.getElementById('examResults').innerHTML = html;
+    document.getElementById('examResults').style.display = 'block';
+    document.getElementById('questionCard').style.display = 'none';
+
+    // Bind buttons
+    document.getElementById('examBackBtn').addEventListener('click', exitExamMode);
+    document.getElementById('examReviewWrongBtn').addEventListener('click', function() {
+      exitExamMode();
+      var wp = document.getElementById('wrongPanel');
+      if (wp) {
+        wp.style.display = '';
+        wp.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  }
+
+  function exitExamMode() {
+    isExamMode = false;
+    examQuestions = [];
+    examAnswers = [];
+    examSubmitted = false;
+    stopExamTimer();
+    stopQuestionTimer();
+
+    document.getElementById('examBanner').style.display = 'none';
+    document.getElementById('examBtn').classList.remove('active');
+    document.getElementById('bookmarkBtn').style.display = '';
+    document.getElementById('wrongPanel').style.display = '';
+    document.getElementById('examResults').style.display = 'none';
+    document.getElementById('searchContainer').style.display = '';
+    document.getElementById('statsRow').style.display = '';
+    document.getElementById('typeToggle').style.display = '';
+    document.getElementById('difficultyFilter') && (document.getElementById('difficultyFilter').style.display = '');
+    document.getElementById('progressWrap').style.display = '';
+    document.getElementById('questionTimer').className = 'question-timer';
+
+    // Restore normal question mode
+    activeSubject = localStorage.getItem('fakao_activeSubject') || '全部';
+    activeType = localStorage.getItem('fakao_activeType') || '全部';
+    filterQuestions();
+    updateStats();
+    renderBookmarks();
   }
 
   // ── DOM refs ──
@@ -1807,6 +2637,41 @@ if ('serviceWorker' in navigator) {
     return a;
   }
 
+  // ── Difficulty grading ──
+  function getDifficulty(q) {
+    // Returns: '易', '中', or '难'
+    // Rules: 单选=easy; 多选 2018-2025=hard, 2015-2017=medium;
+    // 主观题 2018-2025=hard; 知识产权法/经济法/宪法 +1 level;
+    // 法学综合 主观题=hard unconditionally
+    var level = 0; // 0=易, 1=中, 2=难
+    var year = parseInt(q.year) || 0;
+
+    if (q.type === '单选') {
+      level = 0;
+    } else if (q.type === '多选') {
+      if (year >= 2018) level = 2;
+      else if (year >= 2015) level = 1;
+      else level = 1;
+    } else { // 主观题
+      if (year >= 2018) level = 2;
+      else level = 1;
+    }
+
+    // Subject bonus: 知识产权法, 经济法, 宪法 → +1
+    if (q.subject === '知识产权法' || q.subject === '经济法' || q.subject === '宪法') {
+      level += 1;
+    }
+
+    // Special: 法学综合 主观题 → hard
+    if (q.subject === '法学综合' && q.type === '主观题') {
+      level = 2;
+    }
+
+    if (level < 0) level = 0;
+    if (level > 2) level = 2;
+    return ['易', '中', '难'][level];
+  }
+
   function filterQuestions() {
     let pool = [...questions];
     if (activeSubject !== '全部') {
@@ -1816,6 +2681,9 @@ if ('serviceWorker' in navigator) {
       pool = pool.filter(q => q.type === '单选' || q.type === '多选');
     } else if (activeType === '主观题') {
       pool = pool.filter(q => q.type === '主观题');
+    }
+    if (activeDifficulty !== '全部难度') {
+      pool = pool.filter(function(q) { return getDifficulty(q) === activeDifficulty; });
     }
     filteredQuestions = shuffle(pool);
     currentIndex = -1;
@@ -1926,11 +2794,14 @@ if ('serviceWorker' in navigator) {
 
     const typeMap = { '单选': '单选题', '多选': '多选题', '主观题': '主观题' };
     const isSubj = q.type === '主观题';
+    var diff = getDifficulty(q);
+    var diffClass = ({'易':'easy','中':'medium','难':'hard'})[diff] || 'easy';
     $questionMeta.innerHTML = `
       <span class="tag tag-subject">${q.subject}</span>
       <span class="tag ${isSubj ? 'tag-type-subj' : 'tag-type'}">${typeMap[q.type] || q.type}</span>
       <span class="tag tag-year">${q.year}年</span>
       <span class="tag tag-id">#${q.id}</span>
+      <span class="difficulty-badge ${diffClass}">${diff === '易' ? '🟢' : diff === '中' ? '🟡' : '🔴'} ${diff}</span>
     `;
 
     // Subjective question
@@ -1979,7 +2850,7 @@ if ('serviceWorker' in navigator) {
         // Disable buttons
         document.querySelectorAll('.self-rate-btn').forEach(b => b.style.display = 'none');
 
-        history.push({ qid: q.id, chosen: isRight ? 'right' : 'wrong', correct: isRight });
+        history.push({ qid: q.id, chosen: isRight ? 'right' : 'wrong', correct: isRight, timestamp: Date.now(), time: getQuestionElapsed() });
         sm2Update(q.id, qualityFromAnswer(isRight, true));
         if (!isRight && !bookmarks.includes(q.id)) {
           bookmarks.push(q.id);
@@ -2016,18 +2887,47 @@ if ('serviceWorker' in navigator) {
 
     $nextBtn.textContent = '下一题 →';
 
-    // Reference
+    // Reference — real cases + AI-generated cases
+    var refHtml = '';
+    var refSource = '';
+
+    // 1. Real reference if available
     if (q.reference && q.reference.case_number) {
+      refHtml += '<div class="ref-row"><span class="ref-label">案号：</span>' + q.reference.case_number + '</div>';
+      refHtml += '<div class="ref-row"><span class="ref-label">法院：</span>' + q.reference.court + '</div>';
+      refHtml += '<div class="ref-row"><span class="ref-label">日期：</span>' + q.reference.date + '</div>';
+      refHtml += '<div class="ref-row"><span class="ref-label">要点：</span>' + q.reference.summary + '</div>';
+      refSource = '参考自中国裁判文书网 (wenshu.court.gov.cn)，仅供学习参考';
+    }
+
+    // 2. AI-generated cases matching by subject
+    if (caseLibrary.length > 0) {
+      var matches = caseLibrary.filter(function(c) { return c.subject === q.subject; });
+      if (matches.length > 0) {
+        // Show up to 2 AI cases
+        var toShow = matches.slice(0, 2);
+        if (refHtml) refHtml += '<div style="margin:10px 0;border-top:1px dashed var(--border);"></div>';
+        toShow.forEach(function(c, idx) {
+          refHtml += '<div class="ref-row" style="margin-bottom:8px;">';
+          refHtml += '<span class="ref-label" style="background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:3px;font-size:10px;">🤖 AI生成</span> ';
+          refHtml += '<strong>' + c.title + '</strong> (' + c.court + ', ' + c.date + ')</div>';
+          refHtml += '<div class="ref-row" style="font-size:12px;color:var(--txt-3);margin-bottom:4px;">' + c.summary + '</div>';
+          // Show key legal points
+          if (c.keywords) {
+            refHtml += '<div class="ref-row" style="font-size:11px;color:var(--txt-ph);margin-bottom:4px;">关键词：' + c.keywords.join('、') + '</div>';
+          }
+        });
+        if (!refSource) refSource = '⚠️ 以上案例为AI模拟生成，仅供学习参考，非真实裁判文书';
+        else refSource += ' | ⚠️ 补充案例为AI模拟生成';
+      }
+    }
+
+    if (refHtml) {
       $referenceBox.classList.add('show');
       $referenceHeader.classList.remove('open');
       $referenceBody.classList.remove('show');
-      $referenceBody.innerHTML = `
-        <div class="ref-row"><span class="ref-label">案号：</span>${q.reference.case_number}</div>
-        <div class="ref-row"><span class="ref-label">法院：</span>${q.reference.court}</div>
-        <div class="ref-row"><span class="ref-label">日期：</span>${q.reference.date}</div>
-        <div class="ref-row"><span class="ref-label">要点：</span>${q.reference.summary}</div>
-      `;
-      $referenceSource.textContent = '参考自中国裁判文书网 (wenshu.court.gov.cn)，仅供学习参考';
+      $referenceBody.innerHTML = refHtml;
+      $referenceSource.textContent = refSource;
     }
   }
 
@@ -2040,6 +2940,27 @@ if ('serviceWorker' in navigator) {
     const q = filteredQuestions[currentIndex];
     const isMulti = q.type === '多选';
     const correctAnswer = q.answer;
+
+    // ── Exam mode: just select, no feedback ──
+    if (isExamMode) {
+      if (isMulti) {
+        optionEl.classList.toggle('selected');
+        // multi-choice selections are tracked on "next"
+      } else {
+        // Single choice: deselect others, mark selected, record
+        $optionsContainer.querySelectorAll('.option').forEach(function(el) {
+          el.classList.remove('selected');
+        });
+        optionEl.classList.add('selected');
+        stopQuestionTimer();
+        examAnswers[examCurrentIndex] = {
+          qid: q.id,
+          chosen: chosen,
+          time: getQuestionElapsed()
+        };
+      }
+      return;
+    }
 
     if (isMulti) {
       // Toggle selection for multi-choice
@@ -2070,7 +2991,7 @@ if ('serviceWorker' in navigator) {
     const userLen = chosen.length;
 
     // Record history
-    history.push({ qid: q.id, chosen, correct: isRight });
+    history.push({ qid: q.id, chosen, correct: isRight, timestamp: Date.now(), time: getQuestionElapsed() });
     sm2Update(q.id, qualityFromAnswer(isRight, true));
     if (!isRight && !bookmarks.includes(q.id)) {
       bookmarks.push(q.id);
@@ -2137,7 +3058,7 @@ if ('serviceWorker' in navigator) {
     $analysisBox.className = 'analysis show';
     $analysisBox.innerHTML = `<strong>📖 解析：</strong>${q.analysis}`;
 
-    history.push({ qid: q.id, chosen: userAnswer, correct: isRight });
+    history.push({ qid: q.id, chosen: userAnswer, correct: isRight, timestamp: Date.now(), time: getQuestionElapsed() });
     sm2Update(q.id, qualityFromAnswer(isRight, true));
     if (!isRight && !bookmarks.includes(q.id)) {
       bookmarks.push(q.id);
@@ -2161,6 +3082,39 @@ if ('serviceWorker' in navigator) {
 
   // ── Buttons ──
   $nextBtn.addEventListener('click', function() {
+    if (isExamMode) {
+      // Record current question answer before advancing
+      var eq = examQuestions[examCurrentIndex];
+      if (eq) {
+        stopQuestionTimer();
+        if (eq.type === '多选') {
+          // Use current multi-selections, or fall back to previous answer
+          var chosen = [...multiSelections].sort().join('');
+          if (!chosen && examAnswers[examCurrentIndex]) {
+            chosen = examAnswers[examCurrentIndex].chosen;
+          }
+          examAnswers[examCurrentIndex] = {
+            qid: eq.id,
+            chosen: chosen,
+            time: getQuestionElapsed()
+          };
+        } else if (!examAnswers[examCurrentIndex]) {
+          // Single-choice with no answer recorded (shouldn't happen, but safeguard)
+          examAnswers[examCurrentIndex] = {
+            qid: eq.id,
+            chosen: '',
+            time: getQuestionElapsed()
+          };
+        }
+      }
+      multiSelections.clear();
+      if (examCurrentIndex >= examQuestions.length - 1) {
+        submitExam();
+      } else {
+        nextExamQuestion();
+      }
+      return;
+    }
     const q = filteredQuestions[currentIndex];
     if (q && q.type === '多选' && !answered && multiSelections.size > 0) {
       submitMultiChoice();
@@ -2188,6 +3142,19 @@ if ('serviceWorker' in navigator) {
     $typeToggle.querySelectorAll('.type-toggle-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     activeType = btn.dataset.type;
+    multiSelections.clear();
+    filterQuestions();
+  });
+
+  // ── Difficulty Filter ──
+  const $difficultyFilter = document.getElementById('difficultyFilter');
+  $difficultyFilter.addEventListener('click', function(e) {
+    const btn = e.target.closest('.diff-filter-btn');
+    if (!btn) return;
+    if (btn.classList.contains('active')) return;
+    $difficultyFilter.querySelectorAll('.diff-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeDifficulty = btn.dataset.difficulty;
     multiSelections.clear();
     filterQuestions();
   });
@@ -2279,6 +3246,14 @@ if ('serviceWorker' in navigator) {
   $filterBar.addEventListener('click', function(e) {
     const btn = e.target.closest('.filter-btn');
     if (!btn) return;
+    if (btn.id === 'examBtn') {
+      if (isExamMode) {
+        exitExamMode();
+      } else {
+        showExamConfig();
+      }
+      return;
+    }
     if (btn.classList.contains('review-mode')) {
       enterSm2Review();
       return;
@@ -2329,6 +3304,10 @@ if ('serviceWorker' in navigator) {
   // ── Init ──
   $filterBar.appendChild(redoBtn);
 
+  // Restore saved difficulty filter from localStorage
+  var savedDifficulty = localStorage.getItem('fakao_activeDifficulty') || '全部难度';
+  activeDifficulty = savedDifficulty;
+
   // Restore saved filter/type state in UI
   var savedQid = restoreProgress();
   if (activeSubject !== '全部') {
@@ -2340,6 +3319,11 @@ if ('serviceWorker' in navigator) {
     $typeToggle.querySelectorAll('.type-toggle-btn').forEach(function(b) { b.classList.remove('active'); });
     var typeBtn = $typeToggle.querySelector('[data-type="' + activeType + '"]');
     if (typeBtn) typeBtn.classList.add('active');
+  }
+  if (activeDifficulty !== '全部难度') {
+    $difficultyFilter.querySelectorAll('.diff-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    var diffBtn = $difficultyFilter.querySelector('[data-difficulty="' + activeDifficulty + '"]');
+    if (diffBtn) diffBtn.classList.add('active');
   }
 
   filterQuestions();
@@ -2952,6 +3936,307 @@ if ('serviceWorker' in navigator) {
     a.click();
     URL.revokeObjectURL(url);
   });
+
+  // ═══════════════════════════════════════════
+  //  Cross-Device Sync
+  // ═══════════════════════════════════════════
+
+  var $syncModal = document.getElementById('syncModal');
+  var $syncExportTab = document.getElementById('syncExportTab');
+  var $syncImportTab = document.getElementById('syncImportTab');
+  var $syncExportStatus = document.getElementById('syncExportStatus');
+  var $syncImportStatus = document.getElementById('syncImportStatus');
+  var $syncFileInput = document.getElementById('syncFileInput');
+  var $syncFileName = document.getElementById('syncFileName');
+  var $syncCodeInput = document.getElementById('syncCodeInput');
+
+  // Base64 helpers (handle Unicode)
+  function utf8ToBase64(str) {
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(m, p1) {
+      return String.fromCharCode(parseInt(p1, 16));
+    }));
+  }
+  function base64ToUtf8(str) {
+    return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+  }
+
+  function buildSyncData() {
+    return {
+      exportDate: new Date().toISOString(),
+      version: 2,
+      history: history,
+      bookmarks: bookmarks,
+      sm2Data: sm2Data,
+      progress: JSON.parse(localStorage.getItem('fakao_progress') || '{}')
+    };
+  }
+
+  function mergeSyncData(data) {
+    if (!data || !data.version) {
+      throw new Error('无效的同步数据文件');
+    }
+
+    // Merge history: deduplicate by qid, keep newest timestamp
+    var importedHistory = data.history || [];
+    var historyMap = {};
+    history.forEach(function(h) {
+      var key = h.qid;
+      if (!historyMap[key] || (h.timestamp || 0) > (historyMap[key].timestamp || 0)) {
+        historyMap[key] = h;
+      }
+    });
+    importedHistory.forEach(function(h) {
+      var key = h.qid;
+      if (!historyMap[key] || (h.timestamp || 0) > (historyMap[key].timestamp || 0)) {
+        historyMap[key] = h;
+      }
+    });
+    var mergedHistory = [];
+    Object.keys(historyMap).forEach(function(k) { mergedHistory.push(historyMap[k]); });
+    history = mergedHistory;
+    localStorage.setItem('fakao_history', JSON.stringify(history));
+
+    // Merge bookmarks: union
+    if (data.bookmarks && Array.isArray(data.bookmarks)) {
+      var bmSet = {};
+      bookmarks.forEach(function(id) { bmSet[id] = true; });
+      data.bookmarks.forEach(function(id) { bmSet[id] = true; });
+      bookmarks = Object.keys(bmSet).map(function(k) { return parseInt(k); });
+      localStorage.setItem('fakao_bookmarks', JSON.stringify(bookmarks));
+    }
+
+    // Merge sm2Data: keep entry with higher totalAttempts
+    if (data.sm2Data) {
+      Object.keys(data.sm2Data).forEach(function(qid) {
+        var existing = sm2Data[qid];
+        var incoming = data.sm2Data[qid];
+        if (!existing || (incoming.totalAttempts || 0) > (existing.totalAttempts || 0)) {
+          sm2Data[qid] = incoming;
+        }
+      });
+      localStorage.setItem('fakao_sm2', JSON.stringify(sm2Data));
+    }
+
+    // Merge progress if newer
+    if (data.progress) {
+      var currentProgress = JSON.parse(localStorage.getItem('fakao_progress') || '{}');
+      // Keep the progress with more history (likely more recent)
+      if (data.history && data.history.length > (currentProgress.history ? currentProgress.history.length : 0)) {
+        localStorage.setItem('fakao_progress', JSON.stringify(data.progress));
+      }
+    }
+
+    updateSm2Stats();
+    renderBookmarks();
+    updateStats();
+    updateRedoBadge();
+  }
+
+  // ── Sync tab switching ──
+  document.querySelectorAll('.sync-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.sync-tab').forEach(function(t) { t.classList.remove('active'); t.style.background = 'transparent'; t.style.color = 'var(--txt-2)'; });
+      this.classList.add('active');
+      this.style.background = 'var(--c-primary)';
+      this.style.color = '#fff';
+      var tabName = this.dataset.tab;
+      $syncExportTab.style.display = tabName === 'export' ? 'block' : 'none';
+      $syncImportTab.style.display = tabName === 'import' ? 'block' : 'none';
+      $syncExportStatus.className = 'modal-status';
+      $syncImportStatus.className = 'modal-status';
+    });
+  });
+
+  // ── Open sync modal ──
+  document.getElementById('syncOpenBtn').addEventListener('click', function() {
+    $syncCodeInput.value = '';
+    $syncFileName.className = 'sync-file-name';
+    $syncFileName.textContent = '';
+    $syncExportStatus.className = 'modal-status';
+    $syncImportStatus.className = 'modal-status';
+    // Reset to export tab
+    document.querySelectorAll('.sync-tab').forEach(function(t, i) {
+      t.classList.toggle('active', i === 0);
+      t.style.background = i === 0 ? 'var(--c-primary)' : 'transparent';
+      t.style.color = i === 0 ? '#fff' : 'var(--txt-2)';
+    });
+    $syncExportTab.style.display = 'block';
+    $syncImportTab.style.display = 'none';
+    $syncModal.classList.add('show');
+  });
+
+  // ── Close sync modal ──
+  document.getElementById('syncCloseBtn').addEventListener('click', function() {
+    $syncModal.classList.remove('show');
+  });
+  $syncModal.addEventListener('click', function(e) {
+    if (e.target === $syncModal) $syncModal.classList.remove('show');
+  });
+
+  // ── Export as file ──
+  document.getElementById('syncExportBtn').addEventListener('click', function() {
+    var data = buildSyncData();
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'fakao-sync-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    $syncExportStatus.className = 'modal-status show ok';
+    $syncExportStatus.textContent = '✅ 导出成功！请将文件传输到另一台设备后导入。';
+    setTimeout(function() { $syncExportStatus.className = 'modal-status'; }, 4000);
+  });
+
+  // ── Copy sync code (base64) ──
+  document.getElementById('syncCopyBtn').addEventListener('click', function() {
+    try {
+      var data = buildSyncData();
+      var jsonStr = JSON.stringify(data);
+      var base64 = utf8ToBase64(jsonStr);
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(base64).then(function() {
+          $syncExportStatus.className = 'modal-status show ok';
+          $syncExportStatus.textContent = '✅ 同步码已复制到剪贴板！共 ' + base64.length + ' 字符。';
+          setTimeout(function() { $syncExportStatus.className = 'modal-status'; }, 4000);
+        }).catch(function() {
+          // Fallback
+          fallbackCopy(base64);
+        });
+      } else {
+        fallbackCopy(base64);
+      }
+    } catch(e) {
+      $syncExportStatus.className = 'modal-status show err';
+      $syncExportStatus.textContent = '❌ 编码失败：' + e.message;
+    }
+  });
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      $syncExportStatus.className = 'modal-status show ok';
+      $syncExportStatus.textContent = '✅ 同步码已复制（' + text.length + ' 字符）！';
+    } catch(e) {
+      $syncExportStatus.className = 'modal-status show err';
+      $syncExportStatus.textContent = '❌ 复制失败，请手动选中并复制';
+    }
+    document.body.removeChild(ta);
+    setTimeout(function() { $syncExportStatus.className = 'modal-status'; }, 4000);
+  }
+
+  // ── File selection ──
+  $syncFileInput.addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) {
+      $syncFileName.className = 'sync-file-name';
+      return;
+    }
+    $syncFileName.className = 'sync-file-name show';
+    $syncFileName.textContent = '📄 已选择：' + file.name;
+    $syncImportStatus.className = 'modal-status';
+  });
+
+  // ── Import and merge ──
+  document.getElementById('syncImportBtn').addEventListener('click', function() {
+    var file = $syncFileInput.files[0];
+    var codeText = $syncCodeInput.value.trim();
+
+    if (!file && !codeText) {
+      $syncImportStatus.className = 'modal-status show err';
+      $syncImportStatus.textContent = '请选择同步文件或粘贴同步码';
+      return;
+    }
+
+    function doImport(dataStr) {
+      try {
+        var data = JSON.parse(dataStr);
+        mergeSyncData(data);
+        $syncImportStatus.className = 'modal-status show ok';
+        var stats = {
+          history: data.history ? data.history.length : 0,
+          bookmarks: data.bookmarks ? data.bookmarks.length : 0,
+          sm2: data.sm2Data ? Object.keys(data.sm2Data).length : 0
+        };
+        $syncImportStatus.textContent = '✅ 导入成功！合并了 ' + stats.history + ' 条历史记录、' + stats.bookmarks + ' 条错题、' + stats.sm2 + ' 条复习数据。';
+        // Clear file input
+        $syncFileInput.value = '';
+        $syncFileName.className = 'sync-file-name';
+        $syncCodeInput.value = '';
+        setTimeout(function() { $syncImportStatus.className = 'modal-status'; }, 5000);
+      } catch(e) {
+        $syncImportStatus.className = 'modal-status show err';
+        $syncImportStatus.textContent = '❌ 导入失败：' + e.message;
+      }
+    }
+
+    if (file) {
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+        doImport(evt.target.result);
+      };
+      reader.onerror = function() {
+        $syncImportStatus.className = 'modal-status show err';
+        $syncImportStatus.textContent = '❌ 文件读取失败';
+      };
+      reader.readAsText(file);
+    } else {
+      // Try decode as base64
+      try {
+        var decoded = base64ToUtf8(codeText);
+        doImport(decoded);
+      } catch(e) {
+        // Maybe it's already plain JSON?
+        try {
+          doImport(codeText);
+        } catch(e2) {
+          $syncImportStatus.className = 'modal-status show err';
+          $syncImportStatus.textContent = '❌ 无法解码同步码，请确认内容是否正确';
+        }
+      }
+    }
+  });
+
+  // ═══════════════════════════════════════════
+  //  Exam Mode Event Listeners
+  // ═══════════════════════════════════════════
+
+  document.getElementById('examConfigCancel').addEventListener('click', hideExamConfig);
+  document.getElementById('examConfigStart').addEventListener('click', startExam);
+  document.getElementById('examConfigModal').addEventListener('click', function(e) {
+    if (e.target === this) hideExamConfig();
+  });
+
+  document.getElementById('examExitBtn').addEventListener('click', function() {
+    if (confirm('确定要交卷吗？未完成的题目将记作答错。')) {
+      submitExam();
+    }
+  });
+
+  // Stop per-question timer on question card navigation
+  var _origNextQuestion2 = nextQuestion;
+  nextQuestion = function() {
+    stopQuestionTimer();
+    _origNextQuestion2();
+  };
+
+  var _origRenderQuestion2 = renderQuestion;
+  renderQuestion = function(q) {
+    stopQuestionTimer();
+    _origRenderQuestion2(q);
+    if (!isExamMode) {
+      startQuestionTimer();
+    }
+  };
 
 })();
 </script>
