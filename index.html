@@ -820,10 +820,12 @@ body {
 .kc-subject.刑诉法     { background: #ede9fe; color: #5b21b6; }
 .kc-subject.民诉法     { background: #e8f5e9; color: #2e7d32; }
 .kc-subject.知识产权法 { background: #fff3e0; color: #e65100; }
-.kc-subject.商法       { background: #e0f2fe; color: #0369a1; }
-.kc-subject.经济法     { background: #fdf2f8; color: #9d174d; }
-.kc-subject.宪法       { background: #fff9c4; color: #6b5100; }
-.kc-subject.法学综合   { background: #f3e5f5; color: #7b1fa2; }
+.kc-subject.商经法             { background: #e0f2fe; color: #0369a1; }
+.kc-subject.宪法               { background: #fff9c4; color: #6b5100; }
+.kc-subject.国际法             { background: #fdf2f8; color: #9d174d; }
+.kc-subject.法理学             { background: #f3e5f5; color: #7b1fa2; }
+.kc-subject.法制史             { background: #fce4ec; color: #880e4f; }
+.kc-subject.司法制度与职业道德 { background: #e0f7fa; color: #006064; }
 .knowledge-card .kc-text { color: var(--txt-2); font-size: 13px; line-height: 1.7; }
 .knowledge-card .kc-expand-hint {
   font-size: 11px; color: var(--c-accent); margin-top: 8px;
@@ -1604,10 +1606,10 @@ body {
     <button class="filter-btn" data-subject="刑诉法">刑诉法</button>
     <button class="filter-btn" data-subject="民诉法">民诉法</button>
     <button class="filter-btn" data-subject="知识产权法">知识产权法</button>
-    <button class="filter-btn" data-subject="商法">商法</button>
-    <button class="filter-btn" data-subject="经济法">经济法</button>
+    <button class="filter-btn" data-subject="商经法">商经法</button>
     <button class="filter-btn" data-subject="宪法">宪法</button>
-    <button class="filter-btn" data-subject="法学综合">法学综合</button>
+    <button class="filter-btn" data-subject="国际法">国际法</button>
+    <button class="filter-btn" data-subject="法理学">法理学</button>
     <button class="filter-btn review-mode" id="sm2ReviewBtn" style="background:var(--c-purple-lt);color:var(--c-purple);border-color:var(--c-purple);font-weight:600;">
       🧠 智能复习 <span id="sm2DueBadge" style="display:none;background:var(--c-danger);color:#fff;border-radius:50%;padding:1px 6px;font-size:11px;margin-left:4px;">0</span>
     </button>
@@ -1891,7 +1893,7 @@ if ('serviceWorker' in navigator) {
   }
 
   // ── Load questions: per-subject lazy loading ──
-  var SUBJECTS_ALL = ['民法','刑法','行政法','刑诉法','民诉法','知识产权法','商法','经济法','宪法','法学综合'];
+  var SUBJECTS_ALL = ['民法','刑法','行政法','刑诉法','民诉法','知识产权法','商经法','宪法','国际法','法理学','法制史','司法制度与职业道德'];
   var questions = [];
 
   function showLoading(msg) {
@@ -2219,11 +2221,11 @@ if ('serviceWorker' in navigator) {
     // Determine subject filter based on paper type
     var paperSubjects;
     if (paperType === '客观题卷一') {
-      paperSubjects = ['民法', '民诉法', '知识产权法', '商法', '经济法', '宪法', '法学综合'];
+      paperSubjects = ['民法', '民诉法', '知识产权法', '商经法', '宪法', '国际法', '法理学', '司法制度与职业道德'];
     } else if (paperType === '客观题卷二') {
       paperSubjects = ['刑法', '刑诉法', '行政法'];
     } else {
-      paperSubjects = ['民法', '刑法', '行政法', '刑诉法', '民诉法', '知识产权法', '商法', '经济法', '宪法', '法学综合'];
+      paperSubjects = ['刑法', '行政法', '刑诉法', '民诉法', '知识产权法', '商经法', '宪法', '国际法', '法理学', '司法制度与职业道德'];
     }
 
     // Filter questions
@@ -2526,7 +2528,7 @@ if ('serviceWorker' in navigator) {
     // Per-subject breakdown
     html += '<div class="exam-section-title">📊 各科目正确率</div>';
     html += '<div id="examSubjectBreakdown">';
-    var subjOrder = ['民法','刑法','行政法','刑诉法','民诉法','知识产权法','商法','经济法','宪法','法学综合'];
+    var subjOrder = ['民法','刑法','行政法','刑诉法','民诉法','知识产权法','商经法','宪法','国际法','法理学','法制史','司法制度与职业道德'];
     subjOrder.forEach(function(subject) {
       var stats = subjectStats[subject];
       if (!stats || stats.total === 0) return;
@@ -2639,36 +2641,22 @@ if ('serviceWorker' in navigator) {
 
   // ── Difficulty grading ──
   function getDifficulty(q) {
-    // Returns: '易', '中', or '难'
-    // Rules: 单选=easy; 多选 2018-2025=hard, 2015-2017=medium;
-    // 主观题 2018-2025=hard; 知识产权法/经济法/宪法 +1 level;
-    // 法学综合 主观题=hard unconditionally
+    // Prefer data field if present
+    if (q.difficulty) {
+      var map = { '基础': '易', '中等': '中', '困难': '难' };
+      return map[q.difficulty] || '易';
+    }
+    // Fallback heuristic
     var level = 0; // 0=易, 1=中, 2=难
     var year = parseInt(q.year) || 0;
-
     if (q.type === '单选') {
       level = 0;
     } else if (q.type === '多选') {
-      if (year >= 2018) level = 2;
-      else if (year >= 2015) level = 1;
-      else level = 1;
-    } else { // 主观题
-      if (year >= 2018) level = 2;
-      else level = 1;
+      level = year >= 2018 ? 2 : 1;
+    } else {
+      level = year >= 2018 ? 2 : 1;
     }
-
-    // Subject bonus: 知识产权法, 经济法, 宪法 → +1
-    if (q.subject === '知识产权法' || q.subject === '经济法' || q.subject === '宪法') {
-      level += 1;
-    }
-
-    // Special: 法学综合 主观题 → hard
-    if (q.subject === '法学综合' && q.type === '主观题') {
-      level = 2;
-    }
-
-    if (level < 0) level = 0;
-    if (level > 2) level = 2;
+    if (q.subject === '知识产权法' || q.subject === '宪法') level = Math.min(2, level + 1);
     return ['易', '中', '难'][level];
   }
 
@@ -3486,10 +3474,10 @@ if ('serviceWorker' in navigator) {
   var krOpen = false;
 
   // Subject order & display names
-  var SUBJECT_ORDER = ['民法','刑法','行政法','刑诉法','民诉法','知识产权法','商法','经济法','宪法','法学综合'];
+  var SUBJECT_ORDER = ['民法','刑法','行政法','刑诉法','民诉法','知识产权法','商经法','宪法','国际法','法理学','法制史','司法制度与职业道德'];
   var SUBJECT_ICONS = {
     '民法':'⚖️','刑法':'🔨','行政法':'🏛️','刑诉法':'📋','民诉法':'📝',
-    '知识产权法':'💡','商法':'💼','经济法':'📊','宪法':'📜','法学综合':'🎓'
+    '知识产权法':'💡','商经法':'💼','宪法':'📜','国际法':'🌐','法理学':'📖','法制史':'📜','司法制度与职业道德':'⚖️'
   };
 
   function openKnowledgeReview() {
@@ -3673,18 +3661,35 @@ if ('serviceWorker' in navigator) {
     const q = filteredQuestions[currentIndex];
     if (!q) return [];
     const typeMap = { '单选': '单选题', '多选': '多选题', '主观题': '主观题' };
+    const diffMap = { '易': '基础', '中': '中等', '难': '困难' };
+    const diff = getDifficulty(q);
     let optionsText = '';
     if (q.options) {
       optionsText = ['A','B','C','D'].map(function(l) { return q.options[l] ? l + '. ' + q.options[l] : ''; }).filter(Boolean).join('\n');
     }
-    var ctx = '你是一位资深的法考辅导老师，拥有丰富的法律实务经验。请基于以下题目信息，用中文回答学生的问题。解答时要深入浅出，帮助理解法律原理。\n\n';
+    var ctx = '你是一位资深中国法考辅导老师，拥有法考阅卷和律所实务双重经验。请基于以下题目信息用中文回答。\n';
+    ctx += '回答原则：① 引用具体法条（标注法条编号）② 解释法律原理而非死记硬背 ③ 区分易混淆知识点 ④ 结合实务案例说明。\n\n';
     ctx += '【科目】' + q.subject + '\n';
     ctx += '【题型】' + (typeMap[q.type] || q.type) + '\n';
+    ctx += '【难度】' + (diffMap[diff] || '中等') + '（' + diff + '）\n';
     ctx += '【年份】' + q.year + '年\n';
     ctx += '【题目】' + q.question + '\n';
     if (optionsText) ctx += '【选项】\n' + optionsText + '\n';
     ctx += '【正确答案】' + q.answer + '\n';
-    ctx += '【官方解析】' + q.analysis;
+    ctx += '【解析】' + q.analysis + '\n';
+    // Include case reference if present
+    if (q.reference && q.reference.case_number) {
+      ctx += '【参考案例】' + (q.reference.court || '') + ' ' + (q.reference.case_number || '') + '\n';
+      if (q.reference.summary) ctx += '【案例摘要】' + q.reference.summary + '\n';
+    }
+    // Include related knowledge points
+    var relatedPoints = knowledge.filter(function(k) { return k.subject === q.subject; }).slice(0, 3);
+    if (relatedPoints.length > 0) {
+      ctx += '【相关知识点】\n';
+      relatedPoints.forEach(function(kp, i) {
+        ctx += (i+1) + '. ' + kp.point + '\n';
+      });
+    }
 
     return [
       { role: 'system', content: ctx },
