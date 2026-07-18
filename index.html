@@ -1759,6 +1759,20 @@ body {
         </div>
         <div class="modal-status" id="syncImportStatus"></div>
       </div>
+      <!-- Auto Sync (GitHub Gist) -->
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-lt);">
+        <h4 style="font-size:14px;color:var(--c-primary);margin-bottom:6px;">🔄 自动云同步（GitHub Gist）</h4>
+        <div class="hint" style="margin-bottom:12px;">
+          配置后自动在设备间同步。需要 GitHub <a href="https://github.com/settings/tokens/new?scopes=gist&description=fakao-pwa-sync" target="_blank" style="color:var(--c-accent);">Personal Access Token</a>（仅需 gist 权限）。
+        </div>
+        <input type="password" id="gistTokenInput" placeholder="ghp_..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r-md);font-size:13px;font-family:inherit;outline:none;background:var(--surface);color:var(--txt-1);margin-bottom:8px;box-sizing:border-box;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <button class="btn btn-primary" id="gistConfigBtn" style="padding:7px 16px;font-size:12px;">🔗 连接</button>
+          <button class="btn btn-outline" id="gistSyncNowBtn" style="padding:7px 16px;font-size:12px;display:none;">🔄 立即同步</button>
+          <span id="gistStatus" style="font-size:12px;color:var(--txt-3);"></span>
+        </div>
+        <div id="gistLastSync" style="font-size:11px;color:var(--txt-3);display:none;"></div>
+      </div>
       <div class="modal-actions" style="margin-top:16px;">
         <button class="btn btn-outline" id="syncCloseBtn">关闭</button>
       </div>
@@ -1773,7 +1787,7 @@ body {
     <span style="margin-left:12px;">|</span>
     <button class="export-btn" id="exportJsonBtn" title="导出学习数据">📥 导出数据</button>
     <button class="export-btn" id="exportCsvBtn" title="导出错题 CSV">📊 导出错题CSV</button>
-    <button class="export-btn" id="syncOpenBtn" title="跨设备同步">☁️ 同步</button>
+    <button class="export-btn" id="syncOpenBtn" title="跨设备同步">☁️ 同步<span id="syncDot" style="display:none;color:var(--c-success);margin-left:2px;">●</span></button>
   </div>
 </div>
 
@@ -4369,6 +4383,242 @@ if ('serviceWorker' in navigator) {
       startQuestionTimer();
     }
   };
+
+  // ═══════════════════════════════════════════
+  //  Auto Cloud Sync (GitHub Gist)
+  // ═══════════════════════════════════════════
+
+  var GIST_SYNC_KEY = 'fakao_gist_sync';
+  var SYNC_DEBOUNCE_MS = 8000;
+  var SYNC_INTERVAL_MS = 300000; // 5 min
+  var syncDebounceTimer = null;
+  var syncIntervalTimer = null;
+
+  function getGistConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(GIST_SYNC_KEY) || 'null');
+    } catch(e) { return null; }
+  }
+
+  function setGistConfig(cfg) {
+    localStorage.setItem(GIST_SYNC_KEY, JSON.stringify(cfg));
+  }
+
+  function gistApiUrl(gistId) {
+    return 'https://api.github.com/gists' + (gistId ? '/' + gistId : '');
+  }
+
+  async function gistRequest(method, gistId, body) {
+    var cfg = getGistConfig();
+    if (!cfg || !cfg.token) throw new Error('未配置Gist');
+    var url = gistApiUrl(gistId);
+    var opts = {
+      method: method,
+      headers: {
+        'Authorization': 'Bearer ' + cfg.token,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    var resp = await fetch(url, opts);
+    if (!resp.ok) {
+      var errText = await resp.text();
+      throw new Error('Gist API ' + resp.status + ': ' + errText.substring(0, 200));
+    }
+    return resp.json();
+  }
+
+  async function syncToGist() {
+    var cfg = getGistConfig();
+    if (!cfg || !cfg.token) return;
+
+    var data = buildSyncData();
+    var content = JSON.stringify(data, null, 2);
+    var gistData = {
+      description: 'fakao-pwa 学习数据同步',
+      public: false,
+      files: { 'fakao-sync.json': { content: content } }
+    };
+
+    var result;
+    if (cfg.gistId) {
+      result = await gistRequest('PATCH', cfg.gistId, gistData);
+    } else {
+      result = await gistRequest('POST', null, gistData);
+      cfg.gistId = result.id;
+    }
+
+    cfg.lastSync = new Date().toISOString();
+    cfg.lastSyncHash = result.history ? result.history[0]?.version : '';
+    setGistConfig(cfg);
+    updateGistUI();
+    console.log('[Sync] Pushed to gist ' + cfg.gistId + ' at ' + cfg.lastSync);
+  }
+
+  async function syncFromGist() {
+    var cfg = getGistConfig();
+    if (!cfg || !cfg.token || !cfg.gistId) return false;
+
+    var gist = await gistRequest('GET', cfg.gistId, null);
+    var file = gist.files && gist.files['fakao-sync.json'];
+    if (!file || !file.content) return false;
+
+    var gistUpdated = gist.updated_at;
+    if (cfg.lastSync && new Date(gistUpdated) <= new Date(cfg.lastSync)) {
+      return false; // No newer data
+    }
+
+    var data = JSON.parse(file.content);
+    if (!data || !data.version) return false;
+
+    mergeSyncData(data);
+    cfg.lastSync = new Date().toISOString();
+    setGistConfig(cfg);
+    updateGistUI();
+    console.log('[Sync] Pulled from gist, updated at ' + gistUpdated);
+    return true;
+  }
+
+  async function autoSync() {
+    var cfg = getGistConfig();
+    if (!cfg || !cfg.token) return;
+
+    try {
+      // 1. Pull first (get latest from other devices)
+      var pulled = await syncFromGist();
+      // 2. Push our data (always push to update)
+      await syncToGist();
+      if (pulled) {
+        var gistStatus = document.getElementById('gistStatus');
+        if (gistStatus) {
+          gistStatus.textContent = '✅ 已从其他设备同步';
+          setTimeout(function() { gistStatus.textContent = '✅ 已连接'; }, 3000);
+        }
+      }
+    } catch(e) {
+      console.warn('[Sync] Auto-sync failed:', e.message);
+    }
+  }
+
+  function scheduleSync() {
+    if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(autoSync, SYNC_DEBOUNCE_MS);
+  }
+
+  function startAutoSync() {
+    var cfg = getGistConfig();
+    if (!cfg || !cfg.token) return;
+
+    autoSync(); // Initial sync
+    if (syncIntervalTimer) clearInterval(syncIntervalTimer);
+    syncIntervalTimer = setInterval(autoSync, SYNC_INTERVAL_MS);
+
+    // Also sync when data changes
+    var origSaveBookmarks = saveBookmarks;
+    saveBookmarks = function() {
+      origSaveBookmarks();
+      scheduleSync();
+    };
+    var origSaveProgress = saveProgress;
+    saveProgress = function() {
+      origSaveProgress();
+      scheduleSync();
+    };
+    // Intercept localStorage writes to detect history/sm2 changes
+    var origSetItem = localStorage.setItem;
+    var syncKeys = ['fakao_history', 'fakao_sm2', 'fakao_bookmarks'];
+    localStorage.setItem = function(key, value) {
+      origSetItem.apply(localStorage, arguments);
+      if (syncKeys.indexOf(key) >= 0) scheduleSync();
+    };
+
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') autoSync();
+    });
+
+    console.log('[Sync] Auto-sync started (interval: ' + (SYNC_INTERVAL_MS/1000) + 's)');
+  }
+
+  function updateGistUI() {
+    var cfg = getGistConfig();
+    var statusEl = document.getElementById('gistStatus');
+    var syncBtn = document.getElementById('gistSyncNowBtn');
+    var configBtn = document.getElementById('gistConfigBtn');
+    var lastSyncEl = document.getElementById('gistLastSync');
+    var tokenInput = document.getElementById('gistTokenInput');
+
+    if (cfg && cfg.token) {
+      if (statusEl) statusEl.textContent = cfg.gistId ? '✅ 已连接' : '🔄 连接中...';
+      if (syncBtn) syncBtn.style.display = 'inline-block';
+      if (configBtn) configBtn.textContent = '⚙️ 更新';
+      if (tokenInput) tokenInput.value = '';
+      if (lastSyncEl && cfg.lastSync) {
+        lastSyncEl.style.display = 'block';
+        lastSyncEl.textContent = '上次同步: ' + new Date(cfg.lastSync).toLocaleString('zh-CN');
+      }
+      var dot = document.getElementById('syncDot');
+      if (dot && cfg.gistId) { dot.style.display = 'inline'; dot.title = '自动同步已连接'; }
+    } else {
+      if (statusEl) statusEl.textContent = '';
+      if (syncBtn) syncBtn.style.display = 'none';
+      if (configBtn) configBtn.textContent = '🔗 连接';
+      if (lastSyncEl) lastSyncEl.style.display = 'none';
+      var dot = document.getElementById('syncDot');
+      if (dot) dot.style.display = 'none';
+    }
+  }
+
+  // ── UI event handlers ──
+  document.getElementById('gistConfigBtn').addEventListener('click', async function() {
+    var token = document.getElementById('gistTokenInput').value.trim();
+    if (!token) {
+      var st = document.getElementById('gistStatus');
+      st.textContent = '❌ 请输入Token';
+      return;
+    }
+    // Validate token format
+    if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+      var st = document.getElementById('gistStatus');
+      st.textContent = '❌ Token格式不正确（应以 ghp_ 或 github_pat_ 开头）';
+      return;
+    }
+
+    var cfg = { token: token, gistId: null, lastSync: null };
+    setGistConfig(cfg);
+
+    var st = document.getElementById('gistStatus');
+    st.textContent = '⏳ 正在连接...';
+    try {
+      await syncToGist();
+      st.textContent = '✅ 已连接并同步';
+      updateGistUI();
+      startAutoSync();
+      setTimeout(function() { st.textContent = '✅ 已连接'; }, 3000);
+    } catch(e) {
+      st.textContent = '❌ ' + e.message.substring(0, 80);
+      setGistConfig(null); // Clear on failure
+    }
+  });
+
+  document.getElementById('gistSyncNowBtn').addEventListener('click', async function() {
+    var st = document.getElementById('gistStatus');
+    st.textContent = '⏳ 同步中...';
+    try {
+      await autoSync();
+      st.textContent = '✅ 同步完成';
+      setTimeout(function() { st.textContent = '✅ 已连接'; }, 3000);
+    } catch(e) {
+      st.textContent = '❌ ' + e.message.substring(0, 80);
+    }
+  });
+
+  // ── Init: load config and start auto-sync if configured ──
+  updateGistUI();
+  var initCfg = getGistConfig();
+  if (initCfg && initCfg.token) {
+    startAutoSync();
+  }
 
 })();
 </script>
