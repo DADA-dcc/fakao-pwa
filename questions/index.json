@@ -1,1 +1,66 @@
-{"subjects":{"民法":{"count":1160,"file":"questions/民法.json","size":2658205},"刑法":{"count":974,"file":"questions/刑法.json","size":2349708},"行政法":{"count":660,"file":"questions/行政法.json","size":1582988},"刑诉法":{"count":822,"file":"questions/刑诉法.json","size":1902166},"民诉法":{"count":777,"file":"questions/民诉法.json","size":1662273},"知识产权法":{"count":49,"file":"questions/知识产权法.json","size":49946},"法学综合":{"count":1750,"file":"questions/法学综合.json","size":3758195},"经济法":{"count":72,"file":"questions/经济法.json","size":67316},"宪法":{"count":84,"file":"questions/宪法.json","size":70882},"商法":{"count":972,"file":"questions/商法.json","size":2246947}},"total":7320}
+{
+  "version": "v2",
+  "total": 9839,
+  "subjects": {
+    "民法": {
+      "file": "民法.json",
+      "count": 3148,
+      "size_mb": 5.5
+    },
+    "刑法": {
+      "file": "刑法.json",
+      "count": 1262,
+      "size_mb": 2.76
+    },
+    "行政法": {
+      "file": "行政法.json",
+      "count": 1042,
+      "size_mb": 2.16
+    },
+    "刑诉法": {
+      "file": "刑诉法.json",
+      "count": 887,
+      "size_mb": 2.05
+    },
+    "民诉法": {
+      "file": "民诉法.json",
+      "count": 968,
+      "size_mb": 2.0
+    },
+    "知识产权法": {
+      "file": "知识产权法.json",
+      "count": 332,
+      "size_mb": 0.34
+    },
+    "商经法": {
+      "file": "商经法.json",
+      "count": 1258,
+      "size_mb": 2.62
+    },
+    "宪法": {
+      "file": "宪法.json",
+      "count": 520,
+      "size_mb": 0.69
+    },
+    "国际法": {
+      "file": "国际法.json",
+      "count": 145,
+      "size_mb": 0.29
+    },
+    "法理学": {
+      "file": "法理学.json",
+      "count": 103,
+      "size_mb": 0.18
+    },
+    "法制史": {
+      "file": "法制史.json",
+      "count": 30,
+      "size_mb": 0.04
+    },
+    "司法制度与职业道德": {
+      "file": "司法制度与职业道德.json",
+      "count": 144,
+      "size_mb": 0.29
+    }
+  }
+}

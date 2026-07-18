@@ -1833,7 +1833,7 @@ if ('serviceWorker' in navigator) {
 (async function() {
   // ── IndexedDB 题库缓存 (per-subject stores) ──
   const DB_NAME = 'fakao_cache';
-  const DB_VERSION = 3;
+  const DB_VERSION = 4;
 
   function openDB() {
     return new Promise((resolve, reject) => {
@@ -1845,6 +1845,12 @@ if ('serviceWorker' in navigator) {
         }
         if (!req.result.objectStoreNames.contains('questions_by_subject')) {
           req.result.createObjectStore('questions_by_subject', { keyPath: 'subject' });
+        }
+        // v4: conversation memory store
+        if (!req.result.objectStoreNames.contains('chat_memory')) {
+          var memStore = req.result.createObjectStore('chat_memory', { keyPath: 'id', autoIncrement: true });
+          memStore.createIndex('subject', 'subject', { unique: false });
+          memStore.createIndex('timestamp', 'timestamp', { unique: false });
         }
       };
       req.onsuccess = function() { resolve(req.result); };
@@ -1892,6 +1898,104 @@ if ('serviceWorker' in navigator) {
     });
   }
 
+  // ── Conversation Memory (mem0-style) ──
+  const MEMORY_MAX = 200;       // Max stored conversations
+  const MEMORY_RELEVANT = 3;    // How many past conversations to inject
+
+  function extractMemoryKeywords(text) {
+    // Extract legal keywords for memory indexing
+    var patterns = [
+      /刑法|刑罚|犯罪|盗窃|抢劫|诈骗|故意杀人|正当防卫|共犯|累犯|缓刑|假释|量刑|罪名/g,
+      /民法|合同|侵权|物权|债权|婚姻|继承|收养|抚养|赡养|善意取得|抵押权/g,
+      /行政|行政许可|行政处罚|行政强制|行政复议|行政诉讼|国家赔偿/g,
+      /刑事诉讼|刑诉|侦查|拘留|逮捕|取保候审|审查起诉|辩护/g,
+      /民事诉讼|民诉|管辖|调解|仲裁|执行|再审/g,
+      /公司法|合伙|破产|票据|证券|保险|劳动法|税法|消费者/g,
+      /宪法|人大|国务院|选举|言论自由|人身自由/g,
+      /专利|商标|著作权|版权|知识/g,
+    ];
+    var keywords = [];
+    patterns.forEach(function(p) {
+      var matches = text.match(p);
+      if (matches) { keywords = keywords.concat(matches); }
+    });
+    // Dedup and limit
+    var seen = {};
+    return keywords.filter(function(k) { return seen[k] ? false : (seen[k] = true); }).slice(0, 8);
+  }
+
+  async function saveConversationMemory(question, answer, subject, questionId) {
+    try {
+      var db = await openDB();
+      var tx = db.transaction('chat_memory', 'readwrite');
+      var store = tx.objectStore('chat_memory');
+      var keywords = extractMemoryKeywords(question + ' ' + answer);
+      store.add({
+        question: question,
+        answer: answer,
+        subject: subject,
+        questionId: questionId,
+        keywords: keywords,
+        timestamp: Date.now()
+      });
+
+      // Prune old memories if over limit
+      var countReq = store.count();
+      countReq.onsuccess = function() {
+        if (countReq.result > MEMORY_MAX) {
+          // Delete oldest entries
+          var index = store.index('timestamp');
+          var cursorReq = index.openCursor();
+          var toDelete = countReq.result - MEMORY_MAX;
+          var deleted = 0;
+          cursorReq.onsuccess = function(e) {
+            var cursor = e.target.result;
+            if (cursor && deleted < toDelete) {
+              cursor.delete();
+              deleted++;
+              cursor.continue();
+            }
+          };
+        }
+      };
+    } catch(e) { /* memory save failure is non-critical */ }
+  }
+
+  async function getRelevantMemories(query, subject) {
+    try {
+      var db = await openDB();
+      var tx = db.transaction('chat_memory', 'readonly');
+      var store = tx.objectStore('chat_memory');
+      var all = await new Promise(function(resolve) {
+        var req = store.getAll();
+        req.onsuccess = function() { resolve(req.result || []); };
+        req.onerror = function() { resolve([]); };
+      });
+
+      if (all.length === 0) return [];
+
+      var queryKw = extractMemoryKeywords(query);
+
+      // Score each memory: same-subject bonus + keyword overlap + recency
+      var scored = all.map(function(m) {
+        var score = 0;
+        if (m.subject === subject) score += 3;
+        if (m.keywords && queryKw) {
+          m.keywords.forEach(function(k) {
+            if (queryKw.indexOf(k) >= 0) score += 2;
+          });
+        }
+        // Recency bonus (last 24h = +1)
+        if (Date.now() - m.timestamp < 86400000) score += 1;
+        return { memory: m, score: score };
+      });
+
+      // Sort by score desc, take top N
+      scored.sort(function(a, b) { return b.score - a.score; });
+      return scored.slice(0, MEMORY_RELEVANT).filter(function(s) { return s.score > 1; }).map(function(s) { return s.memory; });
+    } catch(e) { return []; }
+  }
+
   // ── Load questions: per-subject lazy loading ──
   var SUBJECTS_ALL = ['民法','刑法','行政法','刑诉法','民诉法','知识产权法','商经法','宪法','国际法','法理学','法制史','司法制度与职业道德'];
   var questions = [];
@@ -1927,7 +2031,7 @@ if ('serviceWorker' in navigator) {
 
     // Determine which subjects are needed (all on first load)
     var cachedVersion = await getMeta(db, 'questions_version');
-    var needReload = (cachedVersion !== 'v2');
+    var needReload = (cachedVersion !== 'v3');
 
     if (needReload) {
       // Load all subjects, cache each one
@@ -1957,7 +2061,7 @@ if ('serviceWorker' in navigator) {
       }
 
       if (questions.length > 0) {
-        await setMeta(db, 'questions_version', 'v2');
+        await setMeta(db, 'questions_version', 'v3');
         await setMeta(db, 'question_count', questions.length);
       }
       showLoading('题库加载完成，初始化中...');
@@ -1986,7 +2090,7 @@ if ('serviceWorker' in navigator) {
           });
         }
         if (questions.length > 0) {
-          await setMeta(db, 'questions_version', 'v2');
+          await setMeta(db, 'questions_version', 'v3');
           await setMeta(db, 'question_count', questions.length);
         }
       }
@@ -3657,7 +3761,7 @@ if ('serviceWorker' in navigator) {
     sessionStorage.removeItem('fakao_apikey');
   });
 
-  function buildSystemPrompt() {
+  async function buildSystemPrompt(userQuery) {
     const q = filteredQuestions[currentIndex];
     if (!q) return [];
     const typeMap = { '单选': '单选题', '多选': '多选题', '主观题': '主观题' };
@@ -3690,6 +3794,17 @@ if ('serviceWorker' in navigator) {
         ctx += (i+1) + '. ' + kp.point + '\n';
       });
     }
+    // Include relevant past conversations (mem0-style memory)
+    if (userQuery) {
+      var memories = await getRelevantMemories(userQuery, q.subject);
+      if (memories.length > 0) {
+        ctx += '\n【历史对话上下文】以下是学生此前讨论过的相关内容，请结合此上下文回答：\n';
+        memories.forEach(function(m, i) {
+          ctx += (i+1) + '. [学生曾问] ' + m.question + '\n';
+          ctx += '   [你曾答] ' + (m.answer || '').substring(0, 200) + '\n';
+        });
+      }
+    }
 
     return [
       { role: 'system', content: ctx },
@@ -3716,7 +3831,7 @@ if ('serviceWorker' in navigator) {
     renderChatMessages();
 
     try {
-      var messages = buildSystemPrompt();
+      var messages = await buildSystemPrompt(userText.trim());
       // Add empty assistant bubble that will fill progressively
       chatHistory.push({ role: 'assistant', content: '' });
       renderChatMessages();
@@ -3781,6 +3896,18 @@ if ('serviceWorker' in navigator) {
         });
         renderChatMessages();
       }
+    }
+
+    // Save conversation to memory
+    var lastMsg = chatHistory[chatHistory.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content) {
+      var q = filteredQuestions[currentIndex];
+      saveConversationMemory(
+        userText.trim(),
+        lastMsg.content,
+        q ? q.subject : '',
+        q ? q.id : 0
+      );
     }
 
     isWaitingAi = false;
