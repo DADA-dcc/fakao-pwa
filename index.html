@@ -385,14 +385,15 @@ body {
 /* ── Analysis ── */
 .analysis {
   margin-top: 20px; padding: 16px 20px;
-  background: var(--c-warning-lt);
-  border-left: 4px solid var(--c-warning);
+  background: var(--surface-2);
+  border: 1px solid var(--border-lt);
+  border-left: 4px solid var(--c-accent);
   border-radius: var(--r-md);
-  font-size: 14px; line-height: 1.8; color: #744210; display: none;
+  font-size: 14px; line-height: 1.8; color: var(--txt-1); display: none;
   animation: fadeIn .3s ease;
 }
 .analysis.show { display: block; }
-.analysis strong { color: #975a16; }
+.analysis strong { color: var(--c-primary); }
 
 /* ── Reference ── */
 .reference {
@@ -756,7 +757,7 @@ body {
   box-shadow: 0 4px 12px rgba(26,58,107,.3);
 }
 .chat-input-row .btn-send:disabled { background: var(--border); cursor: not-allowed; box-shadow: none; transform: none; }
-.ai-teacher-trigger { display: none; justify-content: center; margin-top: 16px; }
+.ai-teacher-trigger { display: none; justify-content: center; margin-top: 16px; gap: 10px; flex-wrap: wrap; }
 .ai-teacher-trigger.show { display: flex; }
 .ai-teacher-trigger .btn-ai {
   padding: 11px 28px; border-radius: var(--r-full); border: none;
@@ -767,6 +768,29 @@ body {
 }
 .ai-teacher-trigger .btn-ai:hover {
   transform: translateY(-2px); box-shadow: 0 8px 24px rgba(107,70,193,.4);
+}
+.ai-teacher-trigger .btn-ai-deep {
+  background: linear-gradient(135deg, #e53e3e, #c53030);
+  box-shadow: 0 4px 14px rgba(229,62,62,.35);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+.ai-teacher-trigger .btn-ai-deep:hover {
+  box-shadow: 0 8px 24px rgba(229,62,62,.5);
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 4px 14px rgba(229,62,62,.35); }
+  50% { box-shadow: 0 4px 22px rgba(229,62,62,.55); }
+}
+
+/* ── Chat quick-prompt buttons ── */
+.chat-quick-btn {
+  padding: 6px 14px; border-radius: var(--r-full); border: 1.5px solid var(--border);
+  background: var(--surface); color: var(--txt-2); font-size: 12px; cursor: pointer;
+  font-family: inherit; transition: var(--ease); white-space: nowrap;
+}
+.chat-quick-btn:hover {
+  border-color: var(--c-purple); color: var(--c-purple);
+  background: var(--c-purple-lt); transform: translateY(-1px);
 }
 
 /* ── Knowledge Modal ── */
@@ -1698,7 +1722,8 @@ body {
 
   <!-- AI Teacher Trigger -->
   <div class="ai-teacher-trigger" id="aiTeacherTrigger">
-    <button class="btn-ai" id="aiTeacherBtn">🤖 向 AI 老师提问</button>
+    <button class="btn-ai btn-ai-deep" id="aiAnalyzeBtn">🤖 AI 深度解析</button>
+    <button class="btn-ai" id="aiTeacherBtn">💬 自由提问</button>
   </div>
 
   <!-- AI Chat Panel -->
@@ -2926,7 +2951,7 @@ if ('serviceWorker' in navigator) {
         </div>
         <div class="subjective-answer" id="subjectiveAnswer">
           <h4>📋 参考答案与解析</h4>
-          ${q.analysis.replace(/\n/g, '<br>')}
+          ${(q.analysis || '暂无解析，请参考【正确答案：' + q.answer + '】，结合' + q.subject + '相关知识点理解。').replace(/\n/g, '<br>')}
         </div>
         <div class="self-rate" id="selfRate">
           <button class="self-rate-btn got-it" data-rate="right">✅ 我掌握了</button>
@@ -3037,6 +3062,74 @@ if ('serviceWorker' in navigator) {
     }
   }
 
+  // ── Auto-Generated Analysis ──
+  function generateAutoAnalysis(q, userAnswer, isRight) {
+    var labels = ['A', 'B', 'C', 'D'];
+    var correctAnswer = q.answer;
+    var correctSet = new Set(correctAnswer.split(''));
+    var userSet = new Set(userAnswer.split(''));
+    var typeMap = { '单选': '单选题', '多选': '多选题', '主观题': '主观题' };
+
+    var html = '';
+    html += '<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed var(--border);">';
+    html += '<span style="font-weight:700;font-size:15px;">' + (isRight ? '✅ 回答正确' : '❌ 回答错误') + '</span>';
+    html += '<span style="margin-left:12px;font-size:13px;color:var(--txt-3);">';
+    html += '你的答案：<b style="color:' + (isRight ? 'var(--c-success)' : 'var(--c-danger)') + ';">' + (userAnswer || '未作答') + '</b>';
+    if (!isRight) {
+      html += ' &nbsp;|&nbsp; 正确答案：<b style="color:var(--c-success);">' + correctAnswer + '</b>';
+    }
+    html += '</span></div>';
+
+    // Option-by-option breakdown
+    html += '<div style="font-weight:700;margin-bottom:8px;color:var(--txt-1);">📋 选项分析：</div>';
+    labels.forEach(function(l) {
+      var text = q.options[l];
+      if (!text) return;
+      var isCorrect = correctSet.has(l);
+      var isChosen = userSet.has(l);
+      var statusIcon = isCorrect ? '✅' : '❌';
+      var bgColor = isCorrect ? 'var(--c-success-lt)' : (isChosen && !isCorrect ? 'var(--c-danger-lt)' : 'transparent');
+      var borderColor = isCorrect ? 'var(--c-success)' : (isChosen && !isCorrect ? 'var(--c-danger)' : 'var(--border)');
+      var labelColor = isCorrect ? 'var(--c-success)' : (isChosen && !isCorrect ? 'var(--c-danger)' : 'var(--txt-3)');
+
+      html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;margin:2px 0;border-radius:var(--r-sm);background:' + bgColor + ';border-left:3px solid ' + borderColor + ';padding-left:10px;">';
+      html += '<span style="font-weight:700;font-size:14px;color:' + labelColor + ';min-width:24px;">' + statusIcon + ' ' + l + '</span>';
+      html += '<span style="font-size:13px;line-height:1.6;color:var(--txt-2);">' + text + '</span>';
+      html += '<span style="font-size:11px;color:' + (isCorrect ? 'var(--c-success)' : 'var(--txt-ph)') + ';white-space:nowrap;align-self:center;">' + (isCorrect ? '✓ 正确选项' : (isChosen ? '✗ 你的选择' : '')) + '</span>';
+      html += '</div>';
+    });
+
+    // Subject-based reasoning hint
+    var subjectHints = {
+      '民法': '民法题目侧重权利义务关系分析，注意《民法典》各编的适用逻辑。',
+      '刑法': '刑法题目需严格遵循罪刑法定原则，注意犯罪构成要件的逐一分析。',
+      '行政法': '行政法题目关注行政主体、行政行为性质及救济途径。',
+      '刑诉法': '刑诉法题目注意诉讼程序阶段、证据规则及当事人权利保障。',
+      '民诉法': '民诉法题目关注管辖、当事人、证据及执行程序。',
+      '知识产权法': '知识产权题目注意权利客体、保护期限及侵权判定标准。',
+      '商经法': '商经法题目关注公司治理、商事交易及经济法调整对象。',
+      '宪法': '宪法题目注意基本权利保障与国家机构职权划分。',
+      '国际法': '国际法题目关注国际条约适用、管辖权及主权原则。',
+      '法理学': '法理学题目侧重法律基本概念、法律渊源及法律解释方法。',
+      '法制史': '法制史题目注意各个历史时期法律制度的特点。',
+      '司法制度与职业道德': '司法制度题目关注司法组织体系及法律职业道德规范。'
+    };
+    var hint = subjectHints[q.subject] || '请结合相关法律原理分析各选项的正确性。';
+
+    html += '<div style="margin-top:10px;padding:8px 12px;background:var(--c-accent-lt);border-radius:var(--r-sm);font-size:12px;color:var(--c-accent);line-height:1.6;">';
+    html += '<span style="font-weight:600;">💡 ' + q.subject + '答题思路：</span>' + hint;
+    html += '</div>';
+
+    // If official analysis exists, append it as authoritative reference
+    if (q.analysis && q.analysis.trim()) {
+      html += '<div style="margin-top:8px;padding:8px 12px;background:var(--c-warning-lt);border-left:3px solid var(--c-warning);border-radius:var(--r-sm);font-size:13px;line-height:1.8;color:#744210;">';
+      html += '<span style="font-weight:700;">📖 官方解析：</span>' + q.analysis;
+      html += '</div>';
+    }
+
+    return html;
+  }
+
   // ── Answer handling ──
   $optionsContainer.addEventListener('click', function(e) {
     if (answered) return;
@@ -3092,9 +3185,7 @@ if ('serviceWorker' in navigator) {
 
     // Analysis
     $analysisBox.className = 'analysis show';
-    $analysisBox.innerHTML = `<strong>📖 解析：</strong>${q.analysis}`;
-    const expectedLen = correctAnswer.length;
-    const userLen = chosen.length;
+    $analysisBox.innerHTML = generateAutoAnalysis(q, chosen, isRight);
 
     // Record history
     history.push({ qid: q.id, chosen, correct: isRight, timestamp: Date.now(), time: getQuestionElapsed() });
@@ -3162,7 +3253,7 @@ if ('serviceWorker' in navigator) {
     $resultBanner.textContent = isRight ? '✔ 回答正确！' : '✘ 回答错误';
 
     $analysisBox.className = 'analysis show';
-    $analysisBox.innerHTML = `<strong>📖 解析：</strong>${q.analysis}`;
+    $analysisBox.innerHTML = generateAutoAnalysis(q, userAnswer, isRight);
 
     history.push({ qid: q.id, chosen: userAnswer, correct: isRight, timestamp: Date.now(), time: getQuestionElapsed() });
     sm2Update(q.id, qualityFromAnswer(isRight, true));
@@ -3801,7 +3892,7 @@ if ('serviceWorker' in navigator) {
       if (q.reference.summary) ctx += '【案例摘要】' + q.reference.summary + '\n';
     }
     // Include related knowledge points
-    var relatedPoints = knowledge.filter(function(k) { return k.subject === q.subject; }).slice(0, 3);
+    var relatedPoints = knowledgePoints.filter(function(k) { return k.subject === q.subject; }).slice(0, 3);
     if (relatedPoints.length > 0) {
       ctx += '【相关知识点】\n';
       relatedPoints.forEach(function(kp, i) {
@@ -3899,14 +3990,25 @@ if ('serviceWorker' in navigator) {
         }
       }
     } catch (err) {
+      var errMsg = err.message || '未知错误';
+      // Detect common error types
+      if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+        errMsg = '网络连接失败。可能原因：① DeepSeek API 不支持浏览器直接调用（CORS限制）② 网络代理问题。建议使用支持CORS的API或通过代理服务器转发请求。';
+      } else if (errMsg.includes('401')) {
+        errMsg = 'API Key 无效或已过期，请检查后重新输入。';
+      } else if (errMsg.includes('429')) {
+        errMsg = 'API 请求频率过高，请稍后再试。';
+      } else if (errMsg.includes('402')) {
+        errMsg = 'API 余额不足，请充值后重试。';
+      }
       var lastMsg = chatHistory[chatHistory.length - 1];
       if (lastMsg && lastMsg.role === 'assistant' && !lastMsg.content) {
-        lastMsg.content = '请求失败：' + (err.message || '网络错误，请检查 API Key 和网络连接');
+        lastMsg.content = '❌ 请求失败：' + errMsg;
         renderChatMessages();
       } else {
         chatHistory.push({
           role: 'assistant',
-          content: '请求失败：' + (err.message || '网络错误，请检查 API Key 和网络连接')
+          content: '❌ 请求失败：' + errMsg
         });
         renderChatMessages();
       }
@@ -3949,6 +4051,33 @@ if ('serviceWorker' in navigator) {
       if (!isWaitingAi) loadDiv.classList.remove('show');
     }
 
+    // Show welcome message with quick prompts when chat is empty
+    if (chatHistory.length === 0) {
+      var q = filteredQuestions[currentIndex];
+      var welcome = document.createElement('div');
+      welcome.className = 'chat-welcome';
+      welcome.innerHTML =
+        '<div style="text-align:center;padding:16px 0;color:var(--txt-3);">' +
+        '<div style="font-size:28px;margin-bottom:8px;">🤖</div>' +
+        '<div style="font-size:14px;font-weight:600;margin-bottom:6px;color:var(--txt-2);">AI 老师已就位</div>' +
+        '<div style="font-size:12px;">基于当前' + (q ? q.subject + '题目' : '题目') + '，你可以：</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px;">' +
+        '<button class="chat-quick-btn" data-prompt="请详细解析这道题每个选项为什么对/错，并列出涉及的法条。">📖 逐项解析</button>' +
+        '<button class="chat-quick-btn" data-prompt="这道题的核心考点是什么？有哪些易混淆的知识点需要注意？">🎯 考点归纳</button>' +
+        '<button class="chat-quick-btn" data-prompt="请举一个与本题类似的案例，帮助我理解相关法律原理。">📋 举例说明</button>' +
+        '</div></div>';
+      $chatMessages.insertBefore(welcome, $chatMessages.lastElementChild);
+
+      // Bind quick prompts
+      welcome.querySelectorAll('.chat-quick-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var prompt = this.dataset.prompt;
+          $chatInput.value = '';
+          sendToAI(prompt);
+        });
+      });
+    }
+
     chatHistory.forEach(function(msg) {
       var bubble = document.createElement('div');
       bubble.className = 'chat-bubble ' + (msg.role === 'user' ? 'user' : 'ai');
@@ -3986,6 +4115,27 @@ if ('serviceWorker' in navigator) {
     if ($chatPanel.classList.contains('show')) {
       renderChatMessages();
     }
+  });
+
+  // AI 深度解析按钮 — auto-fill prompt and send
+  document.getElementById('aiAnalyzeBtn').addEventListener('click', async function() {
+    const hasKey = await hasApiKey();
+    if (!hasKey) {
+      $apiKeyModal.classList.add('show');
+      return;
+    }
+    var q = filteredQuestions[currentIndex];
+    if (!q) return;
+    chatHistory = [];
+    $chatPanel.classList.add('show');
+    var prompt = '请对这道' + q.subject + '题目进行深度解析：\n';
+    prompt += '1. 逐项分析每个选项为什么对/错\n';
+    prompt += '2. 指出本题考察的核心法律知识点\n';
+    prompt += '3. 列出涉及的具体法条（标注法条编号）\n';
+    prompt += '4. 提示易混淆的知识点和常见答题陷阱';
+    $chatInput.value = '';
+    renderChatMessages();
+    sendToAI(prompt);
   });
 
   var _origNextQuestion = nextQuestion;
