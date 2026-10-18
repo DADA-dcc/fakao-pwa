@@ -20,8 +20,8 @@
   </script>
 
   <title>FAKAO-PWA // 以法律塑正义公正之剑 — 120BPM 动态封面引擎</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="vendor/tailwind-3.4.17.js"></script>
+  <script src="vendor/three.r128.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Noto+Sans+SC:wght@500;700;900&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
@@ -125,12 +125,12 @@
   /* 舞台内浮层控件（暂停 / 锁定分镜 / 全屏）在嵌入模式下隐藏 */
   html.fk-embed #stageContainer > div.absolute.bottom-3 { display: none !important; }
 
-  /* 竖版：等比适配，保证 9:16 构图完整（不足处由近黑背景补齐，视觉上无边界感） */
+  /* 竖版满幅：铺满视口，三维层由相机水平视野补偿避免主体被裁 */
   html.fk-embed #stageContainer {
-    width: min(100vw, calc(100vh * 9 / 16)) !important;
-    height: min(100vh, calc(100vw * 16 / 9)) !important;
+    width: 100vw !important;
+    height: 100vh !important;
     max-height: none !important;
-    aspect-ratio: 9 / 16 !important;
+    aspect-ratio: auto !important;
     border: 0 !important; box-shadow: none !important;
   }
   html.fk-embed.fk-r169 #stageContainer {
@@ -1152,6 +1152,14 @@
 
         renderer.setSize(w, h, false);
         camera.aspect = w / h;
+        /* 满幅嵌入：画幅比 9:16 更窄时，按「锁定水平视野」放大垂直 FOV，
+           使 9:16 设计的横向构图完整保留，只多露出上下内容 */
+        window.__FK_FOV__ = 50;
+        if (window.__FK_EMBED__ && camera.aspect < 9 / 16) {
+          var _fkT = Math.tan(25 * Math.PI / 180) * (9 / 16) / camera.aspect;
+          window.__FK_FOV__ = 2 * Math.atan(_fkT) * 180 / Math.PI;
+        }
+        camera.fov = window.__FK_FOV__;
         camera.updateProjectionMatrix();
 
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -1235,7 +1243,7 @@
         hudCtx.clearRect(0, 0, w, h);
 
         // Reset camera defaults before applying scene-specific HARD CUTS
-        camera.fov = 50;
+        camera.fov = (window.__FK_FOV__ || 50);
         camera.up.set(0, 1, 0);
 
         // =====================================================================

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fakao-v8';
+const CACHE_NAME = 'fakao-v9';
 const PRECACHE = [
   './',
   './index.html',
@@ -7,7 +7,11 @@ const PRECACHE = [
   './knowledge.json',
   './case_library.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  // 120BPM 动态封面启动页及其本地化依赖（离线也能播放）
+  './cover.html',
+  './vendor/tailwind-3.4.17.js',
+  './vendor/three.r128.min.js'
 ];
 
 self.addEventListener('install', (event) => {
