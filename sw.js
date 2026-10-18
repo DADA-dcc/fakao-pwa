@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fakao-v5';
+const CACHE_NAME = 'fakao-v6';
 const PRECACHE = [
   './',
   './index.html',
@@ -32,7 +32,8 @@ self.addEventListener('fetch', (event) => {
   // HTML: network-first so users always get latest code
   if (event.request.destination === 'document') {
     event.respondWith(
-      fetch(event.request)
+      // no-cache：在线时强制向服务器校验，保证每次打开都是最新版本（离线自动回退缓存）
+      fetch(event.request, { cache: 'no-cache' })
         .then((response) => {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));

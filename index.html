@@ -2570,7 +2570,8 @@ html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
 <script>
 // ── Service Worker 注册 ──
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+  // updateViaCache: 'none' → 绕过 HTTP 缓存检查 sw.js，新版本部署后最快在下次打开时生效
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
 }
 
 // ── iOS viewport height fix (100vh doesn't account for Safari chrome) ──
