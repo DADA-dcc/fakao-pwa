@@ -1828,6 +1828,35 @@ body {
 .splash { position: fixed; inset: 0; z-index: 2147483647; color: var(--ink, #eef5ff); font-family: var(--font-ui, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif); -webkit-font-smoothing: antialiased; }
 .splash, .splash * { box-sizing: border-box; }
 html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
+/* ── 120BPM 动态封面启动页（iframe 覆盖层，位于极光开屏之上） ── */
+#coverSplash {
+  position: fixed; inset: 0; z-index: 2147483647;
+  background: #020408; overflow: hidden;
+  opacity: 0; pointer-events: none;
+  transition: opacity .42s cubic-bezier(.4, 0, .2, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+#coverSplash[hidden] { display: none !important; }
+/* 封面首帧就绪后才接管屏幕，加载期间由底层极光开屏兜底，避免黑屏 */
+#coverSplash.is-ready { opacity: 1; pointer-events: auto; }
+#coverSplash.is-leaving { opacity: 0; pointer-events: none; }
+#coverSplash iframe { display: block; width: 100%; height: 100%; border: 0; background: #020408; }
+/* 封面播放期间让底层极光开屏停止绘制，失败回退时再恢复 */
+#splash.cover-active { visibility: hidden; }
+#coverSkip {
+  position: absolute; right: 14px; bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 3; padding: 7px 16px; border-radius: 999px;
+  border: 1px solid rgba(0, 240, 255, .42); background: rgba(2, 4, 8, .55);
+  color: #cfe9ff; font: 500 12px/1 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  letter-spacing: .1em; cursor: pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transition: border-color .25s ease, color .25s ease;
+}
+#coverSkip:hover, #coverSkip:focus-visible { border-color: #00F0FF; color: #00F0FF; }
+.cover-entry-btn { right: 46px; font-size: 15px; }
+@media (max-width: 480px) {
+  #coverSkip { padding: 6px 13px; font-size: 11px; }
+}
 </style>
 </head>
 <body>
@@ -1879,6 +1908,17 @@ html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
       </span>
     </div>
   </div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     120BPM 动态封面 · 启动页（cover.html 纯净嵌入模式）
+     · 默认每次冷启动展示一次，同一会话内刷新不重复
+     · ?cover=1 强制展示 / ?cover=0 关闭
+     · 载入失败或超时 → 自动回退到下方「极光流光」开屏
+     ═══════════════════════════════════════════════════════════ -->
+<div id="coverSplash" aria-label="法考动态封面启动页" hidden>
+  <iframe id="coverFrame" title="以法律塑正义公正之剑 · 动态封面" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>
+  <button id="coverSkip" type="button">跳过 ›</button>
+</div>
 
 <script id="fk-splash-core">
 (() => {
@@ -2244,6 +2284,97 @@ html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
   setTimeout(function () { controlledFade(); }, FALLBACK_MS);
 })();
 </script>
+
+<script id="fk-cover-splash">
+/* 120BPM 动态封面启动页 · 节奏控制
+   成功路径：封面淡出 → 立即移除底层极光开屏（它全程不可见，无需再淡出）
+   失败路径：隐藏封面 → 交回极光开屏，按原有 3.2s / 12s 节奏退场
+*/
+(function () {
+  var cover = document.getElementById('coverSplash');
+  var frame = document.getElementById('coverFrame');
+  var skip = document.getElementById('coverSkip');
+  var aurora = document.getElementById('splash');
+  if (!cover || !frame) return;
+
+  var MIN_VISIBLE_MS = 3400;   // 封面首帧可见后的最短展示时长
+  var BOOT_TIMEOUT_MS = 7000;  // 封面迟迟不就绪则放弃，交回极光开屏
+  var bootAt = performance.now();
+
+  var qs = new URLSearchParams(location.search);
+  var force = qs.get('cover');
+  var reduce = false;
+  try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  var seen = false;
+  try { seen = sessionStorage.getItem('fk_cover_seen') === '1'; } catch (e) {}
+
+  var ready = false, done = false;
+
+  function unlockScroll() {
+    document.documentElement.classList.remove('fk-splash-lock');
+  }
+
+  function removeAurora() {
+    if (aurora) { aurora.classList.remove('cover-active'); aurora.style.display = 'none'; }
+    unlockScroll();
+  }
+
+  // 成功退场：淡出封面后直接清掉底层开屏
+  function exitWithFade() {
+    if (done) return;
+    done = true;
+    try { sessionStorage.setItem('fk_cover_seen', '1'); } catch (e) {}
+    cover.classList.add('is-leaving');
+    setTimeout(function () {
+      cover.hidden = true;
+      try { frame.src = 'about:blank'; } catch (e) {}
+      removeAurora();
+    }, 460);
+  }
+
+  // 失败回退：封面隐藏，极光开屏继续按自身节奏退场
+  function fallbackToAurora() {
+    if (done) return;
+    done = true;
+    cover.hidden = true;
+    cover.classList.remove('is-ready');
+    if (aurora) aurora.classList.remove('cover-active');
+    try {
+      if (typeof window.splashFadeOut === 'function') { window.splashFadeOut(); return; }
+    } catch (e) {}
+    removeAurora();
+  }
+
+  // 首帧就绪：封面淡入接管，并从此开始计算最短展示时长
+  function onReady() {
+    if (ready || done) return;
+    ready = true;
+    cover.classList.add('is-ready');
+    if (aurora) aurora.classList.add('cover-active');
+    setTimeout(exitWithFade, MIN_VISIBLE_MS);
+  }
+
+  if (force === '0' || reduce || (seen && force !== '1')) {
+    cover.hidden = true;
+    return;
+  }
+
+  window.addEventListener('message', function (e) {
+    var d = e && e.data;
+    if (d && d.type === 'fk-cover-ready') onReady();
+  });
+  frame.addEventListener('error', fallbackToAurora);
+
+  cover.hidden = false;
+  frame.src = 'cover.html?embed=1&ratio=9:16';
+  // 兜底：迟迟没有首帧就放弃封面，让极光开屏按原节奏退场
+  setTimeout(function () { if (!ready) fallbackToAurora(); }, BOOT_TIMEOUT_MS);
+
+  skip.addEventListener('click', function (e) { e.stopPropagation(); exitWithFade(); });
+  cover.addEventListener('click', function (e) { if (e.target === cover) exitWithFade(); });
+})();
+</script>
+
 <div class="liquid-orbs">
   <div class="liquid-orb orb-1"></div>
   <div class="liquid-orb orb-2"></div>
@@ -2359,6 +2490,7 @@ html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
 
 <div class="app">
   <div class="header">
+    <button class="theme-toggle-btn cover-entry-btn" id="showreelBtn" title="动效展示" aria-label="打开动效展示页">🎬</button>
     <button class="theme-toggle-btn" id="themeToggleBtn" title="切换主题" aria-label="切换深色/浅色模式">🌓</button>
     <h1>国家统一法律职业资格考试</h1>
     <div class="subtitle">在线刷题 · 智能解析</div>
@@ -2617,6 +2749,14 @@ if ('serviceWorker' in navigator) {
   // Set initial icon
   var icons = { auto: '🌓', dark: '🌙', light: '☀️' };
   document.getElementById('themeToggleBtn').textContent = icons[saved] || '🌓';
+
+  // 动效展示页入口（Motion Reel）
+  var showreelBtn = document.getElementById('showreelBtn');
+  if (showreelBtn) {
+    showreelBtn.addEventListener('click', function() {
+      window.open('showreel.html', '_blank', 'noopener');
+    });
+  }
 })();
 </script>
 

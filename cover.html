@@ -1,0 +1,2202 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <script id="fk-embed-boot">
+  /* 纯净嵌入模式：?embed=1&ratio=9:16 —— 隐藏设计工具界面，仅保留动态封面本体 */
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var embed = q.get('embed') === '1' || q.get('splash') === '1';
+    var ratio = q.get('ratio') || '9:16';
+    var root = document.documentElement;
+    window.__FK_EMBED__ = embed;
+    window.__FK_RATIO__ = ratio;
+    if (!embed) return;
+    root.classList.add('fk-embed');
+    if (ratio === '16:9') root.classList.add('fk-r169');
+    if (ratio === '1:1') root.classList.add('fk-r11');
+  })();
+  </script>
+
+  <title>FAKAO-PWA // 以法律塑正义公正之剑 — 120BPM 动态封面引擎</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Noto+Sans+SC:wght@500;700;900&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --electric-blue: #0066FF;
+      --cyber-cyan: #00F0FF;
+      --pure-black: #020408;
+      --stark-white: #FFFFFF;
+      --chrome-mid: #94A3B8;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #020408;
+      color: #FFFFFF;
+      font-family: 'Inter', 'Noto Sans SC', sans-serif;
+      overflow-x: hidden;
+    }
+    .font-display {
+      font-family: 'Unbounded', 'Noto Sans SC', sans-serif;
+      font-weight: 900;
+    }
+    .font-mono-hud {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #020408;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #0066FF;
+    }
+    /* Chrome Text Gradient Utility */
+    .chrome-badge {
+      background: linear-gradient(180deg, #FFFFFF 0%, #CBD5E1 45%, #334155 50%, #94A3B8 85%, #00F0FF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .chrome-border {
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 0 20px rgba(0, 102, 255, 0.25), inset 0 0 12px rgba(0, 240, 255, 0.12);
+    }
+    .scanline-overlay {
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0, 15, 40, 0.28) 50%,
+        rgba(0, 15, 40, 0.28)
+      );
+      background-size: 100% 4px;
+    }
+    .stage-aspect-16-9 {
+      aspect-ratio: 16 / 9;
+      width: 100%;
+      max-height: 74vh;
+    }
+    .stage-aspect-9-16 {
+      aspect-ratio: 9 / 16;
+      height: 72vh;
+      max-width: 100%;
+    }
+    .stage-aspect-1-1 {
+      aspect-ratio: 1 / 1;
+      height: 70vh;
+      max-width: 100%;
+    }
+    .scene-btn-active {
+      background: linear-gradient(90deg, rgba(0, 102, 255, 0.35) 0%, rgba(0, 240, 255, 0.15) 100%);
+      border-color: #00F0FF !important;
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
+    }
+  </style>
+  <style id="fk-embed-style">
+  /* ===== 纯净嵌入模式（供 fakao-pwa 启动页 iframe 使用） ===== */
+  html.fk-embed, html.fk-embed body {
+    height: 100%; overflow: hidden !important;
+    cursor: none; background: #020408;
+  }
+  html.fk-embed body > header,
+  html.fk-embed body > footer,
+  html.fk-embed #toastBanner,
+  html.fk-embed #embedModal { display: none !important; }
+
+  html.fk-embed main {
+    padding: 0 !important; height: 100vh; flex: 1 1 auto; overflow: hidden;
+  }
+  html.fk-embed #ambientGlow { display: none !important; }
+  html.fk-embed #stageWrapper { max-width: none !important; width: 100vw; height: 100vh; }
+
+  /* 舞台内浮层控件（暂停 / 锁定分镜 / 全屏）在嵌入模式下隐藏 */
+  html.fk-embed #stageContainer > div.absolute.bottom-3 { display: none !important; }
+
+  /* 竖版：等比适配，保证 9:16 构图完整（不足处由近黑背景补齐，视觉上无边界感） */
+  html.fk-embed #stageContainer {
+    width: min(100vw, calc(100vh * 9 / 16)) !important;
+    height: min(100vh, calc(100vw * 16 / 9)) !important;
+    max-height: none !important;
+    aspect-ratio: 9 / 16 !important;
+    border: 0 !important; box-shadow: none !important;
+  }
+  html.fk-embed.fk-r169 #stageContainer {
+    width: min(100vw, calc(100vh * 16 / 9)) !important;
+    height: min(100vh, calc(100vw * 9 / 16)) !important;
+    aspect-ratio: 16 / 9 !important;
+  }
+  html.fk-embed.fk-r11 #stageContainer {
+    width: min(100vw, 100vh) !important;
+    height: min(100vh, 100vw) !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+  /* 嵌入模式下不显示滚动条 */
+  html.fk-embed ::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body class="min-h-screen bg-[#020408] text-white flex flex-col justify-between">
+
+  <!-- TOP NAVIGATION & STATUS BAR -->
+  <header class="w-full border-b border-white/15 bg-[#030711]/90 backdrop-blur-md z-30 px-3 sm:px-5 py-2.5">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-gradient-to-br from-[#0066FF] via-[#00F0FF] to-white p-[1px] shadow-[0_0_15px_rgba(0,102,255,0.6)]">
+          <div class="w-full h-full bg-[#020408] flex items-center justify-center font-display text-xs tracking-tighter text-[#00F0FF]">
+            ⚔
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-display text-xs sm:text-sm tracking-wider uppercase text-white">FAKAO-PWA</span>
+            <span class="font-mono-hud text-[10px] px-1.5 py-0.5 bg-[#0066FF]/30 border border-[#00F0FF]/50 text-[#00F0FF] rounded-sm">120 BPM HARD-CUT</span>
+          </div>
+          <p class="font-mono-hud text-[10px] text-slate-400 tracking-widest uppercase">
+            以法律塑正义公正之剑 · DYNAMIC COVER ENGINE
+          </p>
+        </div>
+      </div>
+
+      <!-- Center Live Beat / Timecode Pill -->
+      <div class="hidden md:flex items-center gap-3 bg-black/80 border border-white/15 px-3 py-1 rounded-sm font-mono-hud text-xs">
+        <div class="flex items-center gap-1.5">
+          <span id="beatLed" class="w-2.5 h-2.5 rounded-full bg-[#00F0FF] shadow-[0_0_10px_#00F0FF] transition-transform duration-75"></span>
+          <span class="text-slate-400">BPM:</span>
+          <span class="text-white font-bold">120.0</span>
+        </div>
+        <span class="text-white/20">|</span>
+        <div>
+          <span class="text-slate-400">BEAT:</span>
+          <span id="topBeatNum" class="text-[#00F0FF] font-bold">01/32</span>
+        </div>
+        <span class="text-white/20">|</span>
+        <div>
+          <span class="text-slate-400">TC:</span>
+          <span id="topTimecode" class="text-white">00:00:00:00</span>
+        </div>
+      </div>
+
+      <!-- Right Action Controls -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <!-- Aspect Ratio Switcher for App Covers -->
+        <div class="flex items-center bg-black/70 border border-white/15 rounded-sm p-0.5 font-mono-hud text-[11px]">
+          <button id="btnRatio169" type="button" class="px-2 py-1 rounded-sm bg-[#0066FF] text-white font-semibold transition" title="横版宣传动态封面 (16:9)">16:9</button>
+          <button id="btnRatio916" type="button" class="px-2 py-1 rounded-sm text-slate-300 hover:text-white transition" title="手机法考App启动页竖版封面 (9:16)">9:16 竖版</button>
+          <button id="btnRatio11" type="button" class="px-2 py-1 rounded-sm text-slate-300 hover:text-white transition" title="方形动态封面 (1:1)">1:1</button>
+        </div>
+
+        <!-- Audio Synth Toggle -->
+        <button id="btnAudioToggle" type="button" class="font-mono-hud text-[11px] px-2.5 py-1.5 rounded-sm border border-[#00F0FF]/50 bg-[#0066FF]/20 hover:bg-[#0066FF]/40 text-[#00F0FF] flex items-center gap-1.5 transition">
+          <span id="audioIcon">🔇</span>
+          <span id="audioLabel" class="hidden sm:inline">120BPM 节拍音效: 关</span>
+        </button>
+
+        <!-- Record WebM Video / Export Modal -->
+        <button id="btnRecordVideo" type="button" class="font-mono-hud text-[11px] px-2.5 py-1.5 rounded-sm border border-white/20 bg-white/5 hover:bg-white/15 text-white flex items-center gap-1 transition" title="录制 WebM 动态封面视频">
+          <span id="recordDot" class="w-2 h-2 rounded-full bg-rose-500"></span>
+          <span id="recordLabel" class="hidden sm:inline">录制封面</span>
+        </button>
+
+        <!-- PWA Integration Code Modal Button -->
+        <button id="btnOpenEmbedModal" type="button" class="font-mono-hud text-[11px] px-2.5 py-1.5 rounded-sm border border-white/25 bg-white text-black font-semibold hover:bg-[#00F0FF] transition">
+          PWA 接入代码
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN VIEWPORT AREA -->
+  <main class="flex-1 flex flex-col items-center justify-center px-2 sm:px-6 py-3 relative overflow-hidden">
+    <!-- Subtle Ambient Electric Glow Behind Stage -->
+    <div class="pointer-events-none fixed inset-0 flex items-center justify-center z-0">
+      <div id="ambientGlow" class="w-[75vw] h-[55vh] rounded-full bg-[#0066FF]/15 blur-[130px] transition-all duration-150"></div>
+    </div>
+
+    <!-- DYNAMIC COVER STAGE CONTAINER -->
+    <div id="stageWrapper" class="relative z-10 flex items-center justify-center w-full max-w-6xl mx-auto">
+      <div id="stageContainer" class="stage-aspect-16-9 relative bg-[#020408] chrome-border overflow-hidden flex items-center justify-center shadow-[0_0_60px_rgba(0,102,255,0.3)]">
+        
+        <!-- Layer 1: Three.js 3D WebGL Canvas -->
+        <canvas id="webglCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+
+        <!-- Layer 2: High-DPI 2D Kinetic Typography, Shaders & HUD Canvas -->
+        <canvas id="hudCanvas" class="absolute inset-0 w-full h-full block pointer-events-none"></canvas>
+
+        <!-- Layer 3: Subtle CRT Scanline & Vignette Overlay -->
+        <div class="scanline-overlay absolute inset-0 pointer-events-none opacity-35"></div>
+
+        <!-- Layer 4: Quick Floating Stage Controls (Bottom-Right inside Stage) -->
+        <div class="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 bg-black/75 border border-white/20 px-2 py-1 rounded-sm backdrop-blur-sm">
+          <button id="btnPlayPause" type="button" class="font-mono-hud text-[11px] text-white hover:text-[#00F0FF] px-1.5 py-0.5 transition">
+            ⏸ PAUSE
+          </button>
+          <span class="text-white/20">|</span>
+          <button id="btnLockScene" type="button" class="font-mono-hud text-[11px] text-slate-300 hover:text-[#00F0FF] px-1.5 py-0.5 transition" title="锁定当前分镜作为独立循环动态封面">
+            🔁 全片循环
+          </button>
+          <span class="text-white/20">|</span>
+          <button id="btnFullscreen" type="button" class="font-mono-hud text-[11px] text-slate-300 hover:text-white px-1.5 py-0.5 transition" title="全屏沉浸预览">
+            ⛶ 全屏
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- BOTTOM 8-SCENE BEAT MATRIX & TIMELINE CONTROLLER -->
+  <footer class="w-full border-t border-white/15 bg-[#030711]/95 backdrop-blur-md z-30 px-3 sm:px-6 py-2.5">
+    <div class="max-w-7xl mx-auto flex flex-col gap-2">
+      
+      <!-- 32-Beat Progress Bar with Hard-Cut Markers -->
+      <div class="flex items-center gap-2">
+        <span class="font-mono-hud text-[10px] text-[#00F0FF] uppercase tracking-wider shrink-0">120BPM MATRIX</span>
+        <div id="beatBarContainer" class="flex-1 grid grid-cols-32 gap-0.5 h-2 bg-black/90 p-0.5 border border-white/15 cursor-pointer" title="点击任意节拍跳转">
+          <!-- Populated dynamically with 32 beat cells -->
+        </div>
+        <span id="activeSceneTag" class="font-mono-hud text-[10px] text-white bg-[#0066FF]/40 border border-[#00F0FF]/50 px-2 py-0.5 shrink-0">
+          SCN_01 // CUBE_FISSION_64
+        </span>
+      </div>
+
+      <!-- 8 Choreographed Scenes Selector Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+        <button type="button" data-scene="0" class="scene-Jump-Btn scene-btn-active text-left px-2.5 py-1.5 rounded-sm border border-white/15 bg-black/60 hover:border-[#00F0FF]/60 transition group">
+          <div class="flex items-center justify-between font-mono-hud text-[10px] text-[#00F0FF]">
+            <span>01 // B01-04</span>
+            <span>00:00</span>
+          </div>
+          <div class="font-display text-[11px] text-white truncate mt-0.5">1→64 法律方块</div>
+          <div class="font-mono-hud text-[9px] text-slate-400 truncate">立方体裂变·正义之剑</div>
+        </button>
+
+        <button type="button" data-scene="1" class="scene-Jump-Btn text-left px-2.5 py-1.5 rounded-sm border border-white/15 bg-black/60 hover:border-[#00F0FF]/60 transition group">
+          <div class="flex items-center justify-between font-mono-hud text-[10px] text-[#00F0FF]">
+            <span>02 // B05-08</span>
+            <span>00:02</span>
+          </div>
+          <div class="font-display text-[11px] text-white truncate mt-0.5">SIGNAL 97.2%</div>
+          <div class="font-mono-hud text-[9px] text-slate-400 truncate">视网膜扫描·剑纹准星</div>
+        </button>
+
+        <button type="button" data-scene="2" class="scene-Jump-Btn text-left px-2.5 py-1.5 rounded-sm border border-white/15 bg-black/60 hover:border-[#00F0FF]/60 transition group">
+          <div class="flex items-center justify-between font-mono-hud text-[10px] text-[#00F0FF]">
+            <span>03 // B09-12</span>
+            <span>00:04</span>
+          </div>
+          <div class="font-display text-[11px] text-white truncate mt-0.5">WAKE UP 隧道</div>
+          <div class="font-mono-hud text-[9px] text-slate-400 truncate">3D文字隧道·节拍翻转</div>
+        </button>
+
+        <button type="button" data-scene="3" class="scene-Jump-Btn text-left px-2.5 py-1.5 rounded-sm border border-white/15 bg-black/60 hover:border-[#00F0FF]/60 transition group">
+          <div class="flex items-center justify-between font-mono-hud text-[10px] text-[#00F0FF]">
+            <span>04 // B13-16</span>
+            <span>00:06</span>
+          </div>
+          <div class="font-display text-[11px] text-white truncate mt-0.5">THE FUTURE.</div>
+          <div class="font-mono-hud text-[9px] text-slate-400 truncate">液态金属·镀铬剑锋</div>
+        </button>
+
+        <button type="button" data-scene="4" class="scene-Jump-Btn text-left px-2.5 py-1.5 rounded-sm border border-white/15 bg-black/60 hover:border-[#00F0FF]/60 transition group">
+          <div class="flex items-center justify-between font-mono-hud text-[10px] text-[#00F0FF]">
+            <span>05 // B17-20</span>
+            <span>00:08</span>
+          </div>
+          <div class="font-display text-[11px] text-white truncate mt-0.5">FUTURE.EXE</div>
+          <div class="font-mono-hud text-[9px] text-slate-400 truncate">99%进度·3-2-1倒计时</div>
+        </button>
+
+        <button type="button" data-scene="5" class="scene-Jump-Btn text-left px-2.5 py-1.5 rounded-sm border border-white/15 bg-black/60 hover:border-[#00F0FF]/60 transition group">
+          <div class="flex items-center justify-between font-mono-hud text-[10px] text-[#00F0FF]">
+            <span>06 // B21-24</span>
+            <span>00:10</span>
+          </div>
+          <div class="font-display text-[11px] text-white truncate mt-0.5">四玻璃体·漩涡</div>
+          <div class="font-mono-hud text-[9px] text-slate-400 truncate">PRISM/BOLT/PLANET/MIND</div>
+        </button>
+
+        <button type="button" data-scene="6" class="scene-Jump-Btn text-left px-2.5 py-1.5 rounded-sm border border-white/15 bg-black/60 hover:border-[#00F0FF]/60 transition group">
+          <div class="flex items-center justify-between font-mono-hud text-[10px] text-[#00F0FF]">
+            <span>07 // B25-28</span>
+            <span>00:12</span>
+          </div>
+          <div class="font-display text-[11px] text-white truncate mt-0.5">镀铬3D FUTURE</div>
+          <div class="font-mono-hud text-[9px] text-slate-400 truncate">IS ALREADY HERE.</div>
+        </button>
+
+        <button type="button" data-scene="7" class="scene-Jump-Btn text-left px-2.5 py-1.5 rounded-sm border border-white/15 bg-black/60 hover:border-[#00F0FF]/60 transition group">
+          <div class="flex items-center justify-between font-mono-hud text-[10px] text-[#00F0FF]">
+            <span>08 // B29-32</span>
+            <span>00:14</span>
+          </div>
+          <div class="font-display text-[11px] text-white truncate mt-0.5">故障收尾 EOT</div>
+          <div class="font-mono-hud text-[9px] text-slate-400 truncate">END OF TRANSMISSION</div>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MODAL: FAKAO-PWA INTEGRATION & EXPORT GUIDE -->
+  <div id="embedModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="w-full max-w-2xl bg-[#050B16] border border-[#00F0FF]/50 shadow-[0_0_50px_rgba(0,102,255,0.4)] rounded-sm overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-3.5 bg-[#0066FF]/20 border-b border-white/15">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 bg-[#00F0FF] inline-block"></span>
+          <h3 class="font-display text-sm tracking-wider uppercase text-white">FAKAO-PWA 动态封面集成与导出指南</h3>
+        </div>
+        <button id="btnCloseEmbedModal" type="button" class="font-mono-hud text-xs text-slate-300 hover:text-white px-2 py-1 border border-white/15">
+          [ESC / 关闭]
+        </button>
+      </div>
+      <div class="p-5 space-y-4 max-h-[78vh] overflow-y-auto text-xs leading-relaxed text-slate-300">
+        <div class="p-3 bg-black/60 border border-[#0066FF]/40 rounded-sm">
+          <p class="font-semibold text-white mb-1">💡 如何在 <code class="text-[#00F0FF]">DADA-dcc/fakao-pwa</code> 中使用此动态封面：</p>
+          <ul class="list-disc list-inside space-y-1 text-slate-300">
+            <li><strong>方式一（直接嵌入实时 WebGL 封面组件）</strong>：将本文件作为独立路由页面或通过下方的自适应 <code class="text-[#00F0FF]">&lt;iframe&gt;</code> / React 组件挂载在法考 App 的首屏 Splash 启动页或题库 Banner。</li>
+            <li><strong>方式二（单分镜锁定壁纸模式）</strong>：点击底部分镜栏选择任意喜欢的画面（如 <code class="text-white">01 1→64 法律方块</code>、<code class="text-white">04 液态金属 THE FUTURE.</code> 或 <code class="text-white">06 四玻璃体</code>），点击右下角 <strong>「🔁 全片循环 → 🔒 单镜循环」</strong> 即可作为无缝动态背景。</li>
+            <li><strong>方式三（一键导出高清 WebM 视频封面）</strong>：先切换顶部比例（<code class="text-white">16:9</code> 横版宣传 / <code class="text-white">9:16</code> 手机启动页 / <code class="text-white">1:1</code> 社交封面），再点击顶部 <strong>「🔴 录制封面」</strong>，系统将自动按 120BPM 录制完整 16 秒（32 拍）60fps 动态视频并下载到本地。</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-mono-hud text-[11px] text-[#00F0FF] uppercase">React / PWA Hero Cover 挂载代码片段：</span>
+            <button id="btnCopyCode" type="button" class="font-mono-hud text-[11px] px-2.5 py-1 bg-[#0066FF] hover:bg-[#00F0FF] hover:text-black text-white font-semibold transition rounded-sm">
+              复制代码
+            </button>
+          </div>
+          <pre id="embedCodeBlock" class="p-3 bg-black border border-white/15 font-mono-hud text-[11px] text-cyan-300 overflow-x-auto select-all rounded-sm">&lt;!-- FAKAO-PWA: 以法律塑正义公正之剑 120BPM 动态封面容器 --&gt;
+&lt;div class="fakao-cover-hero" style="position:relative;width:100%;height:100vh;background:#020408;overflow:hidden;"&gt;
+  &lt;iframe
+    src="/fakao_dynamic_cover.html?autoplay=1&amp;ratio=9:16"
+    style="width:100%;height:100%;border:0;pointer-events:auto;"
+    allow="autoplay; fullscreen"
+    title="以法律塑正义公正之剑 - 法考动态封面"
+  &gt;&lt;/iframe&gt;
+&lt;/div&gt;</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastBanner" class="fixed top-16 right-5 z-50 hidden bg-[#030711] border border-[#00F0FF] px-4 py-2.5 shadow-[0_0_25px_rgba(0,240,255,0.4)] font-mono-hud text-xs text-white">
+    <span id="toastText">状态已更新</span>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. CONSTANTS, 120 BPM CLOCK & LEGAL / SCENE METADATA
+      // =========================================================================
+      const BPM = 120;
+      const BEAT_DURATION = 60 / BPM; // 0.500 seconds per beat
+      const TOTAL_BEATS = 32;         // 8 scenes * 4 beats each = 16.0 seconds full cycle
+      const LOOP_DURATION = TOTAL_BEATS * BEAT_DURATION; // 16.0s
+
+      const LEGAL_TERMS_CN = [
+        '罪刑法定', '程序正义', '诚实信用', '公序良俗',
+        '宪法至上', '刑法总则', '民法典', '行政诉讼',
+        '刑事诉讼', '民事诉讼', '商经知法', '三国法',
+        '正当防卫', '无罪推定', '物权法定', '公平原则',
+        '举证责任', '法律解释', '司法公正', '权利救济',
+        '合宪性', '比例原则', '信赖保护', '正义之剑'
+      ];
+
+      const SCENE_META = [
+        {
+          id: 'SCN_01',
+          code: 'CUBE_FISSION_1_TO_64',
+          title: '以法律塑正义公正之剑 // 1→64 裂变',
+          sub: 'LEX_MATRIX // 64 LEGAL CUBES CONVERGING INTO SWORD OF JUSTICE'
+        },
+        {
+          id: 'SCN_02',
+          code: 'SIGNAL_RETINA_97.2%',
+          title: 'SIGNAL // BIOMETRIC RETINA SCAN 97.2%',
+          sub: 'OCULAR_JURIS_SCANNER // LOCKED AT 97.2% PASS PROBABILITY'
+        },
+        {
+          id: 'SCN_03',
+          code: 'WAKE_UP_TUNNEL',
+          title: 'WAKE UP // KINETIC VORTEX CORRIDOR',
+          sub: 'HYPER_TUNNEL // AWAKEN THE SWORD OF FAIRNESS & LAW'
+        },
+        {
+          id: 'SCN_04',
+          code: 'LIQUID_CHROME_FUTURE',
+          title: 'THE FUTURE. // LIQUID METAL DISPLACEMENT',
+          sub: 'MERCURY_CHROME_SHADER // FORGING THE BLADE OF JUSTICE'
+        },
+        {
+          id: 'SCN_05',
+          code: 'FUTURE_EXE_COUNTDOWN',
+          title: 'FUTURE.EXE // LOADING 99% [3 - 2 - 1]',
+          sub: 'KERNEL_OVERRIDE // FAKAO_PWA_ENGINE COMPILING...'
+        },
+        {
+          id: 'SCN_06',
+          code: 'GLASS_QUAD_VORTEX_GRID',
+          title: 'PRISM · BOLT · PLANET · MIND // VORTEX',
+          sub: 'REFRACTIVE_SPECIMENS // TOROIDAL VORTEX & CHECKERBOARD GRID'
+        },
+        {
+          id: 'SCN_07',
+          code: 'MONUMENT_CHROME_3D',
+          title: 'FUTURE IS ALREADY HERE. // 3D CHROME',
+          sub: 'MONUMENTAL_EXTRUSION // SWORD OF JUSTICE ASCENDANT'
+        },
+        {
+          id: 'SCN_08',
+          code: 'GLITCH_END_TRANSMISSION',
+          title: 'END OF TRANSMISSION // GLITCH CUT',
+          sub: 'GITHUB.COM/DADA-DCC/FAKAO-PWA // CARRIER LOCK'
+        }
+      ];
+
+      // State
+      let isPlaying = true;
+      let lockSingleScene = false;
+      let lockedSceneIndex = 0;
+      let masterTime = 0; // 0 to 16.0s
+      let lastFrameTime = performance.now();
+      let lastBeatIndex = -1;
+      let currentAspect = '16:9';
+
+      // =========================================================================
+      // 2. DOM ELEMENTS & BEAT MATRIX INITIALIZATION
+      // =========================================================================
+      const webglCanvas = document.getElementById('webglCanvas');
+      const hudCanvas = document.getElementById('hudCanvas');
+      const hudCtx = hudCanvas.getContext('2d');
+      const stageContainer = document.getElementById('stageContainer');
+      const beatBarContainer = document.getElementById('beatBarContainer');
+      const topBeatNum = document.getElementById('topBeatNum');
+      const topTimecode = document.getElementById('topTimecode');
+      const beatLed = document.getElementById('beatLed');
+      const activeSceneTag = document.getElementById('activeSceneTag');
+      const sceneButtons = document.querySelectorAll('.scene-Jump-Btn');
+      const ambientGlow = document.getElementById('ambientGlow');
+
+      // Create 32 beat cells in the progress bar
+      const beatCells = [];
+      for (let i = 0; i < TOTAL_BEATS; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'h-full transition-colors duration-75 ' + (i % 4 === 0 ? 'bg-white/30' : 'bg-white/10');
+        cell.dataset.beat = String(i);
+        cell.addEventListener('click', function () {
+          jumpToBeat(i);
+        });
+        beatBarContainer.appendChild(cell);
+        beatCells.push(cell);
+      }
+
+      function showToast(msg) {
+        const banner = document.getElementById('toastBanner');
+        const txt = document.getElementById('toastText');
+        txt.textContent = msg;
+        banner.classList.remove('hidden');
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(function () {
+          banner.classList.add('hidden');
+        }, 2600);
+      }
+
+      // =========================================================================
+      // 3. 120 BPM WEB AUDIO SYNTHESIZER (PROCEDURAL TECHNO / CYBERPUNK JUSTICE)
+      // =========================================================================
+      let audioCtx = null;
+      let audioEnabled = false;
+
+      function initAudio() {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+          }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }
+
+      function triggerBeatSynth(beatIdx, sceneIdx) {
+        if (!audioEnabled || !audioCtx) return;
+        const now = audioCtx.currentTime;
+        const subBeat = beatIdx % 4;
+
+        // 1. Punchy 120BPM Four-on-the-Floor Industrial Kick
+        const kickOsc = audioCtx.createOscillator();
+        const kickGain = audioCtx.createGain();
+        kickOsc.type = 'sine';
+        kickOsc.frequency.setValueAtTime(135, now);
+        kickOsc.frequency.exponentialRampToValueAtTime(32, now + 0.14);
+        kickGain.gain.setValueAtTime(0.45, now);
+        kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        kickOsc.connect(kickGain);
+        kickGain.connect(audioCtx.destination);
+        kickOsc.start(now);
+        kickOsc.stop(now + 0.23);
+
+        // 2. Metallic Sword/Hard-Cut Transient Click on Every Beat
+        const clickOsc = audioCtx.createOscillator();
+        const clickGain = audioCtx.createGain();
+        clickOsc.type = 'triangle';
+        clickOsc.frequency.setValueAtTime(subBeat === 0 ? 1760 : 1120, now);
+        clickOsc.frequency.exponentialRampToValueAtTime(220, now + 0.045);
+        clickGain.gain.setValueAtTime(0.18, now);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        clickOsc.connect(clickGain);
+        clickGain.connect(audioCtx.destination);
+        clickOsc.start(now);
+        clickOsc.stop(now + 0.055);
+
+        // 3. Scene-specific sonic signature
+        if (sceneIdx === 1) {
+          // Retina scan high-tech telemetry beep
+          const beep = audioCtx.createOscillator();
+          const bGain = audioCtx.createGain();
+          beep.type = 'sine';
+          beep.frequency.setValueAtTime(subBeat === 3 ? 2640 : 1980, now);
+          bGain.gain.setValueAtTime(0.12, now);
+          bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          beep.connect(bGain);
+          bGain.connect(audioCtx.destination);
+          beep.start(now);
+          beep.stop(now + 0.13);
+        } else if (sceneIdx === 4 && subBeat >= 1) {
+          // 3 - 2 - 1 Countdown impact horn
+          const horn = audioCtx.createOscillator();
+          const hGain = audioCtx.createGain();
+          horn.type = 'sawtooth';
+          const freqMap = [220, 440, 587.33, 880];
+          horn.frequency.setValueAtTime(freqMap[subBeat], now);
+          hGain.gain.setValueAtTime(0.2, now);
+          hGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          horn.connect(hGain);
+          hGain.connect(audioCtx.destination);
+          horn.start(now);
+          horn.stop(now + 0.36);
+        } else if (sceneIdx === 6 || sceneIdx === 3) {
+          // Deep Chrome Sub-bass stab
+          const bass = audioCtx.createOscillator();
+          const bGain = audioCtx.createGain();
+          bass.type = 'sawtooth';
+          bass.frequency.setValueAtTime(subBeat % 2 === 0 ? 55 : 65.41, now);
+          bGain.gain.setValueAtTime(0.22, now);
+          bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+          bass.connect(bGain);
+          bGain.connect(audioCtx.destination);
+          bass.start(now);
+          bass.stop(now + 0.4);
+        } else if (sceneIdx === 7) {
+          // Glitch burst noise simulation via rapid FM
+          const fm = audioCtx.createOscillator();
+          const fmGain = audioCtx.createGain();
+          fm.type = 'square';
+          fm.frequency.setValueAtTime(320 + Math.random() * 1400, now);
+          fm.frequency.setValueAtTime(90 + Math.random() * 800, now + 0.04);
+          fmGain.gain.setValueAtTime(0.16, now);
+          fmGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          fm.connect(fmGain);
+          fmGain.connect(audioCtx.destination);
+          fm.start(now);
+          fm.stop(now + 0.16);
+        }
+      }
+
+      // =========================================================================
+      // 4. PROCEDURAL CHROME ENVIRONMENT & LEGAL CUBE TEXTURES
+      // =========================================================================
+      function createChromeEnvMap() {
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 512;
+        const ctx = c.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 512);
+        grad.addColorStop(0.0, '#020617');
+        grad.addColorStop(0.18, '#0066FF');
+        grad.addColorStop(0.38, '#FFFFFF');
+        grad.addColorStop(0.49, '#0F172A');
+        grad.addColorStop(0.53, '#00F0FF');
+        grad.addColorStop(0.72, '#F8FAFC');
+        grad.addColorStop(0.88, '#1E293B');
+        grad.addColorStop(1.0, '#0055FF');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // Add diagonal chrome specular streaks
+        ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+        ctx.lineWidth = 10;
+        for (let i = -256; i < 512; i += 64) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i + 256, 512);
+          ctx.stroke();
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.mapping = THREE.EquirectangularReflectionMapping;
+        return tex;
+      }
+
+      function createLegalCubeTexture(term, index) {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 256;
+        const ctx = c.getContext('2d');
+
+        // Obsidian & Chrome background
+        ctx.fillStyle = index % 3 === 0 ? '#0038A8' : '#050811';
+        ctx.fillRect(0, 0, 256, 256);
+
+        // Outer metallic chrome frame
+        const borderGrad = ctx.createLinearGradient(0, 0, 256, 256);
+        borderGrad.addColorStop(0, '#FFFFFF');
+        borderGrad.addColorStop(0.5, '#00F0FF');
+        borderGrad.addColorStop(1, '#0055FF');
+        ctx.strokeStyle = borderGrad;
+        ctx.lineWidth = 10;
+        ctx.strokeRect(8, 8, 240, 240);
+
+        // Inner corner ticks
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(22, 22, 212, 212);
+
+        // Top HUD micro code
+        ctx.fillStyle = '#00F0FF';
+        ctx.font = 'bold 18px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('LEX//' + String(index + 1).padStart(2, '0'), 30, 48);
+
+        // Sword icon glyph
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('⚔', 224, 48);
+
+        // Main Engraved Legal Term
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '900 44px "Noto Sans SC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#00F0FF';
+        ctx.shadowBlur = 12;
+        ctx.fillText(term, 128, 134);
+        ctx.shadowBlur = 0;
+
+        // Bottom barcode / justice tag
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '600 14px "JetBrains Mono", monospace';
+        ctx.fillText('FAKAO-PWA · JUSTITIA', 128, 210);
+
+        const tex = new THREE.CanvasTexture(c);
+        return tex;
+      }
+
+      function createCheckerboardTexture() {
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 512;
+        const ctx = c.getContext('2d');
+        const cells = 8;
+        const step = 512 / cells;
+        for (let y = 0; y < cells; y++) {
+          for (let x = 0; x < cells; x++) {
+            const isLight = (x + y) % 2 === 0;
+            ctx.fillStyle = isLight ? '#0A1936' : '#010308';
+            ctx.fillRect(x * step, y * step, step, step);
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x * step, y * step, step, step);
+          }
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(14, 14);
+        return tex;
+      }
+
+      // =========================================================================
+      // 5. THREE.JS 3D SCENE GRAPH SETUP
+      // =========================================================================
+      const renderer = new THREE.WebGLRenderer({
+        canvas: webglCanvas,
+        antialias: true,
+        preserveDrawingBuffer: true,
+        powerPreference: 'high-performance'
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x020408);
+      scene.fog = new THREE.FogExp2(0x020408, 0.032);
+
+      const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 200);
+      const chromeEnvMap = createChromeEnvMap();
+      scene.environment = chromeEnvMap;
+
+      // Dramatic Electric Blue + Chrome White + Rim Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+      scene.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
+      keyLight.position.set(10, 18, 14);
+      scene.add(keyLight);
+
+      const blueLight = new THREE.PointLight(0x0066ff, 4.5, 50);
+      blueLight.position.set(-12, -6, 10);
+      scene.add(blueLight);
+
+      const cyanRimLight = new THREE.PointLight(0x00f0ff, 4.0, 50);
+      cyanRimLight.position.set(12, 8, -10);
+      scene.add(cyanRimLight);
+
+      // Shared High-Impact Materials
+      const liquidChromeMat = new THREE.MeshStandardMaterial({
+        color: 0xe2e8f0,
+        metalness: 0.98,
+        roughness: 0.06,
+        envMap: chromeEnvMap,
+        envMapIntensity: 2.4
+      });
+
+      const electricBlueWireMat = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.55
+      });
+
+      const refractiveGlassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xa5f3fc,
+        metalness: 0.15,
+        roughness: 0.05,
+        transmission: 0.82,
+        transparent: true,
+        opacity: 0.88,
+        envMap: chromeEnvMap,
+        envMapIntensity: 2.8,
+        wireframe: false
+      });
+
+      // Helper to build a 3D Sword of Justice (正义公正之剑) Group
+      function buildSwordOfJusticeMesh(scaleFactor) {
+        const swordGroup = new THREE.Group();
+
+        // Blade (long diamond-section chrome blade)
+        const bladeGeo = new THREE.ConeGeometry(0.52, 8.5, 4);
+        bladeGeo.scale(1.0, 1.0, 0.24);
+        const bladeMesh = new THREE.Mesh(bladeGeo, liquidChromeMat);
+        bladeMesh.position.y = 2.2;
+        swordGroup.add(bladeMesh);
+
+        // Glowing Electric Blue Fuller (blood groove / justice core)
+        const coreGeo = new THREE.BoxGeometry(0.14, 7.2, 0.30);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        coreMesh.position.y = 1.8;
+        swordGroup.add(coreMesh);
+
+        // Crossguard (Balanced Scales of Justice wings)
+        const guardGeo = new THREE.BoxGeometry(3.8, 0.32, 0.45);
+        const guardMesh = new THREE.Mesh(guardGeo, liquidChromeMat);
+        guardMesh.position.y = -1.9;
+        swordGroup.add(guardMesh);
+
+        // Crossguard electric blue tips
+        const tipGeo = new THREE.OctahedronGeometry(0.36, 0);
+        const leftTip = new THREE.Mesh(tipGeo, coreMat);
+        leftTip.position.set(-2.05, -1.9, 0);
+        const rightTip = new THREE.Mesh(tipGeo, coreMat);
+        rightTip.position.set(2.05, -1.9, 0);
+        swordGroup.add(leftTip, rightTip);
+
+        // Grip & Pommel
+        const gripGeo = new THREE.CylinderGeometry(0.2, 0.18, 1.8, 12);
+        const gripMesh = new THREE.Mesh(gripGeo, liquidChromeMat);
+        gripMesh.position.y = -2.9;
+        swordGroup.add(gripMesh);
+
+        const pommelGeo = new THREE.OctahedronGeometry(0.45, 1);
+        const pommelMesh = new THREE.Mesh(pommelGeo, liquidChromeMat);
+        pommelMesh.position.y = -4.0;
+        swordGroup.add(pommelMesh);
+
+        swordGroup.scale.setScalar(scaleFactor || 1);
+        return swordGroup;
+      }
+
+      // -----------------------------------------------------------------------
+      // GROUP 1 (SCN_01): 64 Legal Cubes Fission (1 -> 8 -> 64) + Sword Matrix
+      // -----------------------------------------------------------------------
+      const groupScene1 = new THREE.Group();
+      scene.add(groupScene1);
+
+      const cubeMaterials = [];
+      for (let i = 0; i < 16; i++) {
+        const tex = createLegalCubeTexture(LEGAL_TERMS_CN[i % LEGAL_TERMS_CN.length], i);
+        cubeMaterials.push(new THREE.MeshStandardMaterial({
+          map: tex,
+          metalness: 0.72,
+          roughness: 0.18,
+          envMap: chromeEnvMap,
+          envMapIntensity: 1.6
+        }));
+      }
+
+      const cubes64 = [];
+      const baseCubeGeo = new THREE.BoxGeometry(0.92, 0.92, 0.92);
+      let cubeIdx = 0;
+      for (let x = 0; x < 4; x++) {
+        for (let y = 0; y < 4; y++) {
+          for (let z = 0; z < 4; z++) {
+            const mat = cubeMaterials[cubeIdx % cubeMaterials.length];
+            const mesh = new THREE.Mesh(baseCubeGeo, mat);
+            mesh.userData = {
+              gx: x - 1.5,
+              gy: y - 1.5,
+              gz: z - 1.5,
+              idx: cubeIdx
+            };
+            groupScene1.add(mesh);
+            cubes64.push(mesh);
+            cubeIdx++;
+          }
+        }
+      }
+
+      const scene1Sword = buildSwordOfJusticeMesh(1.15);
+      groupScene1.add(scene1Sword);
+
+      // -----------------------------------------------------------------------
+      // GROUP 2 (SCN_02): SIGNAL & 3D Retinal Biometric Scanner (97.2%)
+      // -----------------------------------------------------------------------
+      const groupScene2 = new THREE.Group();
+      scene.add(groupScene2);
+
+      const irisOuterRing = new THREE.Mesh(
+        new THREE.TorusGeometry(3.6, 0.08, 16, 96),
+        liquidChromeMat
+      );
+      const irisMidRing = new THREE.Mesh(
+        new THREE.TorusGeometry(2.5, 0.06, 16, 64),
+        new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true })
+      );
+      const retinaSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(2.2, 32, 32),
+        electricBlueWireMat
+      );
+      retinaSphere.scale.z = 0.35;
+      const pupilSword = buildSwordOfJusticeMesh(0.45);
+      groupScene2.add(irisOuterRing, irisMidRing, retinaSphere, pupilSword);
+
+      // -----------------------------------------------------------------------
+      // GROUP 3 (SCN_03): WAKE UP 3D Tunnel Rings + Sword at Infinity
+      // -----------------------------------------------------------------------
+      const groupScene3 = new THREE.Group();
+      scene.add(groupScene3);
+
+      const tunnelFrames = [];
+      for (let i = 0; i < 18; i++) {
+        const ringGeo = new THREE.TorusGeometry(4.2, 0.09, 8, 4);
+        ringGeo.rotateZ(Math.PI / 4);
+        const ringMat = i % 2 === 0
+          ? liquidChromeMat
+          : new THREE.MeshBasicMaterial({ color: i % 4 === 1 ? 0x00f0ff : 0x0066ff });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.z = -i * 3.2;
+        groupScene3.add(ring);
+        tunnelFrames.push(ring);
+      }
+      const tunnelCenterSword = buildSwordOfJusticeMesh(0.95);
+      tunnelCenterSword.position.z = -18;
+      groupScene3.add(tunnelCenterSword);
+
+      // -----------------------------------------------------------------------
+      // GROUP 4 (SCN_04): Liquid Metal THE FUTURE. Sculpture & Sword
+      // -----------------------------------------------------------------------
+      const groupScene4 = new THREE.Group();
+      scene.add(groupScene4);
+
+      const liquidKnotGeo = new THREE.TorusKnotGeometry(2.35, 0.72, 180, 32, 2, 3);
+      const liquidBasePositions = liquidKnotGeo.attributes.position.array.slice();
+      const liquidKnotMesh = new THREE.Mesh(liquidKnotGeo, liquidChromeMat);
+      groupScene4.add(liquidKnotMesh);
+
+      const liquidSword = buildSwordOfJusticeMesh(1.1);
+      groupScene4.add(liquidSword);
+
+      // -----------------------------------------------------------------------
+      // GROUP 5 (SCN_05): FUTURE.EXE 3D Cyber Grid Backdrop
+      // -----------------------------------------------------------------------
+      const groupScene5 = new THREE.Group();
+      scene.add(groupScene5);
+
+      const exeCage = new THREE.Mesh(
+        new THREE.BoxGeometry(10, 6, 10, 6, 4, 6),
+        electricBlueWireMat
+      );
+      const exeSword = buildSwordOfJusticeMesh(0.85);
+      groupScene5.add(exeCage, exeSword);
+
+      // -----------------------------------------------------------------------
+      // GROUP 6 (SCN_06): PRISM, BOLT, PLANET, MIND + Torus Vortex + Checkerboard
+      // -----------------------------------------------------------------------
+      const groupScene6 = new THREE.Group();
+      scene.add(groupScene6);
+
+      // Checkerboard Floor & Ceiling
+      const checkerTex = createCheckerboardTexture();
+      const checkerMat = new THREE.MeshStandardMaterial({
+        map: checkerTex,
+        metalness: 0.4,
+        roughness: 0.3
+      });
+      const floorPlane = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), checkerMat);
+      floorPlane.rotation.x = -Math.PI / 2;
+      floorPlane.position.y = -4.2;
+      const ceilingPlane = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), checkerMat);
+      ceilingPlane.rotation.x = Math.PI / 2;
+      ceilingPlane.position.y = 6.5;
+      groupScene6.add(floorPlane, ceilingPlane);
+
+      // Toroidal Vortex (环形漩涡)
+      const vortexGroup = new THREE.Group();
+      for (let i = 0; i < 12; i++) {
+        const tGeo = new THREE.TorusGeometry(2.2 + i * 0.55, 0.045, 12, 64);
+        const tMat = i % 2 === 0
+          ? liquidChromeMat
+          : new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true });
+        const tRing = new THREE.Mesh(tGeo, tMat);
+        tRing.position.z = -6 - i * 0.6;
+        vortexGroup.add(tRing);
+      }
+      groupScene6.add(vortexGroup);
+
+      // 4 Refractive Glass Specimens: PRISM, BOLT, PLANET, MIND
+      // 1) PRISM (Triangular Glass Prism + Wireframe)
+      const prismGroup = new THREE.Group();
+      const prismGeo = new THREE.ConeGeometry(1.45, 2.4, 3);
+      const prismGlass = new THREE.Mesh(prismGeo, refractiveGlassMat);
+      const prismWire = new THREE.Mesh(prismGeo, electricBlueWireMat);
+      prismWire.scale.setScalar(1.03);
+      prismGroup.add(prismGlass, prismWire);
+
+      // 2) BOLT (Glass Lightning Bolt / Justice Strike)
+      const boltGroup = new THREE.Group();
+      const boltShape = new THREE.Shape();
+      boltShape.moveTo(0.2, 1.4);
+      boltShape.lineTo(-0.85, 0.1);
+      boltShape.lineTo(-0.1, 0.1);
+      boltShape.lineTo(-0.45, -1.4);
+      boltShape.lineTo(0.85, 0.05);
+      boltShape.lineTo(0.1, 0.05);
+      boltShape.closePath();
+      const boltGeo = new THREE.ExtrudeGeometry(boltShape, {
+        depth: 0.45,
+        bevelEnabled: true,
+        bevelThickness: 0.08,
+        bevelSize: 0.06,
+        bevelSegments: 2
+      });
+      boltGeo.center();
+      const boltGlass = new THREE.Mesh(boltGeo, refractiveGlassMat);
+      const boltWire = new THREE.Mesh(boltGeo, electricBlueWireMat);
+      boltWire.scale.setScalar(1.04);
+      boltGroup.add(boltGlass, boltWire);
+
+      // 3) PLANET (Glass Sphere + Justice Orbital Rings)
+      const planetGroup = new THREE.Group();
+      const planetSphere = new THREE.Mesh(new THREE.SphereGeometry(1.05, 32, 32), refractiveGlassMat);
+      const planetRing1 = new THREE.Mesh(new THREE.TorusGeometry(1.65, 0.07, 16, 64), liquidChromeMat);
+      planetRing1.rotation.x = Math.PI / 2.6;
+      const planetRing2 = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.03, 12, 64), electricBlueWireMat);
+      planetRing2.rotation.x = Math.PI / 2.6;
+      planetGroup.add(planetSphere, planetRing1, planetRing2);
+
+      // 4) MIND (Faceted Glass Neural Icosahedron + Inner Chrome Core)
+      const mindGroup = new THREE.Group();
+      const mindOuter = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 1), refractiveGlassMat);
+      const mindWire = new THREE.Mesh(new THREE.IcosahedronGeometry(1.36, 1), electricBlueWireMat);
+      const mindInner = new THREE.Mesh(new THREE.OctahedronGeometry(0.68, 0), liquidChromeMat);
+      mindGroup.add(mindOuter, mindWire, mindInner);
+
+      groupScene6.add(prismGroup, boltGroup, planetGroup, mindGroup);
+
+      // -----------------------------------------------------------------------
+      // GROUP 7 (SCN_07): Monumental Chrome 3D FUTURE + IS ALREADY HERE. + Sword
+      // -----------------------------------------------------------------------
+      const groupScene7 = new THREE.Group();
+      scene.add(groupScene7);
+
+      const monumentSword = buildSwordOfJusticeMesh(1.45);
+      groupScene7.add(monumentSword);
+
+      // Architectural Chrome Pillars & Extruded 3D Slabs behind 3D Chrome Text
+      const chromeMonolithGroup = new THREE.Group();
+      for (let i = -3; i <= 3; i++) {
+        if (i === 0) continue;
+        const barGeo = new THREE.BoxGeometry(0.65, 4.2 - Math.abs(i) * 0.4, 0.65);
+        const bar = new THREE.Mesh(barGeo, liquidChromeMat);
+        bar.position.set(i * 1.45, 0, -1.6);
+        chromeMonolithGroup.add(bar);
+      }
+      groupScene7.add(chromeMonolithGroup);
+
+      // -----------------------------------------------------------------------
+      // GROUP 8 (SCN_08): END OF TRANSMISSION Glitch Monolith
+      // -----------------------------------------------------------------------
+      const groupScene8 = new THREE.Group();
+      scene.add(groupScene8);
+      const eotSword = buildSwordOfJusticeMesh(1.0);
+      const eotWireSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(3.2, 2), electricBlueWireMat);
+      groupScene8.add(eotSword, eotWireSphere);
+
+      const allSceneGroups = [
+        groupScene1, groupScene2, groupScene3, groupScene4,
+        groupScene5, groupScene6, groupScene7, groupScene8
+      ];
+
+      function setActiveSceneGroup(idx) {
+        for (let i = 0; i < allSceneGroups.length; i++) {
+          allSceneGroups[i].visible = (i === idx);
+        }
+      }
+
+      // =========================================================================
+      // 6. 2D HUD & KINETIC GRAPHICS HELPER FUNCTIONS
+      // =========================================================================
+      function drawChromeHeadline(ctx, text, x, y, fontSize, tracking) {
+        ctx.save();
+        ctx.font = '900 ' + fontSize + 'px "Unbounded", "Noto Sans SC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // 3D Extrusion Depth Layers (Hard Obsidian + Electric Blue Bevel)
+        const depth = Math.max(4, Math.round(fontSize * 0.08));
+        for (let d = depth; d >= 1; d--) {
+          ctx.fillStyle = d % 2 === 0 ? '#0038A8' : '#0B132B';
+          ctx.fillText(text, x + d * 0.8, y + d * 1.15);
+        }
+
+        // Liquid Chrome Specular Gradient Fill
+        const grad = ctx.createLinearGradient(x, y - fontSize * 0.55, x, y + fontSize * 0.55);
+        grad.addColorStop(0.0, '#FFFFFF');
+        grad.addColorStop(0.26, '#E2E8F0');
+        grad.addColorStop(0.47, '#64748B');
+        grad.addColorStop(0.51, '#0F172A');
+        grad.addColorStop(0.72, '#F8FAFC');
+        grad.addColorStop(0.92, '#00F0FF');
+        grad.addColorStop(1.0, '#0066FF');
+
+        ctx.fillStyle = grad;
+        ctx.fillText(text, x, y);
+
+        // Crisp White Specular Rim Stroke
+        ctx.lineWidth = Math.max(1.5, fontSize * 0.02);
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.strokeText(text, x, y);
+        ctx.restore();
+      }
+
+      function drawSwordIcon2D(ctx, cx, cy, len, color) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 1.8;
+        // Blade
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - len * 0.55);
+        ctx.lineTo(cx - len * 0.06, cy + len * 0.2);
+        ctx.lineTo(cx + len * 0.06, cy + len * 0.2);
+        ctx.closePath();
+        ctx.stroke();
+        // Crossguard
+        ctx.beginPath();
+        ctx.moveTo(cx - len * 0.24, cy + len * 0.2);
+        ctx.lineTo(cx + len * 0.24, cy + len * 0.2);
+        ctx.stroke();
+        // Grip
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + len * 0.2);
+        ctx.lineTo(cx, cy + len * 0.45);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // =========================================================================
+      // 7. MASTER 120BPM CHOREOGRAPHY & RENDERING LOOP
+      // =========================================================================
+      function resizeStage() {
+        const rect = stageContainer.getBoundingClientRect();
+        const w = Math.max(320, Math.floor(rect.width));
+        const h = Math.max(240, Math.floor(rect.height));
+
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        hudCanvas.width = w * dpr;
+        hudCanvas.height = h * dpr;
+        hudCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      window.addEventListener('resize', resizeStage);
+
+      function formatTimecode(sec) {
+        const totalFrames = Math.floor(sec * 60);
+        const s = Math.floor(sec) % 60;
+        const f = totalFrames % 60;
+        return '00:00:' + String(s).padStart(2, '0') + ':' + String(f).padStart(2, '0');
+      }
+
+      function updateUIHeaderAndTimeline(beatIndex, sceneIndex, sec) {
+        topBeatNum.textContent = String(beatIndex + 1).padStart(2, '0') + '/32';
+        topTimecode.textContent = formatTimecode(sec);
+        activeSceneTag.textContent = SCENE_META[sceneIndex].id + ' // ' + SCENE_META[sceneIndex].code;
+
+        for (let i = 0; i < TOTAL_BEATS; i++) {
+          if (i === beatIndex) {
+            beatCells[i].className = 'h-full bg-[#00F0FF] shadow-[0_0_8px_#00F0FF]';
+          } else if (i < beatIndex) {
+            beatCells[i].className = 'h-full bg-[#0066FF]/80';
+          } else {
+            beatCells[i].className = 'h-full ' + (i % 4 === 0 ? 'bg-white/30' : 'bg-white/10');
+          }
+        }
+
+        sceneButtons.forEach(function (btn, idx) {
+          if (idx === sceneIndex) {
+            btn.classList.add('scene-btn-active');
+          } else {
+            btn.classList.remove('scene-btn-active');
+          }
+        });
+      }
+
+      function renderSceneFrame(now) {
+        const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
+        lastFrameTime = now;
+
+        if (isPlaying) {
+          masterTime += dt;
+          if (lockSingleScene) {
+            const minT = lockedSceneIndex * 4 * BEAT_DURATION;
+            const maxT = (lockedSceneIndex + 1) * 4 * BEAT_DURATION;
+            if (masterTime >= maxT || masterTime < minT) {
+              masterTime = minT + (masterTime % (4 * BEAT_DURATION));
+            }
+          } else if (masterTime >= LOOP_DURATION) {
+            masterTime = masterTime % LOOP_DURATION;
+          }
+        }
+
+        const beatFloat = masterTime / BEAT_DURATION;
+        const beatIndex = Math.floor(beatFloat) % TOTAL_BEATS;
+        const beatPhase = beatFloat - Math.floor(beatFloat); // 0.0 -> 1.0 within current 0.5s beat
+        const sceneIndex = Math.floor(beatIndex / 4);
+        const subBeat = beatIndex % 4; // 0, 1, 2, 3 within the 4-beat scene
+
+        // Trigger On-Beat Hard Cut Effects & Synth
+        if (beatIndex !== lastBeatIndex) {
+          lastBeatIndex = beatIndex;
+          triggerBeatSynth(beatIndex, sceneIndex);
+          beatLed.style.transform = 'scale(1.45)';
+          setTimeout(function () {
+            beatLed.style.transform = 'scale(1.0)';
+          }, 90);
+        }
+
+        updateUIHeaderAndTimeline(beatIndex, sceneIndex, masterTime);
+        setActiveSceneGroup(sceneIndex);
+
+        const w = stageContainer.clientWidth;
+        const h = stageContainer.clientHeight;
+        const minDim = Math.min(w, h);
+        hudCtx.clearRect(0, 0, w, h);
+
+        // Reset camera defaults before applying scene-specific HARD CUTS
+        camera.fov = 50;
+        camera.up.set(0, 1, 0);
+
+        // =====================================================================
+        // SCENE 01 (Beats 0-3): 3D 法律名词方块 1 -> 8 -> 64 裂变 + 正义公正之剑
+        // =====================================================================
+        if (sceneIndex === 0) {
+          // Hard-cut camera positions per beat (NO smooth interpolation between beats!)
+          if (subBeat === 0) {
+            // Beat 1: 1 Giant Merged Legal Cube
+            camera.position.set(0, 0.4, 6.2);
+            camera.lookAt(0, 0, 0);
+            scene1Sword.visible = false;
+            cubes64.forEach(function (c) {
+              c.position.set(0, 0, 0);
+              c.scale.setScalar(2.45);
+              c.rotation.set(0.35, masterTime * 1.4, 0.15);
+            });
+          } else if (subBeat === 1) {
+            // Beat 2: Hard Fission into 8 Cubes (2x2x2)
+            camera.position.set(4.8, 3.2, 6.4);
+            camera.lookAt(0, 0, 0);
+            scene1Sword.visible = false;
+            const spread8 = 1.15 + Math.min(0.25, beatPhase * 0.6);
+            cubes64.forEach(function (c) {
+              const sx = c.userData.gx < 0 ? -1 : 1;
+              const sy = c.userData.gy < 0 ? -1 : 1;
+              const sz = c.userData.gz < 0 ? -1 : 1;
+              c.position.set(sx * spread8, sy * spread8, sz * spread8);
+              c.scale.setScalar(1.22);
+              c.rotation.set(0.2, -masterTime * 1.8, 0);
+            });
+          } else if (subBeat === 2) {
+            // Beat 3: Hard Fission into 64 Cubes (4x4x4 Lattice)
+            camera.position.set(-5.8, -3.6, 7.6);
+            camera.lookAt(0, 0, 0);
+            scene1Sword.visible = true;
+            scene1Sword.scale.setScalar(0.9);
+            const spread64 = 1.28 + Math.min(0.22, beatPhase * 0.5);
+            cubes64.forEach(function (c) {
+              c.position.set(
+                c.userData.gx * spread64,
+                c.userData.gy * spread64,
+                c.userData.gz * spread64
+              );
+              c.scale.setScalar(0.76);
+              c.rotation.set(masterTime * 2.0, masterTime * 1.5, 0);
+            });
+          } else {
+            // Beat 4: 64 Cubes Snap into Sword of Justice Formation
+            camera.position.set(0, -1.8, 9.2);
+            camera.lookAt(0, 0.3, 0);
+            scene1Sword.visible = true;
+            scene1Sword.scale.setScalar(1.25);
+            scene1Sword.rotation.y = masterTime * 3.0;
+            cubes64.forEach(function (c, idx) {
+              const ringAngle = (idx / 64) * Math.PI * 4 + masterTime * 2.5;
+              const radius = idx < 32 ? 3.4 : 4.6;
+              const yPos = ((idx % 16) - 7.5) * 0.48;
+              c.position.set(
+                Math.cos(ringAngle) * radius,
+                yPos,
+                Math.sin(ringAngle) * radius
+              );
+              c.scale.setScalar(0.56);
+              c.rotation.set(ringAngle, ringAngle, 0);
+            });
+          }
+
+          // 2D Overlay for Scene 1
+          const countNumbers = ['01', '08', '64', '64 // SWORD'];
+          hudCtx.save();
+          hudCtx.fillStyle = 'rgba(0, 240, 255, 0.9)';
+          hudCtx.font = '700 ' + Math.round(minDim * 0.028) + 'px "JetBrains Mono", monospace';
+          hudCtx.textAlign = 'left';
+          hudCtx.fillText('CUBE_FISSION_COUNT: [' + countNumbers[subBeat] + ']', w * 0.05, h * 0.19);
+
+          // Giant background watermark number on beat
+          hudCtx.font = '900 ' + Math.round(minDim * 0.22) + 'px "Unbounded", sans-serif';
+          hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.22)';
+          hudCtx.lineWidth = 2;
+          hudCtx.textAlign = 'right';
+          hudCtx.strokeText(subBeat === 0 ? '01' : subBeat === 1 ? '08' : '64', w * 0.95, h * 0.82);
+
+          // Bottom Thesis Banner
+          drawChromeHeadline(hudCtx, '以法律塑正义公正之剑', w * 0.5, h * 0.84, Math.round(minDim * 0.055));
+          hudCtx.restore();
+        }
+
+        // =====================================================================
+        // SCENE 02 (Beats 4-7): SIGNAL + 扫描中的视网膜 (Retina Scan) & 97.2%
+        // =====================================================================
+        else if (sceneIndex === 1) {
+          if (subBeat === 0) {
+            camera.position.set(0, 0, 8.5);
+          } else if (subBeat === 1) {
+            camera.position.set(0, 0, 5.8);
+          } else if (subBeat === 2) {
+            camera.position.set(1.6, -0.9, 5.0);
+          } else {
+            camera.position.set(0, 0, 4.5);
+          }
+          camera.lookAt(0, 0, 0);
+
+          irisOuterRing.rotation.z = masterTime * 1.8;
+          irisMidRing.rotation.z = -masterTime * 2.6;
+          retinaSphere.rotation.z = masterTime * 0.9;
+          pupilSword.rotation.y = masterTime * 3.2;
+
+          const cx = w * 0.5;
+          const cy = h * 0.5;
+          const r = minDim * 0.31;
+
+          hudCtx.save();
+          if (subBeat === 0) {
+            // Beat 5: Giant "SIGNAL" Flash Lock
+            if (beatPhase < 0.22) {
+              hudCtx.fillStyle = 'rgba(0, 102, 255, 0.28)';
+              hudCtx.fillRect(0, 0, w, h);
+            }
+            drawChromeHeadline(hudCtx, 'SIGNAL', cx, cy - minDim * 0.03, Math.round(minDim * 0.16));
+            hudCtx.fillStyle = '#00F0FF';
+            hudCtx.font = '700 ' + Math.round(minDim * 0.028) + 'px "JetBrains Mono", monospace';
+            hudCtx.textAlign = 'center';
+            hudCtx.fillText('>> SIGNAL ACQUIRED // OCULAR JURISPRUDENCE SCAN INITIATED <<', cx, cy + minDim * 0.12);
+          } else {
+            // Beats 6-8: Intricate Retinal Biometric Scanner + 97.2%
+            // Radial Iris Fibers
+            for (let i = 0; i < 72; i++) {
+              const ang = (i / 72) * Math.PI * 2 + masterTime * 0.4;
+              const rIn = r * 0.38;
+              const rOut = r * (i % 4 === 0 ? 0.98 : 0.82);
+              hudCtx.strokeStyle = i % 6 === 0 ? '#FFFFFF' : 'rgba(0, 240, 255, 0.55)';
+              hudCtx.lineWidth = i % 6 === 0 ? 2 : 1;
+              hudCtx.beginPath();
+              hudCtx.moveTo(cx + Math.cos(ang) * rIn, cy + Math.sin(ang) * rIn);
+              hudCtx.lineTo(cx + Math.cos(ang) * rOut, cy + Math.sin(ang) * rOut);
+              hudCtx.stroke();
+            }
+
+            // Concentric Reticle Rings
+            hudCtx.strokeStyle = '#00F0FF';
+            hudCtx.lineWidth = 2;
+            hudCtx.beginPath();
+            hudCtx.arc(cx, cy, r, 0, Math.PI * 2);
+            hudCtx.stroke();
+
+            hudCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+            hudCtx.setLineDash([8, 6]);
+            hudCtx.beginPath();
+            hudCtx.arc(cx, cy, r * 1.12, -masterTime, Math.PI * 1.5 - masterTime);
+            hudCtx.stroke();
+            hudCtx.setLineDash([]);
+
+            // Horizontal Laser Scan Bar
+            const scanY = cy + Math.sin(masterTime * 7.5) * r * 0.92;
+            const scanGrad = hudCtx.createLinearGradient(cx - r * 1.2, scanY, cx + r * 1.2, scanY);
+            scanGrad.addColorStop(0, 'rgba(0,240,255,0)');
+            scanGrad.addColorStop(0.5, '#00F0FF');
+            scanGrad.addColorStop(1, 'rgba(0,240,255,0)');
+            hudCtx.strokeStyle = scanGrad;
+            hudCtx.lineWidth = 3;
+            hudCtx.beginPath();
+            hudCtx.moveTo(cx - r * 1.25, scanY);
+            hudCtx.lineTo(cx + r * 1.25, scanY);
+            hudCtx.stroke();
+
+            // Numerical Readout locking onto 97.2%
+            const pctValue = subBeat === 1
+              ? (84.0 + beatPhase * 9.0).toFixed(1)
+              : subBeat === 2
+              ? (93.0 + beatPhase * 4.2).toFixed(1)
+              : '97.2';
+
+            // Prominent 97.2% Callout Box
+            drawChromeHeadline(hudCtx, pctValue + '%', cx, cy + r * 0.04, Math.round(minDim * 0.13));
+
+            hudCtx.fillStyle = '#FFFFFF';
+            hudCtx.font = '700 ' + Math.round(minDim * 0.024) + 'px "JetBrains Mono", monospace';
+            hudCtx.textAlign = 'center';
+            hudCtx.fillText('RETINA SCAN // 扫描中的视网膜 · 法考觉醒度 97.2%', cx, cy - r * 1.22);
+            hudCtx.fillStyle = '#00F0FF';
+            hudCtx.fillText('SIGNAL: LOCKED // SWORD_OF_JUSTICE_AUTH: VERIFIED', cx, cy + r * 1.24);
+          }
+          hudCtx.restore();
+        }
+
+        // =====================================================================
+        // SCENE 03 (Beats 8-11): 写着 WAKE UP 的文字隧道 (WAKE UP Text Tunnel)
+        // =====================================================================
+        else if (sceneIndex === 2) {
+          // Hard-cut camera roll on every beat
+          const rollAngles = [0, 0.42, -0.42, Math.PI * 0.25];
+          const rAng = rollAngles[subBeat];
+          camera.position.set(0, 0, 4.5);
+          camera.up.set(Math.sin(rAng), Math.cos(rAng), 0);
+          camera.lookAt(0, 0, -20);
+
+          tunnelFrames.forEach(function (ring, idx) {
+            const zOffset = ((masterTime * 18) + idx * 3.2) % 54;
+            ring.position.z = 4 - zOffset;
+            ring.rotation.z = Math.PI / 4 + idx * 0.05;
+          });
+          tunnelCenterSword.rotation.z = -masterTime * 2.5;
+
+          // 2D Kinetic Typography Tunnel ("WAKE UP" Concentric Perspective Frames)
+          const cx = w * 0.5;
+          const cy = h * 0.5;
+          hudCtx.save();
+          hudCtx.translate(cx, cy);
+          hudCtx.rotate(rAng * 0.45);
+
+          const layerCount = 9;
+          for (let i = 0; i < layerCount; i++) {
+            const depthProg = ((i / layerCount) + (beatPhase * 0.25)) % 1.0;
+            const scale = Math.pow(depthProg, 2.1) * 2.4 + 0.08;
+            const alpha = Math.min(1, depthProg * 1.6) * (1 - Math.pow(depthProg, 4) * 0.4);
+
+            hudCtx.save();
+            hudCtx.scale(scale, scale);
+
+            const boxW = minDim * 0.72;
+            const boxH = minDim * 0.38;
+
+            // Tunnel Frame Border
+            hudCtx.strokeStyle = i % 2 === 0
+              ? 'rgba(0, 240, 255, ' + alpha + ')'
+              : 'rgba(255, 255, 255, ' + alpha + ')';
+            hudCtx.lineWidth = 2.5 / scale;
+            hudCtx.strokeRect(-boxW / 2, -boxH / 2, boxW, boxH);
+
+            // Top & Bottom "WAKE UP" Tunnel Walls
+            hudCtx.font = '900 ' + Math.round(minDim * 0.075) + 'px "Unbounded", sans-serif';
+            hudCtx.textAlign = 'center';
+            hudCtx.textBaseline = 'middle';
+            hudCtx.fillStyle = i % 2 === 0
+              ? 'rgba(255, 255, 255, ' + alpha + ')'
+              : 'rgba(0, 102, 255, ' + alpha + ')';
+            hudCtx.fillText('WAKE UP // WAKE UP', 0, -boxH * 0.36);
+            hudCtx.fillText('WAKE UP // WAKE UP', 0, boxH * 0.36);
+
+            // Side Legal Walls
+            hudCtx.font = '700 ' + Math.round(minDim * 0.024) + 'px "JetBrains Mono", "Noto Sans SC", monospace';
+            hudCtx.fillStyle = 'rgba(0, 240, 255, ' + alpha + ')';
+            hudCtx.fillText('以法律塑正义公正之剑 · FAKAO-PWA', 0, 0);
+
+            hudCtx.restore();
+          }
+
+          // Center Hero "WAKE UP" Impact Stamp
+          drawChromeHeadline(hudCtx, 'WAKE UP', 0, 0, Math.round(minDim * 0.11));
+          hudCtx.restore();
+        }
+
+        // =====================================================================
+        // SCENE 04 (Beats 12-15): 液态金属质感的 THE FUTURE.
+        // =====================================================================
+        else if (sceneIndex === 3) {
+          // Hard-cut camera angles around the liquid chrome sculpture
+          const camShots = [
+            [0, 0, 6.2],
+            [4.5, 2.2, 4.8],
+            [-4.5, -2.0, 5.0],
+            [0, 3.8, 5.2]
+          ];
+          const shot = camShots[subBeat];
+          camera.position.set(shot[0], shot[1], shot[2]);
+          camera.lookAt(0, 0, 0);
+
+          // Real-time vertex displacement on the Liquid Chrome TorusKnot
+          const posAttr = liquidKnotGeo.attributes.position;
+          const arr = posAttr.array;
+          for (let i = 0; i < arr.length; i += 3) {
+            const ox = liquidBasePositions[i];
+            const oy = liquidBasePositions[i + 1];
+            const oz = liquidBasePositions[i + 2];
+            const wave = Math.sin(ox * 2.2 + masterTime * 6.0) * Math.cos(oy * 2.2 + masterTime * 5.0) * 0.22;
+            arr[i] = ox + ox * wave;
+            arr[i + 1] = oy + oy * wave;
+            arr[i + 2] = oz + oz * wave;
+          }
+          posAttr.needsUpdate = true;
+          liquidKnotGeo.computeVertexNormals();
+          liquidKnotMesh.rotation.set(masterTime * 0.8, masterTime * 1.4, 0);
+          liquidSword.rotation.y = -masterTime * 2.0;
+
+          // 2D Liquid Metal Chrome Typography "THE FUTURE."
+          const cx = w * 0.5;
+          const cy = h * 0.5;
+          hudCtx.save();
+
+          // Draw multi-slice liquid wave distortion shadow behind "THE FUTURE."
+          const fontSize = Math.round(minDim * 0.115);
+          hudCtx.font = '900 ' + fontSize + 'px "Unbounded", sans-serif';
+          hudCtx.textAlign = 'center';
+          hudCtx.textBaseline = 'middle';
+
+          for (let s = -3; s <= 3; s++) {
+            if (s === 0) continue;
+            const offsetX = Math.sin(masterTime * 9 + s * 1.3) * 14;
+            hudCtx.strokeStyle = s % 2 === 0 ? 'rgba(0, 240, 255, 0.35)' : 'rgba(255, 255, 255, 0.25)';
+            hudCtx.lineWidth = 2;
+            hudCtx.strokeText('THE FUTURE.', cx + offsetX, cy + s * 9);
+          }
+
+          drawChromeHeadline(hudCtx, 'THE FUTURE.', cx, cy, fontSize);
+
+          hudCtx.fillStyle = '#00F0FF';
+          hudCtx.font = '700 ' + Math.round(minDim * 0.024) + 'px "JetBrains Mono", monospace';
+          hudCtx.fillText('LIQUID_CHROME_METAL // 液态金属质感 · 正义之剑淬炼成形', cx, cy + fontSize * 0.95);
+          hudCtx.restore();
+        }
+
+        // =====================================================================
+        // SCENE 05 (Beats 16-19): FUTURE.EXE 桌面窗口 + LOADING 99% + 3-2-1 倒计时
+        // =====================================================================
+        else if (sceneIndex === 4) {
+          camera.position.set(0, 0, 7.5 - subBeat * 0.7);
+          camera.lookAt(0, 0, 0);
+          exeCage.rotation.y = masterTime * 0.6;
+          exeSword.rotation.y = -masterTime * 2.4;
+
+          const cx = w * 0.5;
+          const cy = h * 0.5;
+          const winW = Math.min(w * 0.84, 680);
+          const winH = Math.min(h * 0.66, 360);
+          const wx = cx - winW / 2;
+          const wy = cy - winH / 2;
+
+          hudCtx.save();
+
+          // Brutalist Cascade Ghost Windows on Beats
+          for (let k = 2; k >= 1; k--) {
+            const off = k * 14;
+            hudCtx.fillStyle = 'rgba(2, 6, 23, 0.75)';
+            hudCtx.strokeStyle = 'rgba(0, 102, 255, 0.5)';
+            hudCtx.lineWidth = 1.5;
+            hudCtx.fillRect(wx - off, wy - off, winW, winH);
+            hudCtx.strokeRect(wx - off, wy - off, winW, winH);
+          }
+
+          // Primary FUTURE.EXE Desktop Window
+          hudCtx.fillStyle = 'rgba(3, 8, 22, 0.92)';
+          hudCtx.fillRect(wx, wy, winW, winH);
+          hudCtx.strokeStyle = '#FFFFFF';
+          hudCtx.lineWidth = 2.5;
+          hudCtx.strokeRect(wx, wy, winW, winH);
+
+          // Window Title Bar
+          const barH = 34;
+          const barGrad = hudCtx.createLinearGradient(wx, wy, wx + winW, wy);
+          barGrad.addColorStop(0, '#0055FF');
+          barGrad.addColorStop(0.65, '#00F0FF');
+          barGrad.addColorStop(1, '#FFFFFF');
+          hudCtx.fillStyle = barGrad;
+          hudCtx.fillRect(wx, wy, winW, barH);
+
+          hudCtx.fillStyle = '#020408';
+          hudCtx.font = '900 15px "Unbounded", "JetBrains Mono", sans-serif';
+          hudCtx.textAlign = 'left';
+          hudCtx.textBaseline = 'middle';
+          hudCtx.fillText('⚔ FUTURE.EXE — FAKAO_SWORD_OF_JUSTICE_OS', wx + 12, wy + barH / 2);
+
+          // Window Close / Min / Max buttons
+          hudCtx.textAlign = 'right';
+          hudCtx.font = '700 13px "JetBrains Mono", monospace';
+          hudCtx.fillText('[_] [□] [X]', wx + winW - 12, wy + barH / 2);
+
+          // Terminal Telemetry inside Window
+          hudCtx.fillStyle = '#94A3B8';
+          hudCtx.textAlign = 'left';
+          hudCtx.font = '500 ' + Math.round(minDim * 0.022) + 'px "JetBrains Mono", monospace';
+          hudCtx.fillText('> EXEC: C:\\FAKAO-PWA\\JUSTICE_BLADE\\FUTURE.EXE', wx + 22, wy + barH + 30);
+          hudCtx.fillText('> LOADING STATUTES: 刑法 / 民法典 / 行政法 / 诉讼法 ... OK', wx + 22, wy + barH + 54);
+
+          // LOADING 99% Label
+          hudCtx.fillStyle = '#FFFFFF';
+          hudCtx.font = '900 ' + Math.round(minDim * 0.045) + 'px "Unbounded", sans-serif';
+          hudCtx.fillText('LOADING 99%', wx + 22, wy + winH * 0.52);
+
+          // Segmented Progress Bar (99% filled)
+          const pbX = wx + 22;
+          const pbY = wy + winH * 0.62;
+          const pbW = winW - 44;
+          const pbH = Math.max(24, winH * 0.13);
+          hudCtx.strokeStyle = '#00F0FF';
+          hudCtx.lineWidth = 2;
+          hudCtx.strokeRect(pbX, pbY, pbW, pbH);
+
+          const totalSegs = 28;
+          const segGap = 4;
+          const segW = (pbW - (totalSegs + 1) * segGap) / totalSegs;
+          for (let s = 0; s < totalSegs - 1; s++) {
+            hudCtx.fillStyle = s > totalSegs - 5 ? '#FFFFFF' : s % 2 === 0 ? '#0066FF' : '#00F0FF';
+            hudCtx.fillRect(pbX + segGap + s * (segW + segGap), pbY + 4, segW, pbH - 8);
+          }
+
+          // Beats 18, 19, 20: Giant Hard-Cut 3 - 2 - 1 Countdown Overlay
+          if (subBeat >= 1) {
+            const countStr = subBeat === 1 ? '3' : subBeat === 2 ? '2' : '1';
+            // High-impact invert flash box in center-right
+            const cSize = Math.round(minDim * 0.28);
+            drawChromeHeadline(hudCtx, countStr, cx + winW * 0.22, cy - winH * 0.04, cSize);
+
+            hudCtx.fillStyle = '#00F0FF';
+            hudCtx.font = '700 ' + Math.round(minDim * 0.025) + 'px "JetBrains Mono", monospace';
+            hudCtx.textAlign = 'center';
+            hudCtx.fillText('COUNTDOWN T-0' + countStr + ' // IGNITING SWORD OF JUSTICE', cx, wy + winH - 18);
+          } else {
+            hudCtx.fillStyle = '#00F0FF';
+            hudCtx.font = '700 ' + Math.round(minDim * 0.025) + 'px "JetBrains Mono", monospace';
+            hudCtx.textAlign = 'center';
+            hudCtx.fillText('SYSTEM READY // AWAITING 3-2-1 HARD CUT SEQUENCE', cx, wy + winH - 18);
+          }
+          hudCtx.restore();
+        }
+
+        // =====================================================================
+        // SCENE 06 (Beats 20-23): PRISM, BOLT, PLANET, MIND + 环形漩涡 + 棋盘格网格
+        // =====================================================================
+        else if (sceneIndex === 5) {
+          // Position the 4 glass specimens in a 3D arc in front of the Toroidal Vortex & Checkerboard Grid
+          const positions = [
+            [-3.3, 0.2, 0],
+            [-1.1, 0.2, 0],
+            [1.1, 0.2, 0],
+            [3.3, 0.2, 0]
+          ];
+          const groups = [prismGroup, boltGroup, planetGroup, mindGroup];
+          groups.forEach(function (g, idx) {
+            g.position.set(positions[idx][0], positions[idx][1], positions[idx][2]);
+            g.rotation.y = masterTime * 1.8 + idx;
+            g.rotation.x = Math.sin(masterTime * 2 + idx) * 0.25;
+            const isHero = (idx === subBeat);
+            g.scale.setScalar(isHero ? 1.32 : 0.85);
+          });
+
+          // Animate Toroidal Vortex & Checkerboard Texture Scroll
+          vortexGroup.rotation.z = masterTime * 1.6;
+          checkerTex.offset.y = (masterTime * 2.5) % 1;
+
+          // Hard-cut camera shifts focusing on each glass specimen while keeping vortex & grid visible
+          const heroX = positions[subBeat][0] * 0.45;
+          camera.position.set(heroX, 0.45, 6.8);
+          camera.lookAt(heroX * 0.6, 0.1, -2);
+
+          // 2D Glass Specimen Frames & Labels: PRISM, BOLT, PLANET, MIND
+          const labels = [
+            { en: 'PRISM', cn: '明辨之棱 · 法律定性' },
+            { en: 'BOLT', cn: '雷霆之剑 · 破题锋芒' },
+            { en: 'PLANET', cn: '法治寰宇 · 体系全局' },
+            { en: 'MIND', cn: '法考智核 · 逻辑推演' }
+          ];
+
+          hudCtx.save();
+          const cardW = w * 0.20;
+          const cardH = h * 0.54;
+          const startX = w * 0.07;
+          const gapX = (w * 0.86 - cardW * 4) / 3;
+
+          for (let i = 0; i < 4; i++) {
+            const bx = startX + i * (cardW + gapX);
+            const by = h * 0.22;
+            const active = (i === subBeat);
+
+            hudCtx.strokeStyle = active ? '#00F0FF' : 'rgba(255, 255, 255, 0.28)';
+            hudCtx.lineWidth = active ? 2.5 : 1;
+            hudCtx.strokeRect(bx, by, cardW, cardH);
+
+            // Top Glass Tag Header
+            hudCtx.fillStyle = active ? '#0066FF' : 'rgba(255,255,255,0.08)';
+            hudCtx.fillRect(bx, by, cardW, 28);
+
+            hudCtx.fillStyle = '#FFFFFF';
+            hudCtx.font = '900 ' + Math.round(minDim * 0.028) + 'px "Unbounded", sans-serif';
+            hudCtx.textAlign = 'center';
+            hudCtx.textBaseline = 'middle';
+            hudCtx.fillText(labels[i].en, bx + cardW / 2, by + 14);
+
+            // Bottom Chinese Subtitle inside specimen frame
+            hudCtx.fillStyle = active ? '#00F0FF' : '#CBD5E1';
+            hudCtx.font = '600 ' + Math.round(minDim * 0.019) + 'px "JetBrains Mono", "Noto Sans SC", monospace';
+            hudCtx.fillText(labels[i].cn, bx + cardW / 2, by + cardH - 14);
+          }
+
+          // Top Hero Callout for Current Specimen
+          drawChromeHeadline(
+            hudCtx,
+            labels[subBeat].en + ' // GLASS SPECIMEN 0' + (subBeat + 1),
+            w * 0.5,
+            h * 0.14,
+            Math.round(minDim * 0.048)
+          );
+          hudCtx.restore();
+        }
+
+        // =====================================================================
+        // SCENE 07 (Beats 24-27): 巨大的镀铬 3D 字 FUTURE 和 IS ALREADY HERE.
+        // =====================================================================
+        else if (sceneIndex === 6) {
+          const camAngles = [
+            [0, -0.8, 6.6],
+            [3.2, 0.9, 5.8],
+            [-2.8, -1.2, 6.2],
+            [0, 0.2, 5.5]
+          ];
+          const ca = camAngles[subBeat];
+          camera.position.set(ca[0], ca[1], ca[2]);
+          camera.lookAt(0, 0, 0);
+
+          monumentSword.rotation.y = masterTime * 2.2;
+          chromeMonolithGroup.rotation.y = Math.sin(masterTime * 1.5) * 0.25;
+
+          const cx = w * 0.5;
+          const cy = h * 0.5;
+
+          hudCtx.save();
+          if (subBeat === 0) {
+            // Beat 25: Colossal Chrome 3D "FUTURE"
+            drawChromeHeadline(hudCtx, 'FUTURE', cx, cy, Math.round(minDim * 0.18));
+          } else if (subBeat === 1) {
+            // Beat 26: Hard-cut zoomed angle on "FUTURE" + Sword of Justice motto
+            drawChromeHeadline(hudCtx, 'FUTURE', cx, cy - minDim * 0.06, Math.round(minDim * 0.165));
+            drawChromeHeadline(hudCtx, '以法律塑正义公正之剑', cx, cy + minDim * 0.12, Math.round(minDim * 0.052));
+          } else {
+            // Beats 27-28: Monumental "FUTURE" + "IS ALREADY HERE."
+            drawChromeHeadline(hudCtx, 'FUTURE', cx, cy - minDim * 0.09, Math.round(minDim * 0.155));
+            drawChromeHeadline(hudCtx, 'IS ALREADY HERE.', cx, cy + minDim * 0.09, Math.round(minDim * 0.078));
+          }
+          hudCtx.restore();
+        }
+
+        // =====================================================================
+        // SCENE 08 (Beats 28-31): 故障效果切到 END OF TRANSMISSION 收尾
+        // =====================================================================
+        else if (sceneIndex === 7) {
+          camera.position.set(0, 0, 6.8);
+          camera.lookAt(0, 0, 0);
+          eotSword.rotation.y = masterTime * 4.0;
+          eotWireSphere.rotation.x = -masterTime * 2.0;
+
+          const cx = w * 0.5;
+          const cy = h * 0.5;
+          hudCtx.save();
+
+          // Intense Glitch Slice Bars (RGB / Electric Blue / Chrome Tearing)
+          const glitchIntensity = (subBeat === 0 || beatPhase < 0.35) ? 18 : 7;
+          for (let g = 0; g < glitchIntensity; g++) {
+            const gy = Math.random() * h;
+            const gh = 4 + Math.random() * 26;
+            const gxShift = (Math.random() - 0.5) * 80;
+            hudCtx.fillStyle = g % 3 === 0
+              ? 'rgba(0, 240, 255, 0.55)'
+              : g % 3 === 1
+              ? 'rgba(0, 102, 255, 0.55)'
+              : 'rgba(255, 255, 255, 0.45)';
+            hudCtx.fillRect(gxShift, gy, w, gh);
+          }
+
+          // Dark Terminal Core Plate
+          const plateW = w * 0.86;
+          const plateH = h * 0.44;
+          hudCtx.fillStyle = 'rgba(2, 4, 8, 0.86)';
+          hudCtx.fillRect(cx - plateW / 2, cy - plateH / 2, plateW, plateH);
+          hudCtx.strokeStyle = '#00F0FF';
+          hudCtx.lineWidth = 2;
+          hudCtx.strokeRect(cx - plateW / 2, cy - plateH / 2, plateW, plateH);
+
+          // Chromatic Aberration Glitch Text "END OF TRANSMISSION"
+          const eotSize = Math.round(minDim * 0.068);
+          const jitterX = (Math.random() - 0.5) * (subBeat === 0 ? 16 : 5);
+          const jitterY = (Math.random() - 0.5) * (subBeat === 0 ? 10 : 3);
+
+          hudCtx.font = '900 ' + eotSize + 'px "Unbounded", sans-serif';
+          hudCtx.textAlign = 'center';
+          hudCtx.textBaseline = 'middle';
+
+          // Electric Blue Offset Channel
+          hudCtx.fillStyle = '#0066FF';
+          hudCtx.fillText('END OF TRANSMISSION', cx - 5 + jitterX, cy - minDim * 0.03 - 3);
+          // Cyan Offset Channel
+          hudCtx.fillStyle = '#00F0FF';
+          hudCtx.fillText('END OF TRANSMISSION', cx + 5 - jitterX, cy - minDim * 0.03 + 3);
+          // Main Chrome/White Channel
+          drawChromeHeadline(hudCtx, 'END OF TRANSMISSION', cx + jitterX * 0.4, cy - minDim * 0.03 + jitterY, eotSize);
+
+          // Subtitle & FAKAO-PWA Sword Signature
+          hudCtx.fillStyle = '#FFFFFF';
+          hudCtx.font = '700 ' + Math.round(minDim * 0.025) + 'px "JetBrains Mono", "Noto Sans SC", monospace';
+          hudCtx.fillText('⚔ 以法律塑正义公正之剑 · FAKAO-PWA // 97.2% SYNC LOCKED', cx, cy + minDim * 0.08);
+
+          hudCtx.fillStyle = '#00F0FF';
+          hudCtx.font = '500 ' + Math.round(minDim * 0.02) + 'px "JetBrains Mono", monospace';
+          hudCtx.fillText('SOURCE: GITHUB.COM/DADA-DCC/FAKAO-PWA // LOOP_RESTART_IN_' + (4 - subBeat) + 'B', cx, cy + minDim * 0.14);
+
+          hudCtx.restore();
+        }
+
+        // Render Three.js 3D Scene
+        renderer.render(scene, camera);
+
+        // =====================================================================
+        // GLOBAL 120BPM HARD-CUT STROBE & MONOSPACE HUD OVERLAY
+        // =====================================================================
+        drawGlobalMonospaceHUD(hudCtx, w, h, minDim, beatIndex, subBeat, beatPhase, sceneIndex);
+
+        requestAnimationFrame(renderSceneFrame);
+      }
+
+      function drawGlobalMonospaceHUD(ctx, w, h, minDim, beatIndex, subBeat, beatPhase, sceneIndex) {
+        ctx.save();
+
+        // 1. Hard-Cut Beat Impact Flash Border (First 65ms of every 0.5s beat)
+        if (beatPhase < 0.13) {
+          ctx.strokeStyle = subBeat === 0 ? '#FFFFFF' : '#00F0FF';
+          ctx.lineWidth = subBeat === 0 ? 8 : 4;
+          ctx.strokeRect(4, 4, w - 8, h - 8);
+        }
+
+        // 2. Corner Technical Brackets
+        const pad = Math.max(14, minDim * 0.03);
+        const bLen = Math.max(18, minDim * 0.04);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+        ctx.lineWidth = 1.5;
+
+        // Top-Left
+        ctx.beginPath();
+        ctx.moveTo(pad, pad + bLen);
+        ctx.lineTo(pad, pad);
+        ctx.lineTo(pad + bLen, pad);
+        ctx.stroke();
+
+        // Top-Right
+        ctx.beginPath();
+        ctx.moveTo(w - pad - bLen, pad);
+        ctx.lineTo(w - pad, pad);
+        ctx.lineTo(w - pad, pad + bLen);
+        ctx.stroke();
+
+        // Bottom-Left
+        ctx.beginPath();
+        ctx.moveTo(pad, h - pad - bLen);
+        ctx.lineTo(pad, h - pad);
+        ctx.lineTo(pad + bLen, h - pad);
+        ctx.stroke();
+
+        // Bottom-Right
+        ctx.beginPath();
+        ctx.moveTo(w - pad - bLen, h - pad);
+        ctx.lineTo(w - pad, h - pad);
+        ctx.lineTo(w - pad, h - pad - bLen);
+        ctx.stroke();
+
+        // 3. Top-Left HUD: Scene Label & Theme Tag
+        const hudFont = Math.max(10, Math.round(minDim * 0.02));
+        ctx.font = '600 ' + hudFont + 'px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText(
+          '[' + SCENE_META[sceneIndex].id + ' // ' + SCENE_META[sceneIndex].code + ']',
+          pad + 10,
+          pad + 8
+        );
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillText(
+          'THEME: 以法律塑正义公正之剑 // FAKAO-PWA',
+          pad + 10,
+          pad + 8 + hudFont * 1.45
+        );
+
+        // 4. Top-Right HUD: SMPTE Timecode, 120BPM Beat Lock & Sword Icon
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(
+          'TC ' + formatTimecode(masterTime) + ' // 120.0 BPM',
+          w - pad - 10,
+          pad + 8
+        );
+        ctx.fillStyle = beatPhase < 0.25 ? '#00F0FF' : '#94A3B8';
+        ctx.fillText(
+          'HARD_CUT BEAT [' + String(beatIndex + 1).padStart(2, '0') + '/32] · BAR_0' + (sceneIndex + 1),
+          w - pad - 10,
+          pad + 8 + hudFont * 1.45
+        );
+
+        // 5. Bottom-Left HUD: Live Telemetry & Bar Exam Subjects Ticker
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        const activeTerm = LEGAL_TERMS_CN[beatIndex % LEGAL_TERMS_CN.length];
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText(
+          'LEX_NODE: ' + activeTerm + ' // INTEGRITY: 97.2%',
+          pad + 10,
+          h - pad - 8 - hudFont * 1.4
+        );
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+        ctx.fillText(
+          SCENE_META[sceneIndex].sub,
+          pad + 10,
+          h - pad - 8
+        );
+
+        // 6. Sword of Justice Micro Reticle on Left/Right Margin
+        drawSwordIcon2D(ctx, pad + 4, h * 0.5, minDim * 0.08, '#00F0FF');
+        drawSwordIcon2D(ctx, w - pad - 4, h * 0.5, minDim * 0.08, '#00F0FF');
+
+        ctx.restore();
+      }
+
+      // =========================================================================
+      // 8. INTERACTIVE EVENT HANDLERS (PLAY, JUMP, ASPECT RATIO, RECORD, MODAL)
+      // =========================================================================
+      function jumpToBeat(beatIdx) {
+        masterTime = beatIdx * BEAT_DURATION + 0.001;
+        lockedSceneIndex = Math.floor(beatIdx / 4);
+      }
+
+      sceneButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const sIdx = parseInt(btn.dataset.scene, 10) || 0;
+          lockedSceneIndex = sIdx;
+          masterTime = sIdx * 4 * BEAT_DURATION + 0.001;
+        });
+      });
+
+      // Play / Pause
+      const btnPlayPause = document.getElementById('btnPlayPause');
+      btnPlayPause.addEventListener('click', function () {
+        isPlaying = !isPlaying;
+        btnPlayPause.textContent = isPlaying ? '⏸ PAUSE' : '▶ PLAY';
+      });
+
+      // Lock Single Scene vs Full 32-Beat Loop
+      const btnLockScene = document.getElementById('btnLockScene');
+      btnLockScene.addEventListener('click', function () {
+        lockSingleScene = !lockSingleScene;
+        lockedSceneIndex = Math.floor((masterTime / BEAT_DURATION) / 4) % 8;
+        if (lockSingleScene) {
+          btnLockScene.textContent = '🔒 单镜循环';
+          btnLockScene.classList.add('text-[#00F0FF]');
+          showToast('已锁定当前分镜 (' + SCENE_META[lockedSceneIndex].id + ') 循环播放');
+        } else {
+          btnLockScene.textContent = '🔁 全片循环';
+          btnLockScene.classList.remove('text-[#00F0FF]');
+          showToast('已切换为 32 拍全片连续硬切模式');
+        }
+      });
+
+      // Aspect Ratio Switcher (16:9 / 9:16 / 1:1)
+      const btnRatio169 = document.getElementById('btnRatio169');
+      const btnRatio916 = document.getElementById('btnRatio916');
+      const btnRatio11 = document.getElementById('btnRatio11');
+
+      function setAspectRatio(ratio) {
+        currentAspect = ratio;
+        stageContainer.classList.remove('stage-aspect-16-9', 'stage-aspect-9-16', 'stage-aspect-1-1');
+        [btnRatio169, btnRatio916, btnRatio11].forEach(function (b) {
+          b.className = 'px-2 py-1 rounded-sm text-slate-300 hover:text-white transition';
+        });
+
+        if (ratio === '9:16') {
+          stageContainer.classList.add('stage-aspect-9-16');
+          btnRatio916.className = 'px-2 py-1 rounded-sm bg-[#0066FF] text-white font-semibold transition';
+          showToast('已切换为 9:16 移动端 PWA 启动页竖版封面');
+        } else if (ratio === '1:1') {
+          stageContainer.classList.add('stage-aspect-1-1');
+          btnRatio11.className = 'px-2 py-1 rounded-sm bg-[#0066FF] text-white font-semibold transition';
+          showToast('已切换为 1:1 方形动态封面');
+        } else {
+          stageContainer.classList.add('stage-aspect-16-9');
+          btnRatio169.className = 'px-2 py-1 rounded-sm bg-[#0066FF] text-white font-semibold transition';
+          showToast('已切换为 16:9 桌面/宣传横版动态封面');
+        }
+        setTimeout(resizeStage, 30);
+      }
+
+      btnRatio169.addEventListener('click', function () { setAspectRatio('16:9'); });
+      btnRatio916.addEventListener('click', function () { setAspectRatio('9:16'); });
+      btnRatio11.addEventListener('click', function () { setAspectRatio('1:1'); });
+
+      // Audio Synth Button
+      const btnAudioToggle = document.getElementById('btnAudioToggle');
+      const audioIcon = document.getElementById('audioIcon');
+      const audioLabel = document.getElementById('audioLabel');
+      btnAudioToggle.addEventListener('click', function () {
+        initAudio();
+        audioEnabled = !audioEnabled;
+        audioIcon.textContent = audioEnabled ? '🔊' : '🔇';
+        audioLabel.textContent = audioEnabled ? '120BPM 节拍音效: 开' : '120BPM 节拍音效: 关';
+        showToast(audioEnabled ? '已开启 120BPM 工业电音卡点合成器' : '已静音');
+      });
+
+      // Fullscreen Button
+      const btnFullscreen = document.getElementById('btnFullscreen');
+      btnFullscreen.addEventListener('click', function () {
+        if (!document.fullscreenElement) {
+          if (stageContainer.requestFullscreen) {
+            stageContainer.requestFullscreen().catch(function () {});
+          }
+        } else if (document.exitFullscreen) {
+          document.exitFullscreen().catch(function () {});
+        }
+      });
+
+      // Modal Controls
+      const embedModal = document.getElementById('embedModal');
+      const btnOpenEmbedModal = document.getElementById('btnOpenEmbedModal');
+      const btnCloseEmbedModal = document.getElementById('btnCloseEmbedModal');
+      const btnCopyCode = document.getElementById('btnCopyCode');
+
+      btnOpenEmbedModal.addEventListener('click', function () {
+        embedModal.classList.remove('hidden');
+        embedModal.classList.add('flex');
+      });
+
+      btnCloseEmbedModal.addEventListener('click', function () {
+        embedModal.classList.add('hidden');
+        embedModal.classList.remove('flex');
+      });
+
+      btnCopyCode.addEventListener('click', function () {
+        const codeText = document.getElementById('embedCodeBlock').textContent;
+        const ta = document.createElement('textarea');
+        ta.value = codeText;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          showToast('PWA 挂载代码已复制到剪贴板');
+        } catch (err) {
+          showToast('请手动全选复制代码框内容');
+        }
+        document.body.removeChild(ta);
+      });
+
+      // Composite WebM Video Recorder (Combines WebGL + 2D HUD Canvas for Download)
+      let isRecording = false;
+      const btnRecordVideo = document.getElementById('btnRecordVideo');
+      const recordLabel = document.getElementById('recordLabel');
+
+      btnRecordVideo.addEventListener('click', function () {
+        if (isRecording) return;
+        if (typeof MediaRecorder === 'undefined') {
+          showToast('当前浏览器环境不支持 MediaRecorder 视频录制');
+          return;
+        }
+
+        const compCanvas = document.createElement('canvas');
+        compCanvas.width = hudCanvas.width;
+        compCanvas.height = hudCanvas.height;
+        const compCtx = compCanvas.getContext('2d');
+
+        isRecording = true;
+        masterTime = 0;
+        isPlaying = true;
+        recordLabel.textContent = '录制中 (16s)...';
+        showToast('开始录制 120BPM 动态封面视频 (16秒完整循环)...');
+
+        const stream = compCanvas.captureStream(60);
+        const chunks = [];
+        let rec;
+        try {
+          rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        } catch (e) {
+          rec = new MediaRecorder(stream);
+        }
+
+        rec.ondataavailable = function (e) {
+          if (e.data && e.data.size > 0) chunks.push(e.data);
+        };
+
+        rec.onstop = function () {
+          isRecording = false;
+          recordLabel.textContent = '录制封面';
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'fakao-pwa-120bpm-cover-' + currentAspect.replace(':', 'x') + '.webm';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          showToast('动态封面视频录制完成，已触发下载！');
+        };
+
+        rec.start();
+
+        const copyLoop = setInterval(function () {
+          if (!isRecording) {
+            clearInterval(copyLoop);
+            return;
+          }
+          compCtx.clearRect(0, 0, compCanvas.width, compCanvas.height);
+          compCtx.drawImage(webglCanvas, 0, 0, compCanvas.width, compCanvas.height);
+          compCtx.drawImage(hudCanvas, 0, 0, compCanvas.width, compCanvas.height);
+        }, 16);
+
+        setTimeout(function () {
+          if (rec && rec.state === 'recording') {
+            rec.stop();
+          }
+        }, 16000);
+      });
+
+      // Keyboard Shortcuts (1-8 to jump scenes, Space to play/pause)
+      window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          embedModal.classList.add('hidden');
+          embedModal.classList.remove('flex');
+        } else if (e.key === ' ') {
+          e.preventDefault();
+          btnPlayPause.click();
+        } else if (e.key >= '1' && e.key <= '8') {
+          const idx = parseInt(e.key, 10) - 1;
+          jumpToBeat(idx * 4);
+        }
+      });
+
+      // Boot
+      window.addEventListener('load', function () {
+        resizeStage();
+        lastFrameTime = performance.now();
+        requestAnimationFrame(renderSceneFrame);
+      });
+    })();
+  </script>
+  <script id="fk-embed-bridge">
+  (function () {
+    if (!window.__FK_EMBED__) return;
+    var ratio = window.__FK_RATIO__ || '9:16';
+    var btn = ratio === '16:9' ? document.getElementById('btnRatio169')
+            : ratio === '1:1'  ? document.getElementById('btnRatio11')
+            : document.getElementById('btnRatio916');
+    if (btn) { try { btn.click(); } catch (e) {} }
+
+    function tell(type, extra) {
+      var msg = { type: type };
+      if (extra) for (var k in extra) msg[k] = extra[k];
+      try { parent.postMessage(msg, '*'); } catch (e) {}
+    }
+
+    // 连续两帧后视为首帧已绘制
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { tell('fk-cover-ready'); });
+    });
+    setTimeout(function () { tell('fk-cover-ready'); }, 1500);
+
+    window.addEventListener('message', function (e) {
+      var d = e && e.data;
+      if (!d || !d.type) return;
+      if (d.type === 'fk-cover-pause') {
+        var p = document.getElementById('btnPlayPause');
+        if (p && /PAUSE/.test(p.textContent)) p.click();
+      }
+    });
+
+    document.addEventListener('visibilitychange', function () {
+      tell(document.hidden ? 'fk-cover-hidden' : 'fk-cover-visible');
+    });
+  })();
+  </script>
+</body>
+</html>
