@@ -1491,8 +1491,759 @@ body {
   .exam-banner { font-size: 12px; padding: 8px 12px; flex-wrap: wrap; gap: 4px; }
 }
 </style>
+<style id="fk-splash-style">
+/* ═══════════════════════════════════════════════════════════
+   法考刷题助手 · 开屏封面「极光流光」
+   来源：OpenDesign 项目「法考刷题开屏封面」，自动集成（作用域隔离版）
+   · 所有选择器均限定在 .splash 覆盖层内，不影响页面其余样式
+   · 调参：改下面 :root 设计令牌；整体移除：删本样式块 + body 开头对应 DOM/脚本
+   ═══════════════════════════════════════════════════════════ */
+/* =========================================================
+       1. 设计令牌
+       深蓝夜空只使用品牌给定的 #0a1b3a / #1a3a6b / #2b5aa8，
+       其余冷光与暖金均由 OKLch 派生，避免散乱色相。
+       ========================================================= */:root{
+      --night-0: #0a1b3a;
+      --night-1: #1a3a6b;
+      --night-2: #2b5aa8;
+      --ink: #eef5ff;
+      --muted: #adc2df;
+      --quiet: #8ca5c9;
+      --gold: #e2c88b;
+      --gold: oklch(0.89 0.085 83);
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+      --font-display: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", "PingFang SC", "Microsoft YaHei", serif;
+      --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      --exit-duration: 760ms;
+      --t-grain: 0.6s;
+      --t-title: 1.2s;
+      --t-sheen: 1.82s;
+      --t-detail: 2.6s;
+      --t-loading: 2.95s;
+      --t-breath: 3.2s;
+    }/* =========================================================
+       2. 全屏场景
+       首帧即有深蓝底色，不依赖脚本或图片，避免白色闪屏。
+       ========================================================= */.splash{
+      position: fixed;
+      inset: 0;
+      isolation: isolate;
+      overflow: hidden;
+      background:
+        radial-gradient(108% 70% at 50% 2%, rgba(43, 90, 168, 0.46) 0%, rgba(26, 58, 107, 0.20) 38%, transparent 70%),
+        radial-gradient(92% 74% at 50% 108%, rgba(43, 90, 168, 0.30) 0%, transparent 64%),
+        linear-gradient(180deg, #08152f 0%, var(--night-0) 34%, #0c2450 59%, #07142c 100%);
+      opacity: 1;
+      -webkit-user-select: none;
+      user-select: none;
+      transition:
+        opacity var(--exit-duration) var(--ease-out),
+        visibility 0s linear 0s;
+    }/* 整页淡出：只改变透明度和可见性，方便嵌进现有 PWA */.splash.is-leaving{
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity var(--exit-duration) var(--ease-out),
+        visibility 0s linear var(--exit-duration);
+    }#aurora-canvas{
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }/* 中央与上下边缘压暗，让字面成为唯一的阅读焦点 */.splash .vignette{
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 58% 45% at 50% 46%, rgba(3, 10, 26, 0.58) 0%, rgba(3, 10, 26, 0.25) 42%, rgba(3, 10, 26, 0.04) 70%, transparent 84%),
+        linear-gradient(180deg, rgba(2, 8, 22, 0.32) 0%, rgba(2, 8, 22, 0) 20%, rgba(2, 8, 22, 0) 76%, rgba(2, 8, 22, 0.44) 100%);
+    }/* 噪点由脚本生成一次并转为 data URI，不参与逐帧绘制 */.splash .grain{
+      position: absolute;
+      inset: -12%;
+      z-index: 3;
+      pointer-events: none;
+      background-image: var(--grain-image);
+      background-repeat: repeat;
+      background-size: 144px 144px;
+      opacity: 0;
+      animation: grain-in 1s var(--ease-out) var(--t-grain) forwards;
+    }/* =========================================================
+       3. 主视觉
+       竖向手机优先：天平在标题上方，标题为唯一大字，
+       副标题与加载提示保持在安全区内。
+       ========================================================= */.splash .stage{
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: max(7vh, 46px) 24px max(17vh, 112px);
+      text-align: center;
+      transform: translateY(-1vh);
+      pointer-events: none;
+    }.splash .stage-copy{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: min(100%, 960px);
+    }.splash .crest{
+      position: relative;
+      width: clamp(46px, 5vw, 62px);
+      margin-bottom: clamp(22px, 3.7vh, 38px);
+      opacity: 0;
+      transform: translateY(8px);
+      animation: crest-in 0.95s var(--ease-out) var(--t-detail) both;
+      filter: drop-shadow(0 0 16px rgba(116, 190, 255, 0.28));
+    }.splash .crest::after{
+      content: "";
+      position: absolute;
+      inset: -34% -24%;
+      pointer-events: none;
+      background: linear-gradient(100deg, transparent 34%, rgba(151, 220, 255, 0.30) 49%, transparent 64%);
+      background-size: 230% 100%;
+      mix-blend-mode: screen;
+      opacity: 0;
+      animation: crest-flow 7.6s linear calc(var(--t-breath) + 0.2s) infinite;
+    }.splash .crest svg{
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }.splash .crest-line{
+      fill: none;
+      stroke: rgba(193, 224, 255, 0.76);
+      stroke-width: 1.35;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 260;
+      stroke-dashoffset: 260;
+      animation: crest-draw 1.2s var(--ease-out) calc(var(--t-detail) + 0.06s) forwards;
+    }.splash .brand{
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(2.25rem, min(11.5vw, 11vh), 5.8rem);
+      font-weight: 600;
+      line-height: 1.14;
+      letter-spacing: 0.13em;
+      padding-left: 0.13em;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translateY(12px);
+      animation: title-in 1.05s var(--ease-out) var(--t-title) both;
+    }/* 字面内部只有一次柔光扫过，暖金仅在此出现 */.splash .brand-text{
+      display: inline-block;
+      color: transparent;
+      background: linear-gradient(
+        100deg,
+        #eaf3ff 0%,
+        #eaf3ff 38%,
+        #fff5d8 46%,
+        var(--gold) 50%,
+        #fff5d8 54%,
+        #eaf3ff 62%,
+        #eaf3ff 100%
+      );
+      background-size: 280% 100%;
+      background-position: 100% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 24px rgba(117, 177, 255, 0.20));
+      animation: title-sheen 1.05s cubic-bezier(0.33, 1, 0.68, 1) var(--t-sheen) both;
+    }.splash .subtitle{
+      margin: clamp(22px, 3.4vh, 34px) 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: baseline;
+      gap: 0.22em 0.82em;
+      font-family: var(--font-ui);
+      font-size: clamp(0.76rem, min(1.18vw, 1.72vh), 1.06rem);
+      font-weight: 400;
+      line-height: 1.8;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-wrap: balance;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: subtitle-in 1s var(--ease-out) var(--t-detail) both;
+    }.splash .subtitle-goal{
+      color: #c8d8f0;
+    }/* =========================================================
+       4. 底部状态
+       ========================================================= */.splash .loading{
+      position: absolute;
+      left: 50%;
+      bottom: max(28px, calc(env(safe-area-inset-bottom) + 20px));
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      transform: translateX(-50%);
+      font-size: clamp(0.68rem, min(0.82vw, 1.25vh), 0.76rem);
+      letter-spacing: 0.16em;
+      color: var(--quiet);
+      opacity: 0;
+      white-space: nowrap;
+      pointer-events: none;
+      animation: loading-in 0.9s var(--ease-out) var(--t-loading) both;
+    }.splash .loading-dots{
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 8px;
+    }.splash .loading-dot{
+      width: 3.5px;
+      height: 3.5px;
+      border-radius: 50%;
+      background: #bed8ff;
+      opacity: 0.28;
+      animation: dot-breathe 2.4s var(--ease-in-out) var(--t-breath) infinite;
+    }.splash .loading-dot:nth-child(2){
+      animation-delay: calc(var(--t-breath) + 0.2s);
+    }.splash .loading-dot:nth-child(3){
+      animation-delay: calc(var(--t-breath) + 0.4s);
+    }/* =========================================================
+       5. 关键帧
+       0.0s 光带浮现（Canvas 内完成）
+       0.6s 颗粒显现
+       1.2s 标题淡入上移
+       1.8s 柔光扫字
+       2.6s 天平与副标题浮现
+       3.2s 起无限呼吸循环
+       ========================================================= */
+
+    
+    @keyframes grain-in {
+      to { opacity: 0.18; }
+    }
+
+    @keyframes crest-in {
+      0% { opacity: 0; transform: translateY(8px); }
+      100% { opacity: 0.56; transform: translateY(0); }
+    }
+
+    @keyframes crest-draw {
+      to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes crest-flow {
+      0% { background-position: 120% 0; opacity: 0; }
+      8% { opacity: 0.72; }
+      30% { opacity: 0.18; }
+      100% { background-position: -20% 0; opacity: 0; }
+    }
+
+    @keyframes title-in {
+      0% { opacity: 0; transform: translateY(12px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes title-sheen {
+      0% { background-position: 100% 0; }
+      100% { background-position: 0% 0; }
+    }
+
+    @keyframes subtitle-in {
+      0% { opacity: 0; transform: translateY(8px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes loading-in {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes dot-breathe {
+      0%, 100% { opacity: 0.28; transform: translateY(0); }
+      42% { opacity: 0.92; transform: translateY(-2px); }
+    }/* 页面切到后台时连 CSS 动画一起暂停 */html.is-page-hidden .splash, html.is-page-hidden .splash *{
+      animation-play-state: paused !important;
+    }/* =========================================================
+       6. 响应式与降级
+       ========================================================= */
+
+    
+    @media (max-height: 560px) {.splash .stage{
+        padding-top: max(4vh, 24px);
+        padding-bottom: max(15vh, 74px);
+      }.splash .crest{
+        width: 42px;
+        margin-bottom: 16px;
+      }.splash .subtitle{
+        margin-top: 16px;
+      }}
+    
+
+    @media (max-width: 320px) {.splash .brand{
+        font-size: 2rem;
+        letter-spacing: 0.10em;
+        padding-left: 0.10em;
+      }}
+    
+
+    @media (prefers-reduced-motion: reduce) {.splash .stage, .splash .loading{
+        animation: reduced-fade 0.45s ease-out both !important;
+      }.splash .crest, .splash .crest::after, .splash .brand, .splash .brand-text, .splash .subtitle, .splash .crest-line, .splash .loading-dot{
+        animation: none !important;
+      }.splash .crest{
+        opacity: 0.56;
+        transform: none;
+      }.splash .crest::after{
+        opacity: 0;
+      }.splash .crest-line{
+        stroke-dashoffset: 0;
+      }.splash .brand, .splash .subtitle{
+        opacity: 1;
+        transform: none;
+      }.splash .brand-text{
+        background-position: 100% 0;
+      }.splash .loading{
+        opacity: 1;
+        transform: translateX(-50%);
+      }.splash .loading-dot{
+        opacity: 0.58;
+        transform: none;
+      }.splash .grain{
+        animation: none !important;
+        opacity: 0.14;
+      }}
+    
+
+    @keyframes reduced-fade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+/* ── 集成附加（非封面本体）：覆盖层定位 + 展示期间滚动锁定 ── */
+.splash { position: fixed; inset: 0; z-index: 2147483647; color: var(--ink, #eef5ff); font-family: var(--font-ui, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif); -webkit-font-smoothing: antialiased; }
+.splash, .splash * { box-sizing: border-box; }
+html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
+</style>
 </head>
 <body>
+<!-- ═══════════════════════════════════════════════════════════
+     开屏封面「极光流光」 · OpenDesign 生成并自动集成
+     · 退场信号：首屏就绪后调用 window.splashFadeOut()（见主脚本 ── Init ── 段落）
+     · 节奏控制：最短展示 3.2s，兜底 12s 自动退场（fk-splash-controller）
+     · 撤销集成：删除 <head> 中 fk-splash-style 样式块 + 本段至 fk-splash-controller 结束
+     ═══════════════════════════════════════════════════════════ -->
+<div class="splash" id="splash" aria-label="法考刷题助手开屏">
+    <canvas id="aurora-canvas" aria-hidden="true"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <section class="stage" aria-labelledby="splash-title">
+      <div class="stage-copy">
+        <div class="crest" aria-hidden="true">
+          <svg viewBox="0 0 64 64" role="presentation" focusable="false">
+            <g class="crest-line">
+              <circle cx="32" cy="7.5" r="2.5"></circle>
+              <path d="M32 10.5v40.5"></path>
+              <path d="M12.5 18.5h39"></path>
+              <path d="M19.5 18.5v10"></path>
+              <path d="M44.5 18.5v10"></path>
+              <path d="M10.5 29.5c0 5 4 9 9 9s9-4 9-9"></path>
+              <path d="M35.5 29.5c0 5 4 9 9 9s9-4 9-9"></path>
+              <path d="M22 51h20"></path>
+            </g>
+          </svg>
+        </div>
+
+        <h1 class="brand" id="splash-title">
+          <span class="brand-text">法考刷题助手</span>
+        </h1>
+
+        <p class="subtitle">
+          <span>民法 · 刑法 · 行政法 · 宪法</span>
+          <span class="subtitle-goal">陪你稳过法考</span>
+        </p>
+      </div>
+    </section>
+
+    <div class="loading" role="status" aria-live="polite">
+      <span>正在进入题库</span>
+      <span class="loading-dots" aria-hidden="true">
+        <i class="loading-dot"></i>
+        <i class="loading-dot"></i>
+        <i class="loading-dot"></i>
+      </span>
+    </div>
+  </div>
+
+<script id="fk-splash-core">
+(() => {
+      "use strict";
+
+      /* =======================================================
+         动效总参数
+         想调节奏、速度或亮度，只需要改这一块。
+         ======================================================= */
+      const CONFIG = Object.freeze({
+        dprCap: 1.5,                 // 低端手机上限，避免像素填充率过高
+        fadeDuration: 760,           // 默认整页淡出时长
+        autoExitDelay: 0,            // 0 = 本地持续预览；移植时可设为 3200~4000
+        auroraIntroSeconds: 1.8,     // 光带从暗处浮现
+        breathingStart: 3.2,         // 开始无限呼吸循环的时间点
+        breathingPeriod: 9.2,        // 呼吸周期（秒）
+        maxFrameDelta: 0.05,         // 切回前台时限制时间跳跃
+        reducedMotionTime: 4.7,      // 静态降级时采用的定格时刻
+        grain: {
+          size: 72,
+          maxAlpha: 54
+        },
+        // 多层低透明度描边模拟预模糊光晕，避免每帧使用昂贵的 filter: blur
+        passes: [
+          { width: 1.10, alpha: 0.050 },
+          { width: 0.66, alpha: 0.090 },
+          { width: 0.28, alpha: 0.150 },
+          { width: 0.055, alpha: 0.350 }
+        ],
+        // baseY / slope / amp / amp2 都是相对视口高度
+        // width 相对短边，color 为 RGB，alpha 控制单条光带的总强度
+        ribbons: [
+          {
+            baseY: 0.155, slope: -0.155, amp: 0.048, amp2: 0.013,
+            freq: 0.82, freq2: 1.67, speed: 0.20, speed2: -0.105,
+            phase: 0.55, width: 0.15, alpha: 0.72, color: [119, 214, 255]
+          },
+          {
+            baseY: 0.286, slope: 0.125, amp: 0.070, amp2: 0.017,
+            freq: 0.66, freq2: 1.43, speed: -0.16, speed2: 0.09,
+            phase: 2.35, width: 0.20, alpha: 0.55, color: [140, 154, 255]
+          },
+          {
+            baseY: 0.548, slope: -0.085, amp: 0.086, amp2: 0.023,
+            freq: 0.58, freq2: 1.12, speed: 0.13, speed2: -0.07,
+            phase: 4.10, width: 0.115, alpha: 0.42, color: [94, 236, 228]
+          },
+          {
+            baseY: 0.760, slope: 0.145, amp: 0.060, amp2: 0.015,
+            freq: 0.74, freq2: 1.31, speed: -0.14, speed2: 0.08,
+            phase: 1.05, width: 0.235, alpha: 0.54, color: [96, 177, 255]
+          },
+          {
+            baseY: 0.892, slope: -0.105, amp: 0.042, amp2: 0.011,
+            freq: 0.93, freq2: 1.82, speed: 0.11, speed2: -0.06,
+            phase: 3.55, width: 0.185, alpha: 0.44, color: [147, 128, 242]
+          }
+        ]
+      });
+
+      const splash = document.getElementById("splash");
+      const canvas = document.getElementById("aurora-canvas");
+      const ctx = canvas.getContext("2d", { alpha: true });
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+      let viewWidth = 0;
+      let viewHeight = 0;
+      let rafId = 0;
+      let lastFrameMs = 0;
+      let elapsed = 0;
+      let exitPromise = null;
+
+      /* =======================================================
+         噪点：只生成一次，写入 CSS 变量后由浏览器平铺。
+         ======================================================= */
+      function buildGrain() {
+        const size = CONFIG.grain.size;
+        const grainCanvas = document.createElement("canvas");
+        grainCanvas.width = size;
+        grainCanvas.height = size;
+        const grainCtx = grainCanvas.getContext("2d");
+        if (!grainCtx) return;
+
+        const image = grainCtx.createImageData(size, size);
+        for (let i = 0; i < image.data.length; i += 4) {
+          const v = Math.pow(Math.random(), 2.15);
+          image.data[i] = 255;
+          image.data[i + 1] = 255;
+          image.data[i + 2] = 255;
+          image.data[i + 3] = v * CONFIG.grain.maxAlpha;
+        }
+        grainCtx.putImageData(image, 0, 0);
+        document.documentElement.style.setProperty(
+          "--grain-image",
+          'url("' + grainCanvas.toDataURL("image/png") + '")'
+        );
+      }
+
+      /* =======================================================
+         画布尺寸与渐变缓存
+         ======================================================= */
+      function rgba(color, alpha) {
+        return "rgba(" + color[0] + "," + color[1] + "," + color[2] + "," + alpha + ")";
+      }
+
+      function buildRibbonGradients() {
+        for (const ribbon of CONFIG.ribbons) {
+          const gradient = ctx.createLinearGradient(0, 0, viewWidth, 0);
+          const stops = [
+            [0.00, 0.00],
+            [0.07, 0.32],
+            [0.20, 0.82],
+            [0.36, 0.54],
+            [0.47, 0.22],
+            [0.53, 0.22],
+            [0.64, 0.54],
+            [0.80, 0.82],
+            [0.93, 0.32],
+            [1.00, 0.00]
+          ];
+          for (const [at, alpha] of stops) {
+            gradient.addColorStop(at, rgba(ribbon.color, alpha));
+          }
+          ribbon.gradient = gradient;
+        }
+      }
+
+      function resizeCanvas() {
+        if (!ctx) return;
+        const rect = splash.getBoundingClientRect();
+        viewWidth = Math.max(1, rect.width);
+        viewHeight = Math.max(1, rect.height);
+
+        const dpr = Math.min(CONFIG.dprCap, window.devicePixelRatio || 1);
+        canvas.width = Math.round(viewWidth * dpr);
+        canvas.height = Math.round(viewHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        buildRibbonGradients();
+
+        if (reducedMotion.matches) {
+          drawAurora(CONFIG.reducedMotionTime);
+        } else {
+          drawAurora(elapsed);
+        }
+      }
+
+      /* =======================================================
+         极光绘制
+         每条光带是一条时间函数生成的平滑曲线；四层描边叠加，
+         既保留柔和边缘，也不需要实时模糊。
+         ======================================================= */
+      function drawAurora(time) {
+        if (!ctx || !viewWidth || !viewHeight) return;
+
+        ctx.clearRect(0, 0, viewWidth, viewHeight);
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        const intro = Math.min(1, time / CONFIG.auroraIntroSeconds);
+        const introAlpha = intro * intro * (3 - 2 * intro);
+        const shortSide = Math.min(viewWidth, viewHeight);
+        const breathTime = Math.max(0, time - CONFIG.breathingStart);
+
+        CONFIG.ribbons.forEach((ribbon, index) => {
+          if (!ribbon.gradient) return;
+
+          const breath = time < CONFIG.breathingStart
+            ? 1
+            : 0.945 + 0.055 * Math.sin(
+                (breathTime / CONFIG.breathingPeriod) * Math.PI * 2 + index * 1.17
+              );
+          const baseWidth = Math.min(238, Math.max(36, shortSide * ribbon.width));
+          const points = [];
+          const samples = Math.max(38, Math.round(viewWidth / 30));
+          const xStart = -viewWidth * 0.08;
+          const xEnd = viewWidth * 1.08;
+
+          for (let i = 0; i <= samples; i += 1) {
+            const progress = i / samples;
+            const x = xStart + (xEnd - xStart) * progress;
+            const nx = x / viewWidth;
+            const wave1 = Math.sin(
+              nx * Math.PI * 2 * ribbon.freq + time * ribbon.speed + ribbon.phase
+            );
+            const wave2 = Math.sin(
+              nx * Math.PI * 2 * ribbon.freq2 + time * ribbon.speed2 + ribbon.phase * 1.71
+            );
+            const baseY = viewHeight * (ribbon.baseY + ribbon.slope * (nx - 0.5));
+            const y = baseY + viewHeight * (ribbon.amp * wave1 + ribbon.amp2 * wave2);
+            points.push(x, y);
+          }
+
+          for (const pass of CONFIG.passes) {
+            ctx.globalAlpha = introAlpha * ribbon.alpha * breath * pass.alpha;
+            ctx.strokeStyle = ribbon.gradient;
+            ctx.lineWidth = Math.max(1, baseWidth * pass.width);
+            ctx.beginPath();
+            ctx.moveTo(points[0], points[1]);
+            for (let i = 2; i < points.length; i += 2) {
+              ctx.lineTo(points[i], points[i + 1]);
+            }
+            ctx.stroke();
+          }
+        });
+
+        ctx.restore();
+      }
+
+      /* =======================================================
+         帧循环：按真实时间推进，页面不可见时暂停。
+         ======================================================= */
+      function step(now) {
+        if (lastFrameMs === 0) lastFrameMs = now;
+        const delta = Math.min(CONFIG.maxFrameDelta, (now - lastFrameMs) / 1000);
+        lastFrameMs = now;
+        elapsed += delta;
+        drawAurora(elapsed);
+        rafId = window.requestAnimationFrame(step);
+      }
+
+      function startAnimation() {
+        if (rafId || reducedMotion.matches || document.hidden || exitPromise) return;
+        lastFrameMs = 0;
+        rafId = window.requestAnimationFrame(step);
+      }
+
+      function stopAnimation() {
+        if (!rafId) return;
+        window.cancelAnimationFrame(rafId);
+        rafId = 0;
+        lastFrameMs = 0;
+      }
+
+      function syncMotionMode() {
+        stopAnimation();
+        if (reducedMotion.matches) {
+          drawAurora(CONFIG.reducedMotionTime);
+        } else if (!document.hidden && !exitPromise) {
+          startAnimation();
+        }
+      }
+
+      /* =======================================================
+         移植接口：淡出到透明
+         用法 1：await window.splashFadeOut({ duration: 720 })
+         用法 2：window.dispatchEvent(
+                   new CustomEvent("splash:exit", { detail: { duration: 720 } })
+                 )
+         ======================================================= */
+      function fadeOut(options) {
+        if (exitPromise) return exitPromise;
+
+        const requested = options && Number(options.duration);
+        const duration = Number.isFinite(requested)
+          ? Math.max(0, requested)
+          : CONFIG.fadeDuration;
+
+        document.documentElement.style.setProperty("--exit-duration", duration + "ms");
+        splash.classList.add("is-leaving");
+        splash.setAttribute("aria-hidden", "true");
+
+        exitPromise = new Promise((resolve) => {
+          window.setTimeout(() => {
+            stopAnimation();
+            window.dispatchEvent(new CustomEvent("splash:exited"));
+            resolve();
+          }, duration);
+        });
+
+        return exitPromise;
+      }
+
+      window.splashFadeOut = fadeOut;
+      window.addEventListener("splash:exit", (event) => {
+        const detail = event.detail;
+        fadeOut(typeof detail === "number" ? { duration: detail } : detail);
+      });
+
+      /* =======================================================
+         生命周期
+         ======================================================= */
+      function handleVisibilityChange() {
+        if (document.hidden) {
+          document.documentElement.classList.add("is-page-hidden");
+          stopAnimation();
+          return;
+        }
+
+        document.documentElement.classList.remove("is-page-hidden");
+        if (reducedMotion.matches) {
+          drawAurora(CONFIG.reducedMotionTime);
+        } else if (!exitPromise) {
+          startAnimation();
+        }
+      }
+
+      let resizeTimer = 0;
+      window.addEventListener("resize", () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(resizeCanvas, 120);
+      }, { passive: true });
+
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+
+      if (typeof reducedMotion.addEventListener === "function") {
+        reducedMotion.addEventListener("change", syncMotionMode);
+      } else if (typeof reducedMotion.addListener === "function") {
+        reducedMotion.addListener(syncMotionMode);
+      }
+
+      buildGrain();
+      resizeCanvas();
+      handleVisibilityChange();
+
+      // 生产环境可按需开启自动淡出；默认关闭便于长期预览。
+      if (CONFIG.autoExitDelay > 0) {
+        window.setTimeout(() => fadeOut(), CONFIG.autoExitDelay);
+      }
+    })();
+</script>
+
+<script id="fk-splash-controller">
+// 开屏封面 · 节奏控制器（集成附加）
+// 1) 保证开场至少完整播放一遍（最短展示时长对齐分镜节奏）
+// 2) App 未发送退场信号时兜底淡出
+// 3) 展示期间给 <html> 挂 fk-splash-lock 锁定页面滚动，退场后自动移除
+(function () {
+  var MIN_VISIBLE_MS = 3200;   // 最短展示时长
+  var FALLBACK_MS = 12000;     // 兜底：App 迟迟不就绪时强制退场
+  var bootTime = performance.now();
+  var pending = null;
+
+  document.documentElement.classList.add('fk-splash-lock');
+  window.addEventListener('splash:exited', function () {
+    document.documentElement.classList.remove('fk-splash-lock');
+  }, { once: true });
+
+  function hardHide() {
+    var el = document.getElementById('splash');
+    if (el) el.style.display = 'none';
+    document.documentElement.classList.remove('fk-splash-lock');
+  }
+
+  var rawFade = window.splashFadeOut; // 封面本体脚本提供的淡出 API（已在上方定义）
+  function controlledFade(options) {
+    if (pending) return pending;
+    var run = function () {
+      if (typeof rawFade === 'function') {
+        try { return rawFade(options); } catch (e) { hardHide(); }
+      }
+      hardHide();
+    };
+    var wait = MIN_VISIBLE_MS - (performance.now() - bootTime);
+    pending = (wait <= 0)
+      ? Promise.resolve(run())
+      : new Promise(function (resolve) { setTimeout(function () { Promise.resolve(run()).then(resolve); }, wait); });
+    return pending;
+  }
+  window.splashFadeOut = controlledFade;
+
+  setTimeout(function () { controlledFade(); }, FALLBACK_MS);
+})();
+</script>
 <div class="liquid-orbs">
   <div class="liquid-orb orb-1"></div>
   <div class="liquid-orb orb-2"></div>
@@ -3537,6 +4288,8 @@ if ('serviceWorker' in navigator) {
   renderBookmarks();
   updateStats();
   updateSm2Stats();
+  // ── 开屏封面：首屏就绪 → 请求淡出（控制器会保证最短展示时长后才真正退场） ──
+  if (window.splashFadeOut) window.splashFadeOut();
 
   // ═══════════════════════════════════════════
   //  Daily Knowledge Cards

@@ -26,6 +26,7 @@ function createWindow() {
     minWidth: 600,
     minHeight: 500,
     title: '法考刷题助手',
+    backgroundColor: '#0a1b3a', // 开屏同色深蓝，避免启动瞬间白屏
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
