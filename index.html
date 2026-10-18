@@ -1828,18 +1828,51 @@ body {
 .splash { position: fixed; inset: 0; z-index: 2147483647; color: var(--ink, #eef5ff); font-family: var(--font-ui, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif); -webkit-font-smoothing: antialiased; }
 .splash, .splash * { box-sizing: border-box; }
 html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
-/* ── 120BPM 动态封面启动页（iframe 覆盖层，位于极光开屏之上） ── */
+/* ── 120BPM 动态封面启动页（唯一开屏路径） ── */
+html.fk-cover-mode #splash { display: none !important; }
 #coverSplash {
   position: fixed; inset: 0; z-index: 2147483647;
   background: #020408; overflow: hidden;
-  opacity: 0; pointer-events: none;
-  transition: opacity .42s cubic-bezier(.4, 0, .2, 1);
+  opacity: 1; transition: opacity .46s cubic-bezier(.4, 0, .2, 1);
   -webkit-tap-highlight-color: transparent;
 }
 #coverSplash[hidden] { display: none !important; }
-/* 封面首帧就绪后才接管屏幕，加载期间由底层极光开屏兜底，避免黑屏 */
-#coverSplash.is-ready { opacity: 1; pointer-events: auto; }
 #coverSplash.is-leaving { opacity: 0; pointer-events: none; }
+#coverSplash iframe { display: block; width: 100%; height: 100%; border: 0; background: #020408; }
+/* 封面首帧前的轻量占位：纯 CSS，无网络依赖，避免黑屏与布局跳动 */
+#coverBoot {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; background: #020408;
+  transition: opacity .34s ease;
+}
+#coverSplash.is-ready #coverBoot { opacity: 0; pointer-events: none; }
+#coverBoot .cb-mark {
+  width: 46px; height: 46px; border-radius: 12px;
+  border: 1px solid rgba(0, 240, 255, .45);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: #00F0FF;
+  box-shadow: 0 0 22px rgba(0, 102, 255, .35), inset 0 0 12px rgba(0, 240, 255, .12);
+  animation: cbPulse 1.8s ease-in-out infinite;
+}
+#coverBoot .cb-text {
+  font: 500 13px/1 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  letter-spacing: .32em; color: #9fb6d0; text-indent: .32em;
+}
+#coverBoot .cb-bar {
+  width: 92px; height: 2px; overflow: hidden; border-radius: 2px;
+  background: rgba(255, 255, 255, .1);
+}
+#coverBoot .cb-bar i {
+  display: block; width: 40%; height: 100%;
+  background: linear-gradient(90deg, transparent, #00F0FF, transparent);
+  animation: cbSlide 1.15s ease-in-out infinite;
+}
+@keyframes cbPulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@keyframes cbSlide { 0% { transform: translateX(-110%); } 100% { transform: translateX(360%); } }
+@media (prefers-reduced-motion: reduce) {
+  #coverBoot .cb-mark, #coverBoot .cb-bar i { animation: none; }
+}
 #coverSplash iframe { display: block; width: 100%; height: 100%; border: 0; background: #020408; }
 /* 封面播放期间让底层极光开屏停止绘制，失败回退时再恢复 */
 #splash.cover-active { visibility: hidden; }
@@ -1860,6 +1893,17 @@ html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
 </style>
 </head>
 <body>
+<script id="fk-cover-mode">
+/* 启动页模式判定：需要在首次绘制前决定，避免「极光 → 封面」双重开屏 */
+(function () {
+  var q = new URLSearchParams(location.search);
+  var force = q.get('cover');
+  var reduce = false;
+  try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  if (force === '0' || reduce || q.get('splash') === 'aurora') return;
+  document.documentElement.classList.add('fk-cover-mode');
+})();
+</script>
 <!-- ═══════════════════════════════════════════════════════════
      开屏封面「极光流光」 · OpenDesign 生成并自动集成
      · 退场信号：首屏就绪后调用 window.splashFadeOut()（见主脚本 ── Init ── 段落）
@@ -1917,6 +1961,11 @@ html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
      ═══════════════════════════════════════════════════════════ -->
 <div id="coverSplash" aria-label="法考动态封面启动页" hidden>
   <iframe id="coverFrame" title="以法律塑正义公正之剑 · 动态封面" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>
+  <div id="coverBoot" aria-hidden="true">
+    <div class="cb-mark">⚔</div>
+    <div class="cb-text">法考刷题助手</div>
+    <div class="cb-bar"><i></i></div>
+  </div>
   <button id="coverSkip" type="button">跳过 ›</button>
 </div>
 
@@ -2286,92 +2335,62 @@ html.fk-splash-lock, html.fk-splash-lock body { overflow: hidden !important; }
 </script>
 
 <script id="fk-cover-splash">
-/* 120BPM 动态封面启动页 · 节奏控制
-   成功路径：封面淡出 → 立即移除底层极光开屏（它全程不可见，无需再淡出）
-   失败路径：隐藏封面 → 交回极光开屏，按原有 3.2s / 12s 节奏退场
+/* 120BPM 动态封面启动页 · 节奏控制（单一开屏路径）
+   · 进入即显示轻量占位，封面首帧就绪后淡入接管
+   · 就绪后展示 2.8s；总时长上限 5.2s，避免长时间等待
+   · 2.2s 内未就绪则放弃封面直接进入 App，不再切回极光，避免二次开屏
+   · 极光开屏仅在 ?splash=aurora / ?cover=0 / 系统减少动效 时使用
 */
 (function () {
   var cover = document.getElementById('coverSplash');
   var frame = document.getElementById('coverFrame');
   var skip = document.getElementById('coverSkip');
-  var aurora = document.getElementById('splash');
   if (!cover || !frame) return;
 
-  var MIN_VISIBLE_MS = 3400;   // 封面首帧可见后的最短展示时长
-  var BOOT_TIMEOUT_MS = 7000;  // 封面迟迟不就绪则放弃，交回极光开屏
+  var MIN_VISIBLE_MS = 2800;
+  var BOOT_DEADLINE_MS = 2200;
+  var MAX_TOTAL_MS = 5200;
   var bootAt = performance.now();
 
-  var qs = new URLSearchParams(location.search);
-  var force = qs.get('cover');
-  var reduce = false;
-  try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
-  var seen = false;
-  try { seen = sessionStorage.getItem('fk_cover_seen') === '1'; } catch (e) {}
+  // 未进入封面模式：保持极光开屏或直接进入 App
+  if (!document.documentElement.classList.contains('fk-cover-mode')) {
+    cover.hidden = true;
+    return;
+  }
 
   var ready = false, done = false;
 
-  function unlockScroll() {
-    document.documentElement.classList.remove('fk-splash-lock');
-  }
-
-  function removeAurora() {
-    if (aurora) { aurora.classList.remove('cover-active'); aurora.style.display = 'none'; }
-    unlockScroll();
-  }
-
-  // 成功退场：淡出封面后直接清掉底层开屏
-  function exitWithFade() {
+  function finish() {
     if (done) return;
     done = true;
-    try { sessionStorage.setItem('fk_cover_seen', '1'); } catch (e) {}
     cover.classList.add('is-leaving');
     setTimeout(function () {
       cover.hidden = true;
       try { frame.src = 'about:blank'; } catch (e) {}
-      removeAurora();
-    }, 460);
+      document.documentElement.classList.remove('fk-splash-lock');
+    }, 480);
   }
 
-  // 失败回退：封面隐藏，极光开屏继续按自身节奏退场
-  function fallbackToAurora() {
-    if (done) return;
-    done = true;
-    cover.hidden = true;
-    cover.classList.remove('is-ready');
-    if (aurora) aurora.classList.remove('cover-active');
-    try {
-      if (typeof window.splashFadeOut === 'function') { window.splashFadeOut(); return; }
-    } catch (e) {}
-    removeAurora();
-  }
-
-  // 首帧就绪：封面淡入接管，并从此开始计算最短展示时长
   function onReady() {
     if (ready || done) return;
     ready = true;
     cover.classList.add('is-ready');
-    if (aurora) aurora.classList.add('cover-active');
-    setTimeout(exitWithFade, MIN_VISIBLE_MS);
-  }
-
-  if (force === '0' || reduce || (seen && force !== '1')) {
-    cover.hidden = true;
-    return;
+    var wait = Math.min(MIN_VISIBLE_MS, MAX_TOTAL_MS - (performance.now() - bootAt));
+    setTimeout(finish, Math.max(600, wait));
   }
 
   window.addEventListener('message', function (e) {
     var d = e && e.data;
     if (d && d.type === 'fk-cover-ready') onReady();
   });
-  frame.addEventListener('error', fallbackToAurora);
+  frame.addEventListener('error', function () { if (!ready) finish(); });
 
   cover.hidden = false;
   frame.src = 'cover.html?embed=1&ratio=9:16';
-  // 兜底：迟迟没有首帧就放弃封面，让极光开屏按原节奏退场
-  setTimeout(function () { if (!ready) fallbackToAurora(); }, BOOT_TIMEOUT_MS);
 
-  skip.addEventListener('click', function (e) { e.stopPropagation(); exitWithFade(); });
-  cover.addEventListener('click', function (e) { if (e.target === cover) exitWithFade(); });
+  setTimeout(function () { if (!ready) finish(); }, BOOT_DEADLINE_MS);
+
+  skip.addEventListener('click', function (e) { e.stopPropagation(); finish(); });
 })();
 </script>
 

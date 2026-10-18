@@ -20,11 +20,34 @@
   </script>
 
   <title>FAKAO-PWA // 以法律塑正义公正之剑 — 120BPM 动态封面引擎</title>
-  <script src="vendor/tailwind-3.4.17.js"></script>
+  <script id="fk-tw-loader">
+  /* 启动页（embed 模式）不加载 Tailwind：其可见视觉全部由 canvas 绘制，
+     仅工具界面依赖它。跳过 407KB 运行时编译可将首帧提前约 2 秒。 */
+  (function () {
+    if (!/[?&](embed|splash)=1/.test(location.search)) {
+      document.write('<script src="vendor/tailwind-3.4.17.js"><\/script>');
+    }
+  })();
+  </script>
   <script src="vendor/three.r128.min.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Noto+Sans+SC:wght@500;700;900&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
+  <script id="fk-font-loader">
+  /* 嵌入模式（启动页）的可见文字全部由 canvas 绘制，不需要 Web 字体。
+     跳过外部字体请求，避免字体阻塞 load 事件、拖慢首帧。 */
+  (function () {
+    if (/[?&](embed|splash)=1/.test(location.search)) return;
+    var h = document.head;
+    [['preconnect', 'https://fonts.googleapis.com', ''],
+     ['preconnect', 'https://fonts.gstatic.com', 'anonymous']].forEach(function (a) {
+      var l = document.createElement('link');
+      l.rel = a[0]; l.href = a[1]; if (a[2]) l.crossOrigin = a[2];
+      h.appendChild(l);
+    });
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Noto+Sans+SC:wght@500;700;900&family=Unbounded:wght@700;800;900&display=swap';
+    h.appendChild(css);
+  })();
+  </script>
   <style>
     :root {
       --electric-blue: #0066FF;
@@ -145,6 +168,32 @@
   }
   /* 嵌入模式下不显示滚动条 */
   html.fk-embed ::-webkit-scrollbar { display: none; }
+
+  /* ===== 嵌入模式不加载 Tailwind，这里补齐所需的布局工具类 ===== */
+  html.fk-embed body {
+    min-height: 100vh; color: #fff;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  html.fk-embed main {
+    flex: 1 1 auto; position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  html.fk-embed #stageWrapper {
+    position: relative; z-index: 10; display: flex;
+    align-items: center; justify-content: center;
+  }
+  html.fk-embed #stageContainer {
+    position: relative; overflow: hidden; background: #020408;
+    display: flex; align-items: center; justify-content: center;
+  }
+  html.fk-embed #webglCanvas,
+  html.fk-embed #hudCanvas {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  }
+  html.fk-embed .scanline-overlay {
+    position: absolute; inset: 0; pointer-events: none; opacity: .35;
+  }
   </style>
 </head>
 <body class="min-h-screen bg-[#020408] text-white flex flex-col justify-between">
@@ -1084,11 +1133,20 @@
       // =========================================================================
       // 6. 2D HUD & KINETIC GRAPHICS HELPER FUNCTIONS
       // =========================================================================
-      function drawChromeHeadline(ctx, text, x, y, fontSize, tracking) {
+      function drawChromeHeadline(ctx, text, x, y, fontSize, tracking, maxWidth) {
         ctx.save();
         ctx.font = '900 ' + fontSize + 'px "Unbounded", "Noto Sans SC", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+
+        // 字体回退时中文字宽会变宽，按可用宽度自动收缩，避免标语溢出画布
+        if (maxWidth) {
+          const tw = ctx.measureText(text).width;
+          if (tw > maxWidth) {
+            fontSize = Math.max(10, Math.floor(fontSize * maxWidth / tw));
+            ctx.font = '900 ' + fontSize + 'px "Unbounded", "Noto Sans SC", sans-serif';
+          }
+        }
 
         // 3D Extrusion Depth Layers (Hard Obsidian + Electric Blue Bevel)
         const depth = Math.max(4, Math.round(fontSize * 0.08));
@@ -1328,7 +1386,7 @@
           hudCtx.strokeText(subBeat === 0 ? '01' : subBeat === 1 ? '08' : '64', w * 0.95, h * 0.82);
 
           // Bottom Thesis Banner
-          drawChromeHeadline(hudCtx, '以法律塑正义公正之剑', w * 0.5, h * 0.84, Math.round(minDim * 0.055));
+          drawChromeHeadline(hudCtx, '以法律塑正义公正之剑', w * 0.5, h * 0.84, Math.round(minDim * 0.055), 0, w * 0.9);
           hudCtx.restore();
         }
 
@@ -1766,7 +1824,7 @@
           } else if (subBeat === 1) {
             // Beat 26: Hard-cut zoomed angle on "FUTURE" + Sword of Justice motto
             drawChromeHeadline(hudCtx, 'FUTURE', cx, cy - minDim * 0.06, Math.round(minDim * 0.165));
-            drawChromeHeadline(hudCtx, '以法律塑正义公正之剑', cx, cy + minDim * 0.12, Math.round(minDim * 0.052));
+            drawChromeHeadline(hudCtx, '以法律塑正义公正之剑', cx, cy + minDim * 0.12, Math.round(minDim * 0.052), 0, w * 0.9);
           } else {
             // Beats 27-28: Monumental "FUTURE" + "IS ALREADY HERE."
             drawChromeHeadline(hudCtx, 'FUTURE', cx, cy - minDim * 0.09, Math.round(minDim * 0.155));
@@ -2163,12 +2221,17 @@
         }
       });
 
-      // Boot
-      window.addEventListener('load', function () {
+      // Boot：不等 window.load（会被外部字体/资源拖住），DOM 就绪即开始渲染
+      function bootScene() {
         resizeStage();
         lastFrameTime = performance.now();
         requestAnimationFrame(renderSceneFrame);
-      });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootScene, { once: true });
+      } else {
+        bootScene();
+      }
     })();
   </script>
   <script id="fk-embed-bridge">
@@ -2186,11 +2249,20 @@
       try { parent.postMessage(msg, '*'); } catch (e) {}
     }
 
-    // 连续两帧后视为首帧已绘制
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () { tell('fk-cover-ready'); });
-    });
-    setTimeout(function () { tell('fk-cover-ready'); }, 1500);
+    // 等画布完成尺寸初始化并真正出帧后再上报，避免父页接管到空画面
+    var hud = document.getElementById('hudCanvas');
+    var startedAt = performance.now();
+    function waitFirstFrame() {
+      if (hud && hud.width > 0) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { tell('fk-cover-ready'); });
+        });
+        return;
+      }
+      if (performance.now() - startedAt > 2500) { tell('fk-cover-ready'); return; }
+      setTimeout(waitFirstFrame, 40);
+    }
+    waitFirstFrame();
 
     window.addEventListener('message', function (e) {
       var d = e && e.data;
