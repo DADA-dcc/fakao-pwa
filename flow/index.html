@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#08080c">
+<meta name="color-scheme" content="dark">
+<title>FLOW — 动态流动效果演示</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%238b5cf6' d='M12 0l3 9 9 3-9 3-3 9-3-9-9-3 9-3z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 背景层：粒子流场 + 极光 + 噪点 -->
+<canvas id="flow-canvas" aria-hidden="true"></canvas>
+<div class="bg-aurora" aria-hidden="true">
+  <div class="blob blob-a"></div>
+  <div class="blob blob-b"></div>
+  <div class="blob blob-c"></div>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- 导航 -->
+<header class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="#top"><i></i>FLOW</a>
+    <nav class="nav-links">
+      <a href="#effects">视觉特效</a>
+      <a href="#stack">实现要点</a>
+    </nav>
+    <a class="btn btn-ghost btn-sm" href="#cta">开始使用</a>
+  </div>
+</header>
+
+<main>
+  <!-- Hero -->
+  <section class="hero" id="top">
+    <div class="hero-inner">
+      <p class="eyebrow">FLOW FIELD · AURORA · LIQUID</p>
+      <h1>让界面<span class="gradient-text">流动</span>起来</h1>
+      <p class="sub">用 Perlin 噪声流场驱动上千条粒子轨迹，叠加极光渐层与液态波纹——纯 HTML / CSS / Canvas 的动态视觉，零依赖，打开即用。</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#effects">浏览特效</a>
+        <a class="btn btn-ghost" href="#stack">查看实现要点</a>
+      </div>
+    </div>
+    <div class="scroll-hint" aria-hidden="true"><i></i><em>向下滚动</em></div>
+  </section>
+
+  <!-- 特效卡片 -->
+  <section class="section" id="effects">
+    <h2 class="section-title reveal">四种流动效果</h2>
+    <p class="section-sub reveal">每个示例都是真实渲染，鼠标悬停可交互。</p>
+    <div class="cards">
+
+      <article class="card spotlight reveal">
+        <div class="card-demo demo-aurora">
+          <div class="demo-blob d1"></div>
+          <div class="demo-blob d2"></div>
+          <div class="demo-blob d3"></div>
+        </div>
+        <h3>极光渐层</h3>
+        <p>多个径向光斑以不同节奏漂浮，screen 混合模式叠加出极光的呼吸感。</p>
+        <code>CSS · radial-gradient · screen</code>
+      </article>
+
+      <article class="card spotlight reveal">
+        <div class="card-demo demo-beam">
+          <button class="beam-btn" type="button"><span>流光按钮</span></button>
+          <div class="beam-line"></div>
+        </div>
+        <h3>光轨流动</h3>
+        <p>圆锥渐变沿圆环无限旋转形成流动的描边光轨，光点沿轨道周期性扫过。</p>
+        <code>CSS · conic-gradient · @property</code>
+      </article>
+
+      <article class="card spotlight reveal">
+        <div class="card-demo demo-liquid">
+          <canvas id="liquid-canvas"></canvas>
+        </div>
+        <h3>液态波纹</h3>
+        <p>三层正弦波以不同频率、相位与速度叠加，生成持续流动的液面。</p>
+        <code>Canvas · 正弦波叠加</code>
+      </article>
+
+      <article class="card spotlight reveal">
+        <div class="card-demo demo-text">
+          <div class="shimmer-text">AURORA · FLOW · GRADIENT</div>
+          <div class="marquee-mini">
+            <div class="mq-track">
+              <div class="mq-half"><span>SHIMMER</span><span>✦</span><span>GRADIENT</span><span>✦</span><span>FLOW</span><span>✦</span><span>MOTION</span><span>✦</span></div>
+              <div class="mq-half" aria-hidden="true"><span>SHIMMER</span><span>✦</span><span>GRADIENT</span><span>✦</span><span>FLOW</span><span>✦</span><span>MOTION</span><span>✦</span></div>
+            </div>
+          </div>
+        </div>
+        <h3>渐变流光文字</h3>
+        <p>渐变背景位移配合文字裁剪，让标题像光一样缓缓流动。</p>
+        <code>CSS · background-clip: text</code>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- 滚动字幕带 -->
+  <section class="band" aria-hidden="true">
+    <div class="marquee-track">
+      <div class="m-half">
+        <span class="m-item">FLOW FIELD <i>✦</i></span>
+        <span class="m-item outline">AURORA <i>✦</i></span>
+        <span class="m-item">LIQUID MOTION <i>✦</i></span>
+        <span class="m-item outline">PARTICLES <i>✦</i></span>
+        <span class="m-item">GRADIENT <i>✦</i></span>
+        <span class="m-item outline">CANVAS <i>✦</i></span>
+      </div>
+      <div class="m-half">
+        <span class="m-item">FLOW FIELD <i>✦</i></span>
+        <span class="m-item outline">AURORA <i>✦</i></span>
+        <span class="m-item">LIQUID MOTION <i>✦</i></span>
+        <span class="m-item outline">PARTICLES <i>✦</i></span>
+        <span class="m-item">GRADIENT <i>✦</i></span>
+        <span class="m-item outline">CANVAS <i>✦</i></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 实现要点 -->
+  <section class="section" id="stack">
+    <h2 class="section-title reveal">实现要点</h2>
+    <p class="section-sub reveal">三个文件，零依赖，零构建。</p>
+    <div class="stack-grid">
+      <div class="stack-item reveal">
+        <h4>Canvas 2D</h4>
+        <p>Perlin 噪声流场，最多 850 条粒子拖尾，鼠标附近产生排斥与涡旋。</p>
+      </div>
+      <div class="stack-item reveal">
+        <h4>CSS 动效</h4>
+        <p>conic-gradient 旋转光轨、@property 注册角度变量、mix-blend-mode 叠加极光。</p>
+      </div>
+      <div class="stack-item reveal">
+        <h4>零依赖</h4>
+        <p>没有框架、没有打包器，双击 index.html 即可在浏览器中运行。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta reveal" id="cta">
+    <div class="cta-border">
+      <div class="cta-inner">
+        <h2>把这个效果带走</h2>
+        <p>全部代码只有三个文件——复制、修改、重组，做成你自己的流动页面。</p>
+        <a class="btn btn-primary btn-lg" href="#top">回到顶部</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <span>FLOW · 动态流动效果演示页</span>
+    <span>© <span id="year">2026</span> · 纯静态 · 零依赖</span>
+  </div>
+</footer>
+
+<script src="flow.js"></script>
+</body>
+</html>
