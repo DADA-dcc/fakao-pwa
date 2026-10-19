@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>One Shape — 120 BPM Morph Loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F2F0EC;
+    --ink:#121212;
+    --white:#FFFFFF;
+    --w15:rgba(255,255,255,.16);
+    --w40:rgba(255,255,255,.45);
+    --w65:rgba(255,255,255,.65);
+    --k08:rgba(0,0,0,.08);
+    --k12:rgba(0,0,0,.12);
+    --k45:rgba(0,0,0,.45);
+    --k65:rgba(0,0,0,.65);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--bg);cursor:none}
+  body{font-family:"Geist","Geist Variable",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  #stage{position:fixed;inset:0;background:var(--bg)}
+  #stage::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 42%,transparent 62%,rgba(0,0,0,.028))}
+
+  /* ---------- THE shape (the only shape on stage) ---------- */
+  #shape{
+    position:absolute;left:50%;top:50%;width:168px;height:54px;border-radius:27px;
+    background:var(--ink);overflow:hidden;will-change:width,height,transform;
+    box-shadow:0 0 0 0 rgba(17,17,17,0);
+  }
+  .layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;will-change:transform,opacity}
+  .layer .px{pointer-events:none}
+
+  /* button label */
+  #lyBtn span{color:#fff;font-size:15px;font-weight:500;letter-spacing:-0.01em;white-space:nowrap}
+  /* spinner */
+  #lySpin svg{display:block}
+  .spin{transform-origin:50% 50%}
+  /* check */
+  #lyCheck svg{display:block}
+  /* island */
+  #lyIsland{gap:10px;padding:0 14px;justify-content:space-between}
+  #lyIsland .art{width:18px;height:18px;border-radius:5px;background:#fff;position:relative;flex:0 0 auto}
+  #lyIsland .art::after{content:"";position:absolute;inset:5px;border-radius:2px;background:var(--ink)}
+  #lyIsland .isl-title{color:#fff;font-size:11px;font-weight:500;letter-spacing:-0.005em;
+    white-space:nowrap;overflow:hidden;flex:0 1 auto;margin-right:auto}
+  #lyIsland .eq{display:flex;align-items:center;gap:2.5px;height:12px;flex:0 0 auto;margin-left:8px}
+  #lyIsland .eq i{width:2.5px;border-radius:2px;background:#fff;height:3px;transform-origin:50% 50%}
+  /* player */
+  #lyPlayer{padding:18px;flex-direction:column;align-items:stretch;justify-content:flex-start}
+  .p-top{display:flex;align-items:center;gap:12px;height:40px}
+  .p-art{width:40px;height:40px;border-radius:11px;background:#fff;display:flex;align-items:center;
+    justify-content:center;flex:0 0 auto}
+  .p-art svg{display:block}
+  .p-meta{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
+  .p-meta b{color:#fff;font-size:13px;font-weight:500;letter-spacing:-0.01em;line-height:1.25;white-space:nowrap}
+  .p-meta span{color:var(--w40);font-size:11px;font-weight:400;line-height:1.35;white-space:nowrap}
+  .p-play{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.12);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;transform-origin:50% 50%}
+  .p-play svg{display:block}
+  .p-prog{margin-top:26px;height:16px;display:flex;align-items:center;position:relative}
+  .p-track{width:100%;height:4px;border-radius:2px;background:var(--w15);position:relative;transform-origin:50% 50%}
+  .p-fill{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#fff;width:34%}
+  .p-knob{position:absolute;top:50%;width:5px;height:16px;border-radius:3px;background:#fff;
+    transform:translate(-50%,-50%) scale(.4);opacity:0;transform-origin:50% 50%}
+  .p-times{display:flex;justify-content:space-between;margin-top:8px}
+  .p-times span{color:var(--w40);font-size:10.5px;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+  /* volume */
+  #lyVol{padding:0 20px}
+  #lyVol .spk{flex:0 0 auto;display:flex;align-items:center}
+  #lyVol .spk svg{display:block}
+  .v-track{flex:1 1 auto;height:6px;border-radius:3px;background:var(--k08);position:relative;margin:0 16px 0 14px}
+  .v-fill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--ink);width:74%}
+  .v-knob{position:absolute;top:50%;width:5px;height:20px;border-radius:3px;background:var(--ink);
+    transform:translate(-50%,-50%);transform-origin:50% 50%}
+  .v-pct{flex:0 0 auto;width:36px;text-align:right;color:var(--ink);font-size:10.5px;font-weight:500;
+    font-variant-numeric:tabular-nums}
+  /* toggle */
+  #lyTog{justify-content:flex-start}
+  .t-track{position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1.5px rgba(17,17,17,.14)}
+  .t-knob{position:absolute;left:5px;top:5px;width:26px;height:26px;border-radius:50%;background:var(--ink);
+    transform-origin:50% 50%}
+  /* tabs */
+  #lyTabs{align-items:center}
+  .tabs{position:relative;display:flex;align-items:center;width:100%;height:100%;padding:4px}
+  #indicator{position:absolute;top:4px;left:4px;width:64px;height:36px;border-radius:18px;background:var(--ink);
+    transform-origin:0% 50%}
+  .tab{position:relative;flex:1 1 0;text-align:center;font-size:10.5px;font-weight:500;
+    color:var(--k45);letter-spacing:-0.005em;z-index:1}
+  /* chart */
+  #lyChart{padding:16px 18px;flex-direction:column;align-items:stretch;justify-content:flex-start}
+  .c-head{display:flex;align-items:center;gap:8px;height:22px}
+  .c-head b{color:var(--ink);font-size:13px;font-weight:600;letter-spacing:-0.015em;margin-right:auto}
+  .c-head em{font-style:normal;font-size:9.5px;font-weight:600;color:#fff;background:var(--ink);
+    border-radius:99px;padding:3px 7px;letter-spacing:.01em}
+  #chipK{font-size:9.5px;font-weight:600;color:var(--ink);border:1px solid var(--k12);border-radius:6px;
+    padding:3px 6px;letter-spacing:.02em;background:#fff;transform-origin:50% 50%}
+  .c-body{position:relative;margin-top:12px;flex:1 1 auto}
+  #chartSvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;display:block}
+  .grid{stroke:rgba(0,0,0,.065);stroke-width:1;stroke-dasharray:2 5;shape-rendering:crispEdges}
+  #linePath{fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  #leadDot{fill:var(--ink)}
+  #hoverHalo{fill:none;stroke:var(--ink);opacity:0;stroke-width:1.5}
+  #tip{position:absolute;left:81.33%;top:18.75%;background:var(--ink);color:#fff;font-size:10px;font-weight:500;
+    padding:5px 9px;border-radius:8px;white-space:nowrap;transform-origin:50% 100%;
+    letter-spacing:0;font-variant-numeric:tabular-nums}
+  /* cmd palette */
+  #lyCmd{padding:0;flex-direction:column;align-items:stretch;justify-content:flex-start}
+  .k-input{display:flex;align-items:center;gap:9px;height:52px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .k-input svg{display:block;flex:0 0 auto}
+  .k-text{color:#fff;font-size:13px;font-weight:400;letter-spacing:0;display:flex;align-items:center}
+  .k-text .cut{display:inline-block;overflow:hidden}
+  .k-text .cut i{display:inline-block;font-style:normal;transform-origin:0% 60%;white-space:pre}
+  .caret{width:1.5px;height:16px;background:#fff;margin-left:2px;border-radius:1px}
+  .k-rows{padding:8px;display:flex;flex-direction:column;gap:2px}
+  .k-row{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:10px;
+    color:var(--w65);font-size:12.5px;font-weight:500;letter-spacing:-0.005em}
+  .k-row .ic{width:16px;height:16px;border-radius:5px;background:rgba(255,255,255,.14);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .k-row .ic::after{content:"";width:5px;height:5px;border-radius:1.5px;background:#fff}
+  .k-row span{flex:1 1 auto;white-space:nowrap}
+  .k-row kbd{font-family:inherit;font-size:10px;color:var(--w40);border:1px solid rgba(255,255,255,.14);
+    border-radius:5px;padding:2px 5px;line-height:1}
+  .k-row.sel{background:rgba(255,255,255,.1);color:#fff}
+  /* toast */
+  #lyToast{gap:9px}
+  #lyToast svg{display:block}
+  #lyToast span{color:#fff;font-size:12.5px;font-weight:500;letter-spacing:-0.005em;white-space:nowrap}
+  /* cursor */
+  #cursor{position:absolute;left:0;top:0;width:22px;height:22px;z-index:50;pointer-events:none;
+    will-change:transform;transform-origin:0 0;filter:drop-shadow(0 2px 5px rgba(0,0,0,.18))}
+  #cursor svg{display:block;overflow:visible}
+  /* click ripple */
+  #ripple{position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;
+    border:1.5px solid rgba(17,17,17,.35);opacity:0;pointer-events:none;z-index:40}
+  /* dev hud */
+  #hud{position:fixed;left:10px;bottom:10px;z-index:99;display:none;font-size:11px;color:#555;
+    font-variant-numeric:tabular-nums;background:rgba(255,255,255,.7);padding:4px 8px;border-radius:6px}
+  body.dev #hud{display:block}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="shape">
+
+    <div class="layer" id="lyBtn"><span class="px">Generate</span></div>
+
+    <div class="layer" id="lySpin">
+      <svg class="px" width="24" height="24" viewBox="0 0 24 24">
+        <circle class="spin" cx="12" cy="12" r="9" fill="none" stroke="#fff" stroke-width="2.4"
+          stroke-linecap="round" stroke-dasharray="14.2 42.4"></circle>
+      </svg>
+    </div>
+
+    <div class="layer" id="lyCheck">
+      <svg class="px" width="26" height="26" viewBox="0 0 26 26">
+        <path id="checkPath" d="M7.2 13.4 L11.3 17.4 L18.9 8.6" fill="none" stroke="#fff"
+          stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </div>
+
+    <div class="layer" id="lyIsland">
+      <div class="art px"></div>
+      <div class="isl-title px">Midnight Drive</div>
+      <div class="eq px"><i></i><i></i><i></i><i></i></div>
+    </div>
+
+    <div class="layer" id="lyPlayer">
+      <div class="p-top px">
+        <div class="p-art">
+          <svg width="18" height="18" viewBox="0 0 18 18">
+            <path d="M6.8 3.6 L12.6 3.6 L12.6 5.2 L10.9 5.2 L10.9 12.6 A2.4 2.4 0 1 1 9.3 10.3 L9.3 3.6 Z"
+              fill="#121212"></path>
+          </svg>
+        </div>
+        <div class="p-meta">
+          <b>Midnight Drive</b><span>Neon Cassette</span>
+        </div>
+        <div class="p-play" id="playBtn">
+          <svg width="13" height="13" viewBox="0 0 12 12">
+            <path id="gg1" fill="#fff" d="M0,0 L0,12 L12,6 L12,6 Z"></path>
+            <path id="gg2" fill="#fff" d="M12,6 L12,6 L12,6 L12,6 Z"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="p-prog px">
+        <div class="p-track" id="pTrack">
+          <div class="p-fill" id="pFill"></div>
+          <div class="p-knob" id="pKnob"></div>
+        </div>
+      </div>
+      <div class="p-times px"><span id="tCur">1:16</span><span id="tRem">-2:26</span></div>
+    </div>
+
+    <div class="layer" id="lyVol">
+      <div class="spk px">
+        <svg width="19" height="19" viewBox="0 0 19 19">
+          <path d="M3.2 7 L6 7 L9.6 3.8 L9.6 15.2 L6 12 L3.2 12 Z" fill="#121212"></path>
+          <path d="M12.2 6.4 A 5 5 0 0 1 12.2 12.6" fill="none" stroke="#121212" stroke-width="1.7" stroke-linecap="round"></path>
+          <path d="M14.8 4.4 A 8.2 8.2 0 0 1 14.8 14.6" fill="none" stroke="#121212" stroke-width="1.7" stroke-linecap="round" opacity=".45"></path>
+        </svg>
+      </div>
+      <div class="v-track px">
+        <div class="v-fill" id="vFill"></div>
+        <div class="v-knob" id="vKnob"></div>
+      </div>
+      <span class="v-pct px" id="vPct">74%</span>
+    </div>
+
+    <div class="layer" id="lyTog">
+      <div class="t-track"></div>
+      <div class="t-knob" id="tKnob"></div>
+    </div>
+
+    <div class="layer" id="lyTabs">
+      <div class="tabs px">
+        <div id="indicator"></div>
+        <div class="tab" id="tab0">Trending</div>
+        <div class="tab" id="tab1">New</div>
+        <div class="tab" id="tab2">Top</div>
+      </div>
+    </div>
+
+    <div class="layer" id="lyChart">
+      <div class="c-head px">
+        <b>Revenue</b>
+        <em>+24%</em>
+        <span id="chipK">⌘K</span>
+      </div>
+      <div class="c-body px">
+        <svg id="chartSvg" viewBox="0 0 264 96" preserveAspectRatio="none">
+          <line class="grid" x1="0" y1="30" x2="264" y2="30"></line>
+          <line class="grid" x1="0" y1="58" x2="264" y2="58"></line>
+          <line class="grid" x1="0" y1="86" x2="264" y2="86"></line>
+          <path id="areaPath" fill="url(#areaGrad)" opacity="0"></path>
+          <path id="linePath" d=""></path>
+          <circle id="hoverHalo" r="7.5" cx="0" cy="0"></circle>
+          <circle id="leadDot" r="3.4" cx="0" cy="0"></circle>
+        </svg>
+        <div id="tip">May · $8,420</div>
+      </div>
+    </div>
+
+    <div class="layer" id="lyCmd">
+      <div class="k-input px">
+        <svg width="14" height="14" viewBox="0 0 14 14">
+          <circle cx="6.2" cy="6.2" r="4.4" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.6"></circle>
+          <line x1="9.6" y1="9.6" x2="12.4" y2="12.4" stroke="rgba(255,255,255,.55)" stroke-width="1.6" stroke-linecap="round"></line>
+        </svg>
+        <div class="k-text"><span id="kText"></span><span class="caret" id="caret"></span></div>
+      </div>
+      <div class="k-rows">
+        <div class="k-row sel" id="kRow0"><span class="ic"></span><span>Ship release</span><kbd>↵</kbd></div>
+        <div class="k-row" id="kRow1"><span class="ic"></span><span>Copy link</span></div>
+        <div class="k-row" id="kRow2"><span class="ic"></span><span>Open settings</span></div>
+        <div class="k-row" id="kRow3"><span class="ic"></span><span>Ship changelog</span><kbd>⌘S</kbd></div>
+      </div>
+    </div>
+
+    <div class="layer" id="lyToast">
+      <svg class="px" width="15" height="15" viewBox="0 0 15 15">
+        <path id="toastCheck" d="M3 8 L6.2 11 L12 4.6" fill="none" stroke="#fff" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <span>Link copied</span>
+    </div>
+
+  </div>
+
+  <svg id="cursor" viewBox="0 0 22 22">
+    <path d="M3.2 1.6 L3.2 17.4 L7.6 13.4 L10.4 19.8 L13.6 18.4 L10.8 12.2 L16.8 12.2 Z"
+      fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"></path>
+  </svg>
+  <div id="ripple"></div>
+  <div id="hud">t 0.00 · b 1</div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#121212" stop-opacity=".10"></stop>
+      <stop offset="1" stop-color="#121212" stop-opacity="0"></stop>
+    </linearGradient>
+  </defs>
+</svg>
+
+<script>
+/* ============================================================
+   ONE SHAPE — 14s / 120 BPM / 7 bars / 28 beats
+   Every change is driven by the cursor's clicks and drags.
+   ============================================================ */
+"use strict";
+const $ = (s) => document.querySelector(s);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeInOut = (t) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const fmtTime = (s) => { s = Math.max(0, Math.round(s)); return (s / 60 | 0) + ":" + String(s % 60).padStart(2, "0"); };
+
+/* spring: semi-implicit euler, substepped. zeta ~0.75-0.95 => at most a touch of bounce */
+class S {
+  constructor(v, k = 210, d = 26) { this.v = v; this.t = v; this.vel = 0; this.k = k; this.d = d; }
+  set(t, k, d) { this.t = t; if (k !== undefined) this.k = k; if (d !== undefined) this.d = d; return this; }
+  jump(v) { this.v = this.t = v; this.vel = 0; return this; }
+  impulse(v) { this.vel += v; return this; }
+  step(dt) {
+    const n = Math.max(1, Math.min(6, Math.ceil(dt / 0.008)));
+    const h = dt / n;
+    for (let i = 0; i < n; i++) {
+      const a = -this.k * (this.v - this.t) - this.d * this.vel;
+      this.vel += a * h; this.v += this.vel * h;
+    }
+    return this.v;
+  }
+}
+
+/* ---------- stage geometry ---------- */
+const stage = $("#stage"), shapeEl = $("#shape"), cursorEl = $("#cursor"), rippleEl = $("#ripple");
+let W = innerWidth, H = innerHeight, CX = W / 2, CY = H / 2;
+function measure() { W = innerWidth; H = innerHeight; CX = W / 2; CY = H / 2; }
+addEventListener("resize", measure); measure();
+const sc = (x, y) => ({ x: CX + x, y: CY + y });   // stage-center relative -> viewport px
+
+/* ---------- the one shape: morph springs ---------- */
+const B = { w: 168, h: 54, r: 27 };                 // button = the loop anchor state
+const shp = {
+  w: new S(B.w, 320, 40), h: new S(B.h, 320, 40), r: new S(B.r, 320, 40),
+  cx: new S(0, 320, 42), cy: new S(0, 320, 42),
+  sx: new S(1, 380, 46), sy: new S(1, 380, 46),
+  bg: new S(0, 300, 40)                             // 0 = ink, 1 = white
+};
+const inkRGB = [18, 18, 18], whtRGB = [255, 255, 255];
+function setShape(o, k) { for (const key in o) if (shp[key]) shp[key].set(o[key], k, k ? 2.4 * Math.sqrt(k) * .92 : undefined); }
+
+/* ---------- camera/cursor ---------- */
+const cur = {
+  x: 0, y: 0, tx: 0, ty: 0, k: 140, d: 21, pin: null,
+  sx: new S(0, 140, 21), sy: new S(0, 140, 21), sc: new S(1, 520, 34)
+};
+function cursorHome() {
+  const p = sc(Math.min(W, 900) * .30, Math.min(H, 700) * .30);
+  cur.x = cur.tx = p.x; cur.y = cur.ty = p.y;
+  cur.sx.jump(p.x); cur.sy.jump(p.y);
+}
+
+/* ---------- animated element registry (layers + sub-parts) ---------- */
+const REG = new Map();   // el -> {op,y,s}
+function reg(el, init) {
+  if (!REG.has(el)) REG.set(el, { op: new S(init?.op ?? 0, 320, 40), y: new S(0, 320, 40), s: new S(1, 320, 40) });
+  return REG.get(el);
+}
+const R = {};  // named refs
+["lyBtn","lySpin","lyCheck","lyIsland","lyPlayer","lyVol","lyTog","lyTabs","lyChart","lyCmd","lyToast",
+ "pTrack","pFill","pKnob","tCur","tRem","vFill","vKnob","vPct","tKnob","indicator","tab0","tab1","tab2",
+ "chartSvg","linePath","areaPath","leadDot","hoverHalo","tip","chipK","kText","caret","kRow0","kRow1",
+ "kRow2","kRow3","checkPath","toastCheck","playBtn","gg1","gg2","pArtMeta","spinCircle","cursor","hud"
+].forEach(id => R[id] = document.getElementById(id));
+// sub-parts get their own springs
+const partRefs = {
+  art:   document.querySelector(".p-art"),
+  meta:  document.querySelector(".p-meta"),
+  play:  R.playBtn,
+  prog:  document.querySelector(".p-prog"),
+  times: document.querySelector(".p-times"),
+  media: document.querySelectorAll("#lyIsland .px"),
+  tabsUI: document.querySelector(".tabs"),
+  cHead: document.querySelector(".c-head"),
+  cBody: document.querySelector(".c-body"),
+  kInput: document.querySelector(".k-input"),
+  kRows: [R.kRow0, R.kRow1, R.kRow2, R.kRow3],
+  toastIco: R.toastCheck, toastTxt: document.querySelector("#lyToast span"),
+  btnTxt: document.querySelector("#lyBtn span"),
+  volIco: document.querySelector("#lyVol .spk"),
+  vTrack: document.querySelector(".v-track")
+};
+/* register every morphable element once */
+document.querySelectorAll(".layer").forEach(el => reg(el));
+Object.values(partRefs).forEach(v => {
+  if (v instanceof NodeList || Array.isArray(v)) v.forEach(el => reg(el));
+  else if (v) reg(v);
+});
+function showEl(el, { y = 0, s = 1, k = 320 } = {}) {
+  const r = reg(el); r.op.set(1, k, 2.4 * Math.sqrt(k) * .8); r.y.set(y, k); r.s.set(s, k);
+}
+function hideEl(el, { y = 0, s = .96, k = 340 } = {}) {
+  /* op: fast-out, critically damped at high stiffness — no ring, no slow tail */
+  const r = reg(el); r.op.set(0, 640, 2 * Math.sqrt(640)); r.y.set(y, k); r.s.set(s, k);
+}
+
+/* ---------- scene targets ---------- */
+const SC = {
+  btn:    { w: 168, h: 54,  r: 27, bg: 0 },
+  loader: { w: 54,  h: 54,  r: 27, bg: 0 },
+  check:  { w: 54,  h: 54,  r: 27, bg: 0 },
+  island: { w: 176, h: 42,  r: 21, bg: 0 },
+  player: { w: 304, h: 150, r: 24, bg: 0 },
+  vol:    { w: 312, h: 64,  r: 32, bg: 1 },
+  tog:    { w: 60,  h: 36,  r: 18, bg: 1 },
+  togOn:  { w: 60,  h: 36,  r: 18, bg: 0 },
+  tabs:   { w: 212, h: 44,  r: 22, bg: 1 },
+  chart:  { w: 304, h: 182, r: 24, bg: 1 },
+  cmd:    { w: 336, h: 200, r: 20, bg: 0 },
+  toast:  { w: 216, h: 48,  r: 24, bg: 0 }
+};
+function toScene(name, k = 320, over = {}) {
+  setShape(Object.assign({}, SC[name], over), k);
+}
+
+/* ============================================================
+   DYNAMICS — every moving value is a function of (t) + springs
+   ============================================================ */
+const D = {
+  playing: false, pFillBase: .34, pFill: new S(.34, 620, 46), pDragging: false,
+  pKnobOp: new S(0, 440, 36), pKnobS: new S(.4, 440, 36),
+  vFillBase: .74, vFill: new S(.74, 620, 46), vPull: new S(0, 330, 26), vDragging: false,
+  vKS: new S(1, 480, 32),
+  togX: new S(0, 460, 34), togOn: false,
+  indX: new S(-68, 900, 62), indS: new S(1, 380, 26), indPull: new S(0, 330, 26),
+  indOrigin: "0% 50%",
+  playP: new S(0, 430, 30),
+  chartAt: -9, checkAt: -9, toastAt: -9, rippleAt: -9, spinAt: -9, flashAt: -9,
+  tipAt: -9, tipS: new S(0, 360, 30), liftK: new S(0, 300, 38),
+  chars: []
+};
+/* progress bar / volume geometry (stage-center relative) */
+const GEO = {
+  pL: -134, pW: 268, pY: 17,
+  vL: -103, vW: 187,
+  tabs: [-68, 0, 68], tabW: 64,
+  point5: { x: 84, y: -19 }
+};
+function progressFillFromCursor() { return clamp((cur.x - CX - GEO.pL) / GEO.pW, 0, 1); }
+function volFillFromCursor() { return clamp((cur.x - CX - GEO.vL) / GEO.vW, 0, 1); }
+function volPullFromCursor() { return Math.max(0, cur.x - CX - (GEO.vL + GEO.vW)); }
+
+/* --- smooth chart path --- */
+const PT = [[8, 66], [49.3, 48], [90.7, 56], [132, 30], [173.3, 42], [214.7, 18], [256, 26]];
+function smoothPath(p) {
+  let d = `M${p[0][0]},${p[0][1]}`;
+  for (let i = 0; i < p.length - 1; i++) {
+    const p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+const LINE_D = smoothPath(PT);
+let LINE_LEN = 400;
+function initChart() {
+  R.linePath.setAttribute("d", LINE_D);
+  R.areaPath.setAttribute("d", LINE_D + " L256,96 L8,96 Z");
+  LINE_LEN = R.linePath.getTotalLength();
+  R.linePath.style.strokeDasharray = LINE_LEN;
+  R.linePath.style.strokeDashoffset = LINE_LEN;
+  const cl = R.checkPath.getTotalLength();
+  R.checkPath.style.strokeDasharray = cl; R.checkPath.style.strokeDashoffset = cl;
+  const tl = R.toastCheck.getTotalLength();
+  R.toastCheck.style.strokeDasharray = tl; R.toastCheck.style.strokeDashoffset = tl;
+}
+
+/* ---------- timeline ---------- */
+const BEAT = .5, TOTAL = 14;
+const events = [];
+const ev = (time, fn) => events.push({ time, fn });
+let T = 0;          // current time (s)
+let evI = 0;
+
+function resetAll() {
+  T = 0; evI = 0;
+  measure(); cursorHome();
+  cur.tx = cur.x; cur.ty = cur.y; cur.pin = null; cur.sc.jump(1);
+  Object.values(shp).forEach(s => s.jump(s.t)); // freeze targets from last run
+  // hard anchors
+  shp.w.jump(B.w); shp.h.jump(B.h); shp.r.jump(B.r); shp.cx.jump(0); shp.cy.jump(0);
+  shp.sx.jump(1); shp.sy.jump(1); shp.bg.jump(0);
+  Object.assign(D, {
+    playing: false, pFillBase: .34, pDragging: false, vFillBase: .74, vDragging: false,
+    togOn: false, chartAt: -9, checkAt: -9, toastAt: -9, rippleAt: -9, tipAt: -9,
+    spinAt: -9, flashAt: -9, chars: []
+  });
+  D.pFill.jump(.34); D.vFill.jump(.74); D.vPull.jump(0); D.togX.jump(0);
+  D.pKnobOp.jump(0); D.pKnobS.jump(.4); D.vKS.jump(1); D.tipS.jump(0);
+  D.indX.jump(-68); D.indS.jump(1); D.indPull.jump(0); D.playP.jump(0); D.liftK.jump(0);
+  // elements
+  REG.forEach((r, el) => { r.op.jump(el === R.lyBtn ? 1 : 0); r.y.jump(0); r.s.jump(1); });
+  reg(partRefs.btnTxt).op.jump(1);
+  document.querySelectorAll(".kcut").forEach(el => el.remove());
+  R.kText.innerHTML = "";
+  R.tip.style.opacity = 0;
+  R.hoverHalo.setAttribute("opacity", 0);
+  R.areaPath.setAttribute("opacity", 0);
+  R.linePath.style.strokeDashoffset = LINE_LEN;
+  R.checkPath.style.strokeDashoffset = R.checkPath.getTotalLength();
+  R.toastCheck.style.strokeDashoffset = R.toastCheck.getTotalLength();
+  R.pKnob.style.opacity = 0;
+  R.tab0.style.color = "#fff"; R.tab1.style.color = ""; R.tab2.style.color = "";
+  R.kRow1.classList.remove("hid"); R.kRow2.classList.remove("hid");
+  partRefs.kRows.forEach(row => { row.style.display = ""; });
+  setRow3(false);
+  shapeEl.classList.remove("lift");
+  R.playBtn.style.transform = "";
+  R.hud.textContent = "t 0.00 · b 1";
+}
+function setRow3(on) { R.kRow3.style.display = on ? "" : "none"; }
+
+/* ---------- interaction helpers ---------- */
+function glide(tx, ty, k = 140, d = 21) { cur.pin = null; cur.tx = tx; cur.ty = ty; cur.k = k; cur.d = d; }
+function pin(fn) { cur.pin = fn; }
+function unpin() { cur.pin = null; cur.tx = cur.x; cur.ty = cur.y; }
+function clickDown(t) { cur.sc.set(.8, 620, 38); D.rippleAt = t; }
+function clickUp() { cur.sc.set(1, 430, 30); }
+const RIPPLE = { on: false };
+function typeChar(ch, t) {
+  const wrap = document.createElement("span"); wrap.className = "kcut";
+  const inner = document.createElement("i"); inner.textContent = ch;
+  wrap.appendChild(inner); R.kText.appendChild(wrap);
+  D.chars.push({ el: inner, s: new S(.55, 430, 30), y: new S(4, 430, 30) });
+  const c = D.chars[D.chars.length - 1]; c.s.set(1); c.y.set(0);
+}
+
+/* ============================================================
+   THE SCORE — 28 beats @ 120 BPM. One gesture per beat.
+   ============================================================ */
+/* --- bar 1 · Generate button --- */
+ev(0.12, () => glide(CX + 46, CY + 16, 132, 21));
+ev(0.62, () => D.liftK.set(1, 250, 26));
+/* --- bar 1 · click → loading --- */
+ev(1.00, t => clickDown(t));
+ev(1.10, t => {
+  clickUp(); D.liftK.set(0, 300, 30);
+  toScene("loader", 300); D.spinAt = t;
+  showEl(R.lySpin, { s: .6, k: 430 }); hideEl(R.lyBtn, { s: .82, k: 280 });
+});
+/* --- bar 2 · success check --- */
+ev(2.28, t => {
+  hideEl(R.lySpin, { s: 1.1, k: 380 }); showEl(R.lyCheck, { k: 430 });
+  D.checkAt = t; shp.sy.set(1.06, 340, 26);
+});
+ev(2.50, () => shp.sy.set(1, 340, 36));
+/* --- bar 3 · click → Dynamic Island --- */
+ev(2.76, t => clickDown(t));
+ev(2.84, t => {
+  clickUp(); toScene("island", 300);
+  hideEl(R.lyCheck, { s: .9, k: 260 });
+  showEl(R.lyIsland, { s: .93, k: 330 });
+  const m = partRefs.media;
+  showEl(m[0], { s: .5, k: 420 }); showEl(m[1], { y: 5, k: 360 }); showEl(m[2], { s: .6, k: 400 });
+});
+ev(3.62, () => D.liftK.set(1, 240, 26));
+/* --- bar 3 · click → player --- */
+ev(4.02, t => clickDown(t));
+ev(4.10, t => {
+  clickUp(); D.liftK.set(0, 320, 34);
+  toScene("player", 300); hideEl(R.lyIsland, { s: .95, k: 300 });
+  showEl(R.lyPlayer, { k: 340 }); showEl(R.pTrack, { k: 340 });
+  showEl(partRefs.art, { s: .55, k: 400 }); showEl(partRefs.meta, { y: 6, k: 340 });
+  showEl(partRefs.prog, { y: 6, k: 340 }); showEl(partRefs.times, { y: 5, k: 340 });
+  showEl(partRefs.play, { s: .55, k: 420 });
+});
+ev(4.44, () => glide(CX + 116, CY - 37, 150, 23));
+ev(4.86, () => reg(R.playBtn).s.set(1.09, 330, 30));
+/* --- bar 4 · click → play / pause morph --- */
+ev(4.98, t => clickDown(t));
+ev(5.06, () => {
+  clickUp(); D.playing = true; D.playP.set(1, 440, 30); reg(R.playBtn).s.set(1, 420, 32);
+});
+/* --- bar 4 · grab progress --- */
+ev(5.50, t => { const f = .34 + .032 * (t - 5.06); glide(CX - 134 + f * 268, CY + 17, 160, 24); });
+ev(5.90, t => {
+  clickDown(t); D.pDragging = true;
+  D.pKnobOp.set(1, 460, 38); D.pKnobS.set(1, 460, 38);
+});
+ev(5.92, () => pin(t => {
+  const k = clamp((t - 5.92) / .52, 0, 1), e = easeInOut(k);
+  return [CX + lerp(-43, 64.4, e), CY + 17];
+}));
+/* --- bar 5 · release → volume slider --- */
+ev(6.44, () => { D.pDragging = false; D.pFillBase = D.pFill.v; clickUp(); unpin(); });
+ev(6.52, t => {
+  toScene("vol", 300); D.vFillBase = .74; D.vFill.jump(.74);
+  hideEl(R.lyPlayer, { y: -4, k: 280 }); hideEl(R.pTrack, { k: 300 });
+  D.pKnobOp.set(0, 380, 34); D.pKnobS.set(.4, 380, 34);
+  showEl(R.lyVol, { k: 330 });
+  showEl(partRefs.volIco, { s: .7, k: 380 }); showEl(partRefs.vTrack, { s: .92, k: 360 }); showEl(R.vPct, { y: 3, k: 340 });
+});
+ev(6.58, () => glide(CX + 35.4, CY + 1, 170, 25));
+ev(6.95, t => { clickDown(t); D.vDragging = true; D.vKS.set(1.3, 480, 32); });
+ev(7.00, () => pin(t => {
+  const k = clamp((t - 7.00) / .55, 0, 1), e = easeInOut(k);
+  return [CX + lerp(35.4, 84, e), CY + 1];
+}));
+ev(7.55, () => pin(t => {
+  const k = clamp((t - 7.55) / .43, 0, 1), e = easeOut(k);
+  return [CX + 84 + e * 22, CY + 1];
+}));
+ev(7.98, () => {
+  D.vDragging = false; D.vFillBase = 1; clickUp(); unpin();
+  D.vKS.set(1, 420, 32);
+  shp.w.set(SC.vol.w, 250, 22); shp.sy.set(1, 300, 26);
+});
+/* --- bar 6 · click → toggle --- */
+ev(8.05, () => glide(CX - 11, CY, 170, 25));
+ev(8.38, t => clickDown(t));
+ev(8.46, t => {
+  clickUp(); toScene("tog", 320); D.togX.set(0, 400, 34);
+  D.vPull.jump(0);
+  hideEl(R.lyVol, { k: 260 }); showEl(R.lyTog, { k: 320 });
+});
+ev(8.90, t => clickDown(t));
+ev(8.98, () => {
+  clickUp(); D.togOn = true; D.togX.set(1, 470, 35); toScene("togOn", 380);
+  R.togOn = true;
+});
+ev(9.04, () => glide(CX + 12, CY, 260, 30));
+/* --- bar 6 · click → liquid tabs --- */
+ev(9.34, t => clickDown(t));
+ev(9.42, () => {
+  clickUp(); toScene("tabs", 300); D.togOn = false;
+  hideEl(R.lyTog, { k: 260 }); showEl(R.lyTabs, { k: 320 });
+  showEl(partRefs.tabsUI, { k: 340 });
+  D.indX.jump(-68); D.indS.jump(1);
+});
+ev(9.50, () => glide(CX - 68, CY, 150, 23));
+/* --- bar 6→7 · drag indicator, stretch past the end --- */
+ev(9.88, t => clickDown(t));
+ev(9.94, () => pin(t => {
+  const k = clamp((t - 9.94) / .58, 0, 1), e = easeInOut(k);
+  return [CX + lerp(-68, 68, e), CY];
+}));
+ev(10.52, () => pin(t => {
+  const k = clamp((t - 10.52) / .36, 0, 1), e = easeOut(k);
+  return [CX + 68 + e * 16, CY];
+}));
+ev(10.90, () => { clickUp(); unpin(); D.indPull.set(0, 300, 22); });
+/* --- bar 7 · release → chart, auto-draw --- */
+ev(10.98, t => {
+  toScene("chart", 300); hideEl(R.lyTabs, { k: 240 });
+  showEl(R.lyChart, { k: 340 }); D.chartAt = t;
+  showEl(partRefs.cHead, { y: -5, k: 340 }); showEl(partRefs.cBody, { y: 7, k: 340 });
+});
+ev(11.30, () => glide(CX + 84, CY - 19, 150, 23));
+ev(11.86, t => { D.tipAt = t; });
+/* --- bar 7 · click chip → ⌘K palette --- */
+ev(12.24, () => glide(CX + 114, CY - 64, 220, 28));
+ev(12.50, t => clickDown(t));
+ev(12.58, t => {
+  clickUp(); toScene("cmd", 300);
+  hideEl(R.lyChart, { k: 240 }); showEl(R.lyCmd, { k: 340 });
+  showEl(partRefs.kInput, { y: -8, k: 360 });
+  showEl(R.caret, { s: 1, k: 300 });
+});
+ev(12.62, () => showEl(R.kRow0, { y: 6, s: .96, k: 380 }));
+ev(12.68, () => showEl(R.kRow1, { y: 8, s: .97, k: 380 }));
+ev(12.74, () => showEl(R.kRow2, { y: 10, s: .97, k: 380 }));
+ev(12.84, () => glide(CX - 100, CY - 74, 160, 24));
+ev(12.96, t => typeChar("s", t));
+ev(13.03, t => typeChar("h", t));
+ev(13.06, () => {
+  hideEl(R.kRow1, { s: .97, k: 300 }); hideEl(R.kRow2, { s: .97, k: 300 });
+  setRow3(true); showEl(R.kRow3, { y: -78, s: .96, k: 380 });
+});
+ev(13.10, t => typeChar("i", t));
+ev(13.17, t => typeChar("p", t));
+/* --- final beats · click row → toast → button --- */
+ev(13.22, () => glide(CX - 60, CY - 20, 300, 32));
+ev(13.42, t => clickDown(t));
+ev(13.50, t => {
+  clickUp(); D.flashAt = t;
+  toScene("toast", 320); hideEl(R.lyCmd, { k: 240 });
+  showEl(R.lyToast, { k: 340 }); showEl(partRefs.toastIco, { s: .7, k: 440 });
+  showEl(partRefs.toastTxt, { y: 4, k: 360 }); D.toastAt = t;
+});
+ev(13.76, () => {
+  toScene("btn", 400); hideEl(R.lyToast, { k: 200 });
+  showEl(R.lyBtn, { k: 360 }); showEl(partRefs.btnTxt, { y: 4, k: 340 });
+});
+ev(13.80, () => pin(t => {
+  const k = clamp((t - 13.80) / .15, 0, 1), e = easeInOut(k);
+  const h = sc(Math.min(W, 900) * .30, Math.min(H, 700) * .30);
+  return [lerp(CX - 60, h.x, e), lerp(CY - 20, h.y, e)];
+}));
+ev(13.96, () => snapAnchor());
+
+/* ============================================================
+   SIM — advance every spring; targets that depend on the cursor
+   ============================================================ */
+const spinEl = document.querySelector(".spin");
+const tTrackEl = document.querySelector(".t-track");
+const eqEls = document.querySelectorAll("#lyIsland .eq i");
+const eqF = [4, 5, 3.6, 4.7], eqP = [0, 1.3, 2.6, 4.1];
+
+function sim(dt) {
+  /* cursor */
+  if (cur.pin) { const p = cur.pin(T); cur.sx.jump(p[0]); cur.sy.jump(p[1]); }
+  else { cur.sx.set(cur.tx, cur.k, cur.d); cur.sy.set(cur.ty, cur.k, cur.d); }
+  cur.x = cur.sx.step(dt); cur.y = cur.sy.step(dt); cur.sc.step(dt);
+
+  /* progress fill */
+  if (D.playing && !D.pDragging) D.pFillBase = Math.min(1, D.pFillBase + dt * 0.032);
+  if (D.pDragging) D.pFill.set(progressFillFromCursor(), 900, 62);
+  else D.pFill.set(D.pFillBase, 420, 42);
+
+  /* volume fill + rubber-band stretch */
+  if (D.vDragging) {
+    D.vFill.set(volFillFromCursor(), 900, 62);
+    D.vPull.set(volPullFromCursor(), 520, 42);
+    shp.w.set(SC.vol.w + D.vPull.v * .85, 520, 48);
+    shp.sy.set(1 - D.vPull.v * .0012, 380, 40);
+  } else D.vFill.set(D.vFillBase, 420, 42);
+
+  /* indicator + liquid stretch */
+  if (T > 9.4 && T < 11.1) {
+    if (cur.pin) {
+      D.indX.set(clamp(cur.x - CX, -68, 68), 700, 52);
+      D.indPull.set(Math.max(0, cur.x - CX - 68), 520, 42);
+    }
+    const stretch = 1 + clamp(Math.abs(D.indX.vel) * .00042, 0, .22) + D.indPull.v * .02;
+    D.indS.set(stretch, 430, 34);
+    D.indOrigin = D.indX.vel < -4 ? "100% 50%" : "0% 50%";
+  }
+
+  /* tooltip spring */
+  D.tipS.set((D.tipAt < 0 || T < D.tipAt) ? 0 : 1, 360, 30);
+
+  /* springs */
+  Object.values(shp).forEach(s => s.step(dt));
+  Object.values(D).forEach(v => { if (v instanceof S) v.step(dt); });
+  REG.forEach(r => { r.op.step(dt); r.y.step(dt); r.s.step(dt); });
+  D.chars.forEach(c => { c.s.step(dt); c.y.step(dt); });
+}
+
+/* ============================================================
+   DRAW
+   ============================================================ */
+const mix = (a, b, t) => a + (b - a) * t;
+function draw() {
+  /* the shape */
+  const lx = 1 + D.liftK.v * .033, g = shp.bg.v;
+  const ch = Math.round(mix(18, 255, g));
+  shapeEl.style.width = shp.w.v + "px";
+  shapeEl.style.height = shp.h.v + "px";
+  shapeEl.style.borderRadius = shp.r.v + "px";
+  shapeEl.style.background = `rgb(${ch},${ch},${ch})`;
+  shapeEl.style.transform = `translate(-50%,-50%) translate(${shp.cx.v}px,${shp.cy.v}px) scale(${(shp.sx.v * lx).toFixed(4)},${(shp.sy.v * lx).toFixed(4)})`;
+  const L = D.liftK.v;
+  shapeEl.style.boxShadow = L > .02 ? `0 ${(10 * L).toFixed(1)}px ${(30 * L).toFixed(1)}px rgba(17,17,17,${(.11 * L).toFixed(3)})` : "none";
+
+  /* registered elements */
+  REG.forEach((r, el) => {
+    if (r.op.v < .003 && r.op.t === 0) { if (el !== null) el.style.opacity = 0; return; }
+    el.style.opacity = r.op.v.toFixed(3);
+    el.style.transform = `translateY(${r.y.v.toFixed(2)}px) scale(${r.s.v.toFixed(4)})`;
+  });
+
+  /* cursor */
+  cursorEl.style.transform = `translate(${(cur.x - 3.2).toFixed(1)}px,${(cur.y - 1.6).toFixed(1)}px) scale(${cur.sc.v.toFixed(3)})`;
+  cursorEl.style.opacity = cur.x < 40 && cur.y < 40 ? 1 : 1;
+
+  /* ripple */
+  const rk = (T - D.rippleAt) / .3;
+  if (rk >= 0 && rk < 1) {
+    rippleEl.style.opacity = ((1 - rk) * .55).toFixed(3);
+    rippleEl.style.transform = `translate(${cur.x}px,${cur.y}px) scale(${(.4 + rk * 1.1).toFixed(3)})`;
+  } else rippleEl.style.opacity = 0;
+
+  /* spinner */
+  if (layerVisible(R.lySpin)) spinEl.style.transform = `rotate(${((T - D.spinAt) * 620).toFixed(1)}deg)`;
+
+  /* check draw */
+  const ck = clamp((T - D.checkAt) / .26, 0, 1);
+  if (ck > 0) R.checkPath.style.strokeDashoffset = (R.checkPath.getTotalLength() * (1 - easeOut(ck))).toFixed(1);
+  const tk2 = clamp((T - D.toastAt) / .22, 0, 1);
+  if (tk2 > 0) R.toastCheck.style.strokeDashoffset = (R.toastCheck.getTotalLength() * (1 - easeOut(tk2))).toFixed(1);
+
+  /* island equalizer */
+  if (layerVisible(R.lyIsland)) {
+    for (let i = 0; i < 4; i++) {
+      const h = 3.5 + 6.5 * Math.abs(Math.sin(2 * Math.PI * T * eqF[i] + eqP[i]));
+      eqEls[i].style.height = h.toFixed(1) + "px";
+    }
+  }
+
+  /* play / pause glyph morph */
+  const pv = clamp(D.playP.v, 0, 1);
+  const a0 = [[0, 0], [0, 12], [12, 6], [12, 6]], a1 = [[0, 0], [0, 12], [4.6, 12], [4.6, 0]];
+  const b0 = [[12, 6], [12, 6], [12, 6], [12, 6]], b1 = [[5.4, 0], [5.4, 12], [10, 12], [10, 0]];
+  const pd = (s0, s1) => {
+    const q = s0.map((p, i) => [mix(p[0], s1[i][0], pv).toFixed(2), mix(p[1], s1[i][1], pv).toFixed(2)]);
+    return `M${q[0]} L${q[1]} L${q[2]} L${q[3]} Z`;
+  };
+  R.gg1.setAttribute("d", pd(a0, a1));
+  R.gg2.setAttribute("d", pd(b0, b1));
+
+  /* player progress */
+  if (layerVisible(R.lyPlayer)) {
+    const f = D.pFill.v;
+    R.pFill.style.width = (f * 100).toFixed(2) + "%";
+    R.pKnob.style.left = (f * 100).toFixed(2) + "%";
+    if (D.pKnobOp.v > .01) {
+      R.pKnob.style.opacity = D.pKnobOp.v.toFixed(3);
+      R.pKnob.style.transform = `translate(-50%,-50%) scale(${D.pKnobS.v.toFixed(3)})`;
+    }
+    const el = Math.round(f * 222);
+    const cs = fmtTime(el), rs = "-" + fmtTime(222 - el);
+    if (R.tCur.textContent !== cs) { R.tCur.textContent = cs; R.tRem.textContent = rs; }
+  }
+
+  /* volume slider */
+  if (layerVisible(R.lyVol)) {
+    const f = D.vFill.v;
+    R.vFill.style.width = (f * 100).toFixed(2) + "%";
+    R.vKnob.style.left = `calc(${(f * 100).toFixed(2)}% + ${(D.vPull.v * .575).toFixed(1)}px)`;
+    R.vKnob.style.transform = `translate(-50%,-50%) scale(${D.vKS.v.toFixed(3)})`;
+    const pt = D.vPull.v > 1.5 ? "MAX" : Math.round(f * 100) + "%";
+    if (R.vPct.textContent !== pt) R.vPct.textContent = pt;
+  }
+
+  /* toggle knob */
+  if (layerVisible(R.lyTog)) {
+    const x = D.togX.v, v = D.togX.vel;
+    tTrackEl.style.opacity = (1 - x).toFixed(3);
+    const kc = Math.round(mix(18, 255, x));
+    R.tKnob.style.left = (5 + x * 24).toFixed(2) + "px";
+    R.tKnob.style.background = `rgb(${kc},${kc},${kc})`;
+    const sx = 1 + clamp(Math.abs(v) * .012, 0, .13), sy = 1 - clamp(Math.abs(v) * .008, 0, .09);
+    R.tKnob.style.transform = `scale(${sx.toFixed(3)},${sy.toFixed(3)})`;
+  }
+
+  /* liquid tab indicator */
+  if (layerVisible(R.lyTabs)) {
+    R.indicator.style.left = (D.indX.v + 106 - 32).toFixed(2) + "px";
+    R.indicator.style.transformOrigin = D.indOrigin;
+    R.indicator.style.transform = `scaleX(${D.indS.v.toFixed(3)})`;
+    const tabs = [R.tab0, R.tab1, R.tab2];
+    for (let i = 0; i < 3; i++) {
+      let m = clamp(1 - Math.abs(D.indX.v - GEO.tabs[i]) / 40, 0, 1);
+      m = m * m * (3 - 2 * m);
+      const c = Math.round(mix(140, 255, m));
+      tabs[i].style.color = `rgb(${c},${c},${c})`;
+    }
+  }
+
+  /* chart reveal */
+  if (T > D.chartAt - .5) {
+    const cp = clamp((T - D.chartAt) / .72, 0, 1), e = easeInOut(cp);
+    R.linePath.style.strokeDashoffset = (LINE_LEN * (1 - e)).toFixed(1);
+    R.areaPath.setAttribute("opacity", (clamp((e - .25) / .75, 0, 1) * .9).toFixed(3));
+    R.leadDot.style.opacity = cp > .005 && cp < .995 ? 1 : 0;
+    if (cp > .005 && cp < .995) {
+      const pt = R.linePath.getPointAtLength(LINE_LEN * e);
+      R.leadDot.setAttribute("cx", pt.x.toFixed(1)); R.leadDot.setAttribute("cy", pt.y.toFixed(1));
+    }
+    const hk = clamp((T - D.tipAt) / .26, 0, 1);
+    R.hoverHalo.setAttribute("opacity", (hk * .35).toFixed(3));
+    R.hoverHalo.setAttribute("r", (5.5 + 2.5 * D.tipS.v).toFixed(1));
+    R.tip.style.opacity = D.tipS.v.toFixed(3);
+    R.tip.style.transform = `translate(-50%,-116%) translateY(${((1 - D.tipS.v) * 7).toFixed(1)}px) scale(${(.85 + .15 * D.tipS.v).toFixed(3)})`;
+  }
+
+  /* cmd palette */
+  if (layerVisible(R.lyCmd)) {
+    R.caret.style.opacity = ((T * 2) % 1 < .55) ? 1 : 0;
+    for (const c of D.chars) {
+      c.el.style.transform = `translateY(${c.y.v.toFixed(2)}px) scale(${c.s.v.toFixed(3)})`;
+      c.el.style.opacity = clamp((c.s.v - .55) / .45, 0, 1).toFixed(3);
+    }
+    const fk = (T - D.flashAt) / .28;
+    R.kRow0.style.background = fk >= 0 && fk < 1
+      ? `rgba(255,255,255,${mix(.3, .1, fk).toFixed(3)})` : "";
+  }
+
+  /* hud */
+  R.hud.textContent = `t ${T.toFixed(2)} · beat ${Math.min(28, Math.floor(T * 2) + 1)} · bar ${Math.min(7, Math.floor(T / 2) + 1)}`;
+}
+function layerVisible(el) { const r = REG.get(el); return r && r.op.v > .02; }
+
+/* ============================================================
+   ENGINE — deterministic loop, pause, seek
+   ============================================================ */
+let lastMs = null, paused = false;
+function tick(now) {
+  const dt = lastMs === null ? 0 : Math.min(.05, (now - lastMs) / 1000);
+  lastMs = now;
+  if (!paused) {
+    T += dt;
+    if (T >= TOTAL) { T = 0; resetAll(); }
+  }
+  while (evI < events.length && events[evI].time <= T) { const e = events[evI++]; e.fn(e.time); }
+  sim(dt);
+  draw();
+  requestAnimationFrame(tick);
+}
+function snapAnchor() {
+  shp.w.jump(B.w); shp.h.jump(B.h); shp.r.jump(B.r); shp.cx.jump(0); shp.cy.jump(0);
+  shp.sx.jump(1); shp.sy.jump(1); shp.bg.jump(0);
+  D.liftK.jump(0); D.playing = false;
+  REG.forEach((r, el) => { r.op.jump(el === R.lyBtn ? 1 : 0); r.y.jump(0); r.s.jump(1); });
+  reg(partRefs.btnTxt).op.jump(1);
+  cursorHome(); unpin();
+  R.pKnob.style.opacity = 0;
+  R.tab0.style.color = "#fff"; R.tab1.style.color = ""; R.tab2.style.color = "";
+}
+function seek(target) {
+  target = clamp(target, 0, TOTAL - .001);
+  resetAll();
+  const step = 1 / 120;
+  while (T < target - step) {
+    T += step;
+    while (evI < events.length && events[evI].time <= T) { const e = events[evI++]; e.fn(e.time); }
+    sim(step);
+  }
+  T = target;
+  while (evI < events.length && events[evI].time <= T) { const e = events[evI++]; e.fn(e.time); }
+  sim(step);
+  lastMs = null;
+  draw();
+}
+
+/* ---------- boot ---------- */
+initChart(); resetAll();
+const q = new URLSearchParams(location.search);
+if (q.has("dev")) document.body.classList.add("dev");
+window.__seek = (t) => { paused = true; seek(parseFloat(t)); return T; };
+window.__play = () => { paused = false; lastMs = null; };
+window.__pause = () => { paused = true; };
+window.__pos = () => ({ t: T, x: cur.x, y: cur.y, w: shp.w.v, h: shp.h.v, cx: shp.cx.v, cy: shp.cy.v });
+if (q.has("t")) { paused = true; seek(parseFloat(q.get("t"))); }
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
