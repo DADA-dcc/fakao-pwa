@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """按已核验结论修正题库错误（可重复执行，幂等）"""
-import json, io
+import json, io, os
 
-P = 'C:/Users/Krilenxs/Desktop/fakao-pwa/questions/刑法.json'
-P_ADM = 'C:/Users/Krilenxs/Desktop/fakao-pwa/questions/行政法.json'
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+P = os.path.join(ROOT, 'questions', '刑法.json')
+P_ADM = os.path.join(ROOT, 'questions', '行政法.json')
 
 FIX = {
 '41': {

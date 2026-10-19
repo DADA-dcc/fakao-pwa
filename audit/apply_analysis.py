@@ -12,7 +12,7 @@
 """
 import json, io, os, re, sys, glob
 
-ROOT = 'C:/Users/Krilenxs/Desktop/fakao-pwa'
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 QDIR = os.path.join(ROOT, 'questions')
 
 PLACEHOLDER = re.compile(r'请参考相关法条与教材解析|legal knowledge|请参考官方公布|详细解析请参考')

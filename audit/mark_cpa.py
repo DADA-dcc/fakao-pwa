@@ -14,7 +14,8 @@
 """
 import json, io, os, re, glob, sys
 
-QDIR = 'C:/Users/Krilenxs/Desktop/fakao-pwa/questions'
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+QDIR = os.path.join(ROOT, 'questions')
 
 PAT_CPA = re.compile(r'根据[^，。、；]{2,16}法律制度的规定')
 PAT_TAX = re.compile(r'印花税|企业所得税|增值税|营业税|契税|土地增值税|消费税|资源税|'

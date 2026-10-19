@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-import json, io
+import json, io, os
 
-P = 'C:/Users/Krilenxs/Desktop/fakao-pwa/questions/刑法.json'
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+P = os.path.join(ROOT, 'questions', '刑法.json')
 d = json.load(io.open(P, encoding='utf-8'))
 m = {str(q['id']): q for q in d}
 
