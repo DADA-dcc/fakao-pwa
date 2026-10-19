@@ -323,6 +323,7 @@ body {
 .tag-type-subj{ background: var(--c-purple-lt);  color: var(--c-purple); }
 .tag-year     { background: #e8f5e9; color: #2e7d32; }
 .tag-id       { background: #f3e5f5; color: #7b1fa2; }
+.tag-cpa      { background: #fff3e0; color: #e65100; border: 1px solid #ffb74d; cursor: help; }
 .difficulty-badge {
   display: inline-block; padding: 3px 10px;
   border-radius: var(--r-sm); font-size: 12px; font-weight: 700; letter-spacing: .3px;
@@ -3843,6 +3844,7 @@ if ('serviceWorker' in navigator) {
       <span class="tag ${isSubj ? 'tag-type-subj' : 'tag-type'}">${typeMap[q.type] || q.type}</span>
       <span class="tag tag-year">${q.year}年</span>
       <span class="tag tag-id">#${q.id}</span>
+      ${q.source === 'CPA' ? '<span class="tag tag-cpa" title="本题来源于注册会计师（CPA）考试，部分内容可能超出法律职业资格考试范围">CPA</span>' : ''}
       <span class="difficulty-badge ${diffClass}">${diff === '易' ? '🟢' : diff === '中' ? '🟡' : '🔴'} ${diff}</span>
     `;
 
