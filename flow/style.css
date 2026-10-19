@@ -136,6 +136,33 @@ main { position: relative; z-index: 5; }
   background: radial-gradient(600px 62% at 50% 46%, rgba(8, 8, 12, 0.55), transparent 72%);
 }
 .hero-inner { position: relative; z-index: 1; max-width: 880px; }
+
+/* Hero 光轨环：conic-gradient + @property 旋转 */
+.orbit { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.orbit .ring {
+  position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle farthest-side, transparent calc(100% - 2.6px), #000 calc(100% - 0.8px));
+  mask: radial-gradient(circle farthest-side, transparent calc(100% - 2.6px), #000 calc(100% - 0.8px));
+}
+.ring.r1 {
+  width: min(70vmin, 560px); height: min(70vmin, 560px);
+  background: conic-gradient(from var(--angle),
+    transparent 0deg, rgba(167, 139, 250, 0.95) 52deg,
+    rgba(34, 211, 238, 0.9) 110deg, transparent 175deg, transparent 360deg);
+  animation: beam-spin 13s linear infinite;
+  filter: drop-shadow(0 0 12px rgba(124, 58, 237, 0.5));
+  opacity: 0.85;
+}
+.ring.r2 {
+  width: min(108vmin, 900px); height: min(108vmin, 900px);
+  background: conic-gradient(from var(--angle),
+    transparent 0deg, rgba(34, 211, 238, 0.8) 62deg,
+    rgba(217, 70, 239, 0.75) 122deg, transparent 192deg, transparent 360deg);
+  animation: beam-spin 19s linear infinite reverse;
+  filter: drop-shadow(0 0 16px rgba(34, 211, 238, 0.35));
+  opacity: 0.55;
+}
 .eyebrow {
   margin: 0 0 22px; font-size: 12px; letter-spacing: 0.32em;
   color: var(--muted); text-transform: uppercase;

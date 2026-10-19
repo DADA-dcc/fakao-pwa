@@ -11,7 +11,7 @@
 </head>
 <body>
 
-<!-- 背景层：粒子流场 + 极光 + 噪点 -->
+<!-- 背景层：光轨流场 + 极光 + 噪点 -->
 <canvas id="flow-canvas" aria-hidden="true"></canvas>
 <div class="bg-aurora" aria-hidden="true">
   <div class="blob blob-a"></div>
@@ -35,10 +35,14 @@
 <main>
   <!-- Hero -->
   <section class="hero" id="top">
+    <div class="orbit" aria-hidden="true">
+      <i class="ring r1"></i>
+      <i class="ring r2"></i>
+    </div>
     <div class="hero-inner">
-      <p class="eyebrow">FLOW FIELD · AURORA · LIQUID</p>
+      <p class="eyebrow">LIGHT TRAILS · FLOW FIELD · AURORA</p>
       <h1>让界面<span class="gradient-text">流动</span>起来</h1>
-      <p class="sub">用 Perlin 噪声流场驱动上千条粒子轨迹，叠加极光渐层与液态波纹——纯 HTML / CSS / Canvas 的动态视觉，零依赖，打开即用。</p>
+      <p class="sub">Perlin 流场驱动数百条发光长光轨，叠加双层旋转光环与极光渐层——纯 HTML / CSS / Canvas 的动态视觉，零依赖，打开即用。</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="#effects">浏览特效</a>
         <a class="btn btn-ghost" href="#stack">查看实现要点</a>
@@ -70,7 +74,7 @@
           <div class="beam-line"></div>
         </div>
         <h3>光轨流动</h3>
-        <p>圆锥渐变沿圆环无限旋转形成流动的描边光轨，光点沿轨道周期性扫过。</p>
+        <p>圆锥渐变沿圆环无限旋转，形成流动的光轨描边；页面主背景用 Canvas 画了同主题的上百条长辉光拖尾。</p>
         <code>CSS · conic-gradient · @property</code>
       </article>
 
@@ -108,7 +112,7 @@
         <span class="m-item">FLOW FIELD <i>✦</i></span>
         <span class="m-item outline">AURORA <i>✦</i></span>
         <span class="m-item">LIQUID MOTION <i>✦</i></span>
-        <span class="m-item outline">PARTICLES <i>✦</i></span>
+        <span class="m-item outline">LIGHT TRAILS <i>✦</i></span>
         <span class="m-item">GRADIENT <i>✦</i></span>
         <span class="m-item outline">CANVAS <i>✦</i></span>
       </div>
@@ -116,7 +120,7 @@
         <span class="m-item">FLOW FIELD <i>✦</i></span>
         <span class="m-item outline">AURORA <i>✦</i></span>
         <span class="m-item">LIQUID MOTION <i>✦</i></span>
-        <span class="m-item outline">PARTICLES <i>✦</i></span>
+        <span class="m-item outline">LIGHT TRAILS <i>✦</i></span>
         <span class="m-item">GRADIENT <i>✦</i></span>
         <span class="m-item outline">CANVAS <i>✦</i></span>
       </div>
@@ -129,12 +133,12 @@
     <p class="section-sub reveal">三个文件，零依赖，零构建。</p>
     <div class="stack-grid">
       <div class="stack-item reveal">
-        <h4>Canvas 2D</h4>
-        <p>Perlin 噪声流场，最多 850 条粒子拖尾，鼠标附近产生排斥与涡旋。</p>
+        <h4>Canvas 2D · 光轨流场</h4>
+        <p>Perlin 噪声引导方向，双通道描边（宽幅辉光 + 高亮核心）叠加出长拖尾光轨，鼠标附近产生扰流涡旋。</p>
       </div>
       <div class="stack-item reveal">
-        <h4>CSS 动效</h4>
-        <p>conic-gradient 旋转光轨、@property 注册角度变量、mix-blend-mode 叠加极光。</p>
+        <h4>CSS 动效 · 旋转光环</h4>
+        <p>conic-gradient 沿 @property 注册的角度变量无限旋转，构成双层环绕光轨与流光描边；mix-blend-mode 叠加极光。</p>
       </div>
       <div class="stack-item reveal">
         <h4>零依赖</h4>

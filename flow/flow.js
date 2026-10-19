@@ -1,5 +1,5 @@
 /* FLOW — 动态流动效果演示
-   1) 全屏粒子流场（Canvas 2D + Perlin 噪声 + 鼠标涡旋）
+   1) 全屏光轨流场（Canvas 2D + Perlin 噪声 + 双通道辉光描边 + 鼠标涡旋）
    2) 液态波纹（多层正弦波）
    3) 卡片聚光灯 / 滚动显现 / 导航状态
 */
@@ -41,83 +41,97 @@
     );
   }
 
-  /* ================= 粒子流场 ================= */
+  /* ================= 光轨流场 ================= */
   const canvas = document.getElementById("flow-canvas");
   const ctx = canvas.getContext("2d");
   const mouse = { x: -9999, y: -9999 };
   const FIELD_SCALE = 0.0015;
-  const MOUSE_R = 170;
+  const MOUSE_R = 180;
   let W = 1, H = 1;
-  let particles = [];
+  let trails = [];
   let fieldT = 0;
 
   function spawn() {
-    const hue = Math.random() < 0.62
-      ? 248 + Math.random() * 52   // 紫罗兰
-      : 182 + Math.random() * 36;  // 青
+    const cyan = Math.random() < 0.36;
+    const wide = Math.random() < 0.16; // 少量宽幅“光带”
     return {
       x: Math.random() * W,
       y: Math.random() * H,
       px: 0, py: 0,
-      life: (Math.random() * 260) | 0,
-      maxLife: 260 + Math.random() * 480,
-      speed: 0.55 + Math.random() * 1.35,
-      width: 0.5 + Math.random() * 1.1,
-      hue,
+      life: 0,
+      maxLife: 320 + Math.random() * 640,
+      speed: 0.7 + Math.random() * 1.5,
+      width: wide ? 2 + Math.random() * 2.2 : 0.5 + Math.random() * 1.05,
+      hue: cyan ? 184 + Math.random() * 24 : 250 + Math.random() * 48,
+      hueDrift: (Math.random() - 0.5) * 0.24,
+      bright: wide ? 0.3 + Math.random() * 0.3 : 0.5 + Math.random() * 0.5,
     };
   }
 
   function resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth; H = window.innerHeight;
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     canvas.style.width = W + "px";
     canvas.style.height = H + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const target = Math.max(240, Math.min(850, Math.round((W * H) / 2100)));
-    while (particles.length < target) particles.push(spawn());
-    particles.length = target;
+    const target = Math.max(180, Math.min(480, Math.round((W * H) / 3200)));
+    while (trails.length < target) trails.push(spawn());
+    trails.length = target;
     ctx.fillStyle = "#08080c";
     ctx.fillRect(0, 0, W, H);
   }
 
   function drawField() {
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "rgba(8, 8, 12, 0.06)";
+    ctx.fillStyle = "rgba(8, 8, 12, 0.042)";
     ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = "lighter";
     ctx.lineCap = "round";
 
-    const t1 = fieldT * 0.00055, t2 = fieldT * 0.00042;
+    const t1 = fieldT * 0.00052, t2 = fieldT * 0.0004;
 
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
+    for (let i = 0; i < trails.length; i++) {
+      const p = trails[i];
       p.px = p.x; p.py = p.y;
 
-      // 鼠标排斥 + 涡旋
+      // 鼠标扰流：光轨被推开并卷入涡旋
       const dx = p.x - mouse.x, dy = p.y - mouse.y;
       const d2 = dx * dx + dy * dy;
       if (d2 < MOUSE_R * MOUSE_R && d2 > 0.01) {
         const d = Math.sqrt(d2);
         const f = 1 - d / MOUSE_R;
-        const ff = f * f * 3.4;
-        p.x += (dx / d) * ff - (dy / d) * ff * 0.55;
-        p.y += (dy / d) * ff + (dx / d) * ff * 0.55;
+        const ff = f * f * 2.8;
+        p.x += (dx / d) * ff - (dy / d) * ff * 0.8;
+        p.y += (dy / d) * ff + (dx / d) * ff * 0.8;
       }
 
-      const angle = noise2(p.x * FIELD_SCALE + t1, p.y * FIELD_SCALE - t2) * Math.PI * 2.6;
-      p.x += Math.cos(angle) * p.speed * 1.15;
-      p.y += Math.sin(angle) * p.speed * 1.15;
+      // Perlin 流场引导方向
+      const angle = noise2(p.x * FIELD_SCALE + t1, p.y * FIELD_SCALE - t2) * Math.PI * 2.3;
+      p.x += Math.cos(angle) * p.speed;
+      p.y += Math.sin(angle) * p.speed;
 
       p.life += 1;
-      if (p.life > p.maxLife || p.x < -30 || p.x > W + 30 || p.y < -30 || p.y > H + 30) {
+      if (p.life > p.maxLife || p.x < -48 || p.x > W + 48 || p.y < -48 || p.y > H + 48) {
         Object.assign(p, spawn());
         continue;
       }
 
-      const alpha = 0.045 + 0.185 * Math.sin(Math.PI * Math.min(1, p.life / p.maxLife));
-      ctx.strokeStyle = "hsla(" + p.hue + ", 92%, 66%, " + alpha.toFixed(3) + ")";
+      const env = Math.sin(Math.PI * Math.min(1, p.life / p.maxLife)); // 淡入淡出包络
+      p.hue += p.hueDrift;
+      const h = p.hue.toFixed(1);
+
+      // 第一通道：宽幅辉光
+      ctx.strokeStyle = "hsla(" + h + ", 95%, 60%, " + (0.10 * p.bright * env).toFixed(3) + ")";
+      ctx.lineWidth = p.width * 5.5;
+      ctx.beginPath();
+      ctx.moveTo(p.px, p.py);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+
+      // 第二通道：高亮核心
+      ctx.strokeStyle = "hsla(" + h + ", 100%, 74%, " + (0.34 * p.bright * env).toFixed(3) + ")";
       ctx.lineWidth = p.width;
       ctx.beginPath();
       ctx.moveTo(p.px, p.py);
@@ -138,14 +152,19 @@
     ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = "lighter";
     ctx.lineCap = "round";
-    for (const p of particles) {
-      const angle = noise2(p.x * FIELD_SCALE, p.y * FIELD_SCALE) * Math.PI * 2.6;
-      const len = 14 + Math.random() * 26;
-      ctx.strokeStyle = "hsla(" + p.hue + ", 92%, 66%, 0.12)";
-      ctx.lineWidth = p.width;
+    for (const p of trails) {
+      // 顺着流场采样，画一段静态长光轨
+      let x = p.x, y = p.y;
       ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.x + Math.cos(angle) * len, p.y + Math.sin(angle) * len);
+      ctx.moveTo(x, y);
+      for (let s = 0; s < 24; s++) {
+        const a = noise2(x * FIELD_SCALE, y * FIELD_SCALE) * Math.PI * 2.3;
+        x += Math.cos(a) * 3.6;
+        y += Math.sin(a) * 3.6;
+        ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = "hsla(" + p.hue + ", 95%, 68%, 0.13)";
+      ctx.lineWidth = p.width;
       ctx.stroke();
     }
   }
