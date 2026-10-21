@@ -1,0 +1,32 @@
+「股东大会」patch 自校验
+时间：2026-10-21T15:53:08.325Z
+patch：22 字段 / 15 题 / 31 处
+状态：pending=22 applied=0 stale=0
+全库「股东大会」：75 → 44（预期 44）
+题目总数：9730
+逐处覆盖：scan 31 / patch 31
+结果：PASS
+
+逐字段：
+- 4406 analysis pending edits=1 remaining=0
+- 4494 analysis pending edits=1 remaining=0
+- 4527 analysis pending edits=1 remaining=0
+- 4542 analysis pending edits=1 remaining=0
+- 4556 question pending edits=1 remaining=0
+- 4598 analysis pending edits=2 remaining=0
+- 7327 question pending edits=1 remaining=0
+- 7327 analysis pending edits=2 remaining=0
+- 7345 analysis pending edits=1 remaining=0
+- 7399 question pending edits=1 remaining=0
+- 7399 options.A pending edits=1 remaining=0
+- 7399 analysis pending edits=2 remaining=0
+- 7400 options.B pending edits=1 remaining=0
+- 7400 options.C pending edits=1 remaining=0
+- 7400 analysis pending edits=4 remaining=0
+- 7855 question pending edits=2 remaining=0
+- 8263 question pending edits=1 remaining=0
+- 8289 question pending edits=1 remaining=0
+- 9381 question pending edits=1 remaining=0
+- 9381 analysis pending edits=1 remaining=0
+- 9386 question pending edits=1 remaining=0
+- 9386 analysis pending edits=3 remaining=0
