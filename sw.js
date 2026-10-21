@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fakao-v14';
+const CACHE_NAME = 'fakao-v15';
 const PRECACHE = [
   './',
   './index.html',

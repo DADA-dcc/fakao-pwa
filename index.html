@@ -2985,7 +2985,7 @@ if ('serviceWorker' in navigator) {
 
     // Determine which subjects are needed (all on first load)
     var cachedVersion = await getMeta(db, 'questions_version');
-    var needReload = (cachedVersion !== 'v5');
+    var needReload = (cachedVersion !== 'v6');
 
     if (needReload) {
       // Load all subjects, cache each one
@@ -3015,7 +3015,7 @@ if ('serviceWorker' in navigator) {
       }
 
       if (questions.length > 0) {
-        await setMeta(db, 'questions_version', 'v5');
+        await setMeta(db, 'questions_version', 'v6');
         await setMeta(db, 'question_count', questions.length);
       }
       showLoading('题库加载完成，初始化中...');
@@ -3044,7 +3044,7 @@ if ('serviceWorker' in navigator) {
           });
         }
         if (questions.length > 0) {
-          await setMeta(db, 'questions_version', 'v5');
+          await setMeta(db, 'questions_version', 'v6');
           await setMeta(db, 'question_count', questions.length);
         }
       }
