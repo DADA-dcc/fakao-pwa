@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="法考刷题助手">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="shortcut icon" href="icon-192.png" type="image/png">
 <!-- iOS splash screens — inline SVG, auto-adapts to device -->
 <link rel="apple-touch-startup-image" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1170 2532'%3E%3Crect fill='%231a3a6b' width='1170' height='2532'/%3E%3Ctext fill='white' font-family='sans-serif' font-size='64' text-anchor='middle' x='585' y='1200'%3E⚖️%3C/text%3E%3Ctext fill='white' font-family='sans-serif' font-weight='bold' font-size='48' text-anchor='middle' x='585' y='1280'%3E法考刷题助手%3C/text%3E%3Ctext fill='rgba(255,255,255,0.6)' font-family='sans-serif' font-size='30' text-anchor='middle' x='585' y='1330'%3E在线刷题 · 智能解析%3C/text%3E%3C/svg%3E" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)">
 <link rel="apple-touch-startup-image" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1284 2778'%3E%3Crect fill='%231a3a6b' width='1284' height='2778'/%3E%3Ctext fill='white' font-family='sans-serif' font-size='72' text-anchor='middle' x='642' y='1320'%3E⚖️%3C/text%3E%3Ctext fill='white' font-family='sans-serif' font-weight='bold' font-size='52' text-anchor='middle' x='642' y='1400'%3E法考刷题助手%3C/text%3E%3Ctext fill='rgba(255,255,255,0.6)' font-family='sans-serif' font-size='34' text-anchor='middle' x='642' y='1450'%3E在线刷题 · 智能解析%3C/text%3E%3C/svg%3E" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)">
@@ -600,7 +602,8 @@ body {
 
 /* ── AI Settings Button ── */
 .ai-settings-btn {
-  position: fixed; top: 16px; right: 20px;
+  /* 与页头两个圆形按钮同排靠左，避免遮挡主题/动效按钮 */
+  position: fixed; top: 16px; left: 20px;
   width: 38px; height: 38px; border-radius: 50%;
   border: 1.5px solid var(--border); background: var(--surface);
   font-size: 18px; cursor: pointer; z-index: 200;
@@ -1037,7 +1040,7 @@ body {
   .knowledge-footer { padding: 12px 20px 20px; }
   .knowledge-footer .btn-start { padding: 11px 32px; font-size: 14px; }
   .type-toggle { flex-wrap: wrap; border-radius: var(--r-xl); }
-  .ai-settings-btn { top: 8px; right: 8px; width: 34px; height: 34px; font-size: 16px; }
+  .ai-settings-btn { top: 8px; left: 8px; width: 34px; height: 34px; font-size: 16px; }
   .chat-panel { margin-top: 12px; }
   .chat-messages { max-height: 240px; }
   .subjective-q { padding: 14px 16px; }
@@ -2451,8 +2454,8 @@ html.fk-cover-mode #splash { display: none !important; }
       <div class="hint">选择考试类型和参数，开始限时模拟考试</div>
       <label style="display:block;font-size:13px;font-weight:600;color:var(--txt-2);margin-bottom:6px;">卷别</label>
       <select id="examPaperSelect">
-        <option value="客观题卷一">客观题卷一（民法·民诉·商经知·三国法·宪法·法理·司法制度）</option>
-        <option value="客观题卷二">客观题卷二（刑法·刑诉·行政法·理论法·国际法·司法制度）</option>
+        <option value="客观题卷一">客观题卷一（习近平法治思想·法理·宪法·法制史·国际法·司法制度·民法·知产·商经·民诉）</option>
+        <option value="客观题卷二">客观题卷二（刑法·刑诉·行政法）</option>
         <option value="自定义" selected>自定义（所有科目混合）</option>
       </select>
       <label style="display:block;font-size:13px;font-weight:600;color:var(--txt-2);margin-bottom:6px;">题数</label>
@@ -2784,7 +2787,7 @@ if ('serviceWorker' in navigator) {
 (async function() {
   // ── IndexedDB 题库缓存 (per-subject stores) ──
   const DB_NAME = 'fakao_cache';
-  const DB_VERSION = 4;
+  const DB_VERSION = 5;
 
   function openDB() {
     return new Promise((resolve, reject) => {
@@ -2982,7 +2985,7 @@ if ('serviceWorker' in navigator) {
 
     // Determine which subjects are needed (all on first load)
     var cachedVersion = await getMeta(db, 'questions_version');
-    var needReload = (cachedVersion !== 'v3');
+    var needReload = (cachedVersion !== 'v5');
 
     if (needReload) {
       // Load all subjects, cache each one
@@ -3012,7 +3015,7 @@ if ('serviceWorker' in navigator) {
       }
 
       if (questions.length > 0) {
-        await setMeta(db, 'questions_version', 'v3');
+        await setMeta(db, 'questions_version', 'v5');
         await setMeta(db, 'question_count', questions.length);
       }
       showLoading('题库加载完成，初始化中...');
@@ -3041,7 +3044,7 @@ if ('serviceWorker' in navigator) {
           });
         }
         if (questions.length > 0) {
-          await setMeta(db, 'questions_version', 'v3');
+          await setMeta(db, 'questions_version', 'v5');
           await setMeta(db, 'question_count', questions.length);
         }
       }
@@ -3050,6 +3053,20 @@ if ('serviceWorker' in navigator) {
     db.close();
 
     if (questions.length === 0) throw new Error('题库为空');
+
+    // 统一答案格式并按 ID 去重（防止缓存版本不一致时出现重复题）
+    (function normalizeQuestions(list) {
+      var seen = Object.create(null);
+      for (var n = list.length - 1; n >= 0; n--) {
+        var item = list[n];
+        if (!item) continue;
+        item.answer = String(item.answer || '').toUpperCase().replace(/[^A-D]/g, '')
+          .split('').sort().join('');
+        if (seen[item.id]) { list.splice(n, 1); continue; }
+        seen[item.id] = true;
+      }
+    })(questions);
+
     hideLoading();
     // Start preloading knowledge in parallel with question loading
     var knowledgeReady = loadKnowledge();
@@ -3096,6 +3113,8 @@ if ('serviceWorker' in navigator) {
   var examTimeRemaining = 0;
   var examTimerInterval = null;
   var examSubmitted = false;
+  var savedFilteredBeforeExam = null;
+  var savedIndexBeforeExam = 0;
 
   // ═══════════════════════════════════════════
   //  SM-2 Spaced Repetition Algorithm
@@ -3227,11 +3246,19 @@ if ('serviceWorker' in navigator) {
     return Math.floor((Date.now() - questionStartTime) / 1000);
   }
 
+  function formatClock(totalSeconds) {
+    var t = Math.max(0, Math.floor(totalSeconds || 0));
+    var h = Math.floor(t / 3600);
+    var m = Math.floor((t % 3600) / 60);
+    var s = t % 60;
+    var mm = (m < 10 ? '0' : '') + m;
+    var ss = (s < 10 ? '0' : '') + s;
+    return h > 0 ? h + ':' + mm + ':' + ss : mm + ':' + ss;
+  }
+
   function updateQuestionTimer() {
     var elapsed = getQuestionElapsed();
-    var mins = Math.floor(elapsed / 60);
-    var secs = elapsed % 60;
-    var display = ('0' + mins).slice(-2) + ':' + ('0' + secs).slice(-2);
+    var display = formatClock(elapsed);
     var el = document.getElementById('questionTimer');
     if (el) {
       el.textContent = '⏱ ' + display;
@@ -3246,9 +3273,7 @@ if ('serviceWorker' in navigator) {
   }
 
   function formatTimer(seconds) {
-    var m = Math.floor(seconds / 60);
-    var s = seconds % 60;
-    return ('0' + m).slice(-2) + ':' + ('0' + s).slice(-2);
+    return formatClock(seconds);
   }
 
   // ═══════════════════════════════════════════
@@ -3264,6 +3289,8 @@ if ('serviceWorker' in navigator) {
   }
 
   function startExam() {
+    savedFilteredBeforeExam = filteredQuestions;
+    savedIndexBeforeExam = currentIndex;
     var paperType = document.getElementById('examPaperSelect').value;
     var count = parseInt(document.getElementById('examQuestionCount').value) || 100;
     var timeMin = parseInt(document.getElementById('examTimeLimit').value) || 180;
@@ -3276,11 +3303,14 @@ if ('serviceWorker' in navigator) {
     // Determine subject filter based on paper type
     var paperSubjects;
     if (paperType === '客观题卷一') {
-      paperSubjects = ['民法', '民诉法', '知识产权法', '商经法', '宪法', '国际法', '法理学', '司法制度与职业道德'];
+      // 卷一：法治思想、法理学、宪法、法制史、国际法、司法制度与职业道德、民法、知识产权法、商法、民诉法
+      paperSubjects = ['习近平法治思想', '法理学', '宪法', '法制史', '国际法', '司法制度与职业道德',
+        '民法', '知识产权法', '商经法', '民诉法'];
     } else if (paperType === '客观题卷二') {
+      // 卷二：刑法、刑诉法、行政法
       paperSubjects = ['刑法', '刑诉法', '行政法'];
     } else {
-      paperSubjects = ['刑法', '行政法', '刑诉法', '民诉法', '知识产权法', '商经法', '宪法', '国际法', '法理学', '司法制度与职业道德'];
+      paperSubjects = SUBJECTS_ALL;
     }
 
     // Filter questions
@@ -3462,9 +3492,7 @@ if ('serviceWorker' in navigator) {
 
   function updateExamTimerDisplay() {
     var remaining = examTimeRemaining;
-    var mins = Math.floor(remaining / 60);
-    var secs = remaining % 60;
-    var display = ('0' + mins).slice(-2) + ':' + ('0' + secs).slice(-2);
+    var display = formatClock(remaining);
     var el = document.getElementById('examCountdown');
     if (el) {
       el.textContent = '⏱ ' + display;
@@ -3512,7 +3540,7 @@ if ('serviceWorker' in navigator) {
         timeAll.push({ qid: q.id, time: 0, subject: q.subject });
         return;
       }
-      var isCorrect = (answer.chosen === q.answer);
+      var isCorrect = (normAnswer(answer.chosen) === normAnswer(q.answer));
       if (isCorrect) correct++;
 
       if (!subjectStats[q.subject]) {
@@ -3531,7 +3559,7 @@ if ('serviceWorker' in navigator) {
     // Add wrong questions to bookmarks
     examQuestions.forEach(function(q, i) {
       var answer = examAnswers[i];
-      if (!answer || answer.chosen !== q.answer) {
+      if (!answer || normAnswer(answer.chosen) !== normAnswer(q.answer)) {
         if (!bookmarks.includes(q.id)) {
           bookmarks.push(q.id);
         }
@@ -3552,7 +3580,7 @@ if ('serviceWorker' in navigator) {
         return {
           qid: q.id,
           chosen: answer ? answer.chosen : '',
-          correct: answer ? answer.chosen === q.answer : false,
+          correct: answer ? normAnswer(answer.chosen) === normAnswer(q.answer) : false,
           time: answer ? answer.time : 0
         };
       })
@@ -3647,11 +3675,19 @@ if ('serviceWorker' in navigator) {
     document.getElementById('difficultyFilter') && (document.getElementById('difficultyFilter').style.display = '');
     document.getElementById('progressWrap').style.display = '';
     document.getElementById('questionTimer').className = 'question-timer';
+    document.getElementById('krToggleRow') && (document.getElementById('krToggleRow').style.display = '');
 
-    // Restore normal question mode
-    activeSubject = localStorage.getItem('fakao_activeSubject') || '全部';
-    activeType = localStorage.getItem('fakao_activeType') || '全部';
-    filterQuestions();
+    // Restore normal question mode：考试期间 filteredQuestions 被替换，这里重建普通题库
+    var examBackup = savedFilteredBeforeExam;
+    if (examBackup && examBackup.length) {
+      filteredQuestions = examBackup;
+      currentIndex = Math.max(0, Math.min(savedIndexBeforeExam, filteredQuestions.length - 1));
+      renderQuestion(filteredQuestions[currentIndex]);
+      updateProgress();
+      savedFilteredBeforeExam = null;
+    } else {
+      filterQuestions();
+    }
     updateStats();
     renderBookmarks();
   }
@@ -3683,6 +3719,93 @@ if ('serviceWorker' in navigator) {
   const $referenceBody = document.getElementById('referenceBody');
   const $referenceSource = document.getElementById('referenceSource');
   const $typeToggle = document.getElementById('typeToggle');
+
+  // ── Search ──
+  const SEARCH_LIMIT = 30;
+  let searchTimer = null;
+
+  function escapeHtml(text) {
+    return String(text || '').replace(/[&<>"']/g, function(c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  function highlight(text, keyword) {
+    var safe = escapeHtml(text);
+    var kw = escapeHtml(keyword).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return safe.replace(new RegExp(kw, 'gi'), function(m) { return '<mark>' + m + '</mark>'; });
+  }
+
+  function closeSearch() {
+    $searchResults.classList.remove('show');
+    $searchOverlay.classList.remove('show');
+  }
+
+  function renderSearchResults(keyword) {
+    var kw = keyword.trim();
+    if (!kw) { closeSearch(); return; }
+    var lower = kw.toLowerCase();
+    var hits = [];
+    for (var i = 0; i < questions.length && hits.length < SEARCH_LIMIT; i++) {
+      var q = questions[i];
+      var text = q.question || '';
+      var optText = '';
+      if (q.options) {
+        for (var k in q.options) optText += q.options[k] || '';
+      }
+      if (text.toLowerCase().indexOf(lower) === -1 && optText.toLowerCase().indexOf(lower) === -1) continue;
+      hits.push(q);
+    }
+    if (hits.length === 0) {
+      $searchResults.innerHTML = '<div class="search-no-result">未找到包含「' + escapeHtml(kw) + '」的题目</div>';
+    } else {
+      $searchResults.innerHTML = hits.map(function(q) {
+        return '<div class="search-result-item" data-qid="' + q.id + '">' +
+          '<div class="sr-meta"><span class="tag tag-subject">' + escapeHtml(q.subject) + '</span>' +
+          escapeHtml(q.type) + ' · ' + escapeHtml(q.year) + '年</div>' +
+          '<div class="sr-text">' + highlight(q.question, kw) + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    $searchResults.classList.add('show');
+    $searchOverlay.classList.add('show');
+  }
+
+  $searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimer);
+    var value = this.value;
+    searchTimer = setTimeout(function() { renderSearchResults(value); }, 180);
+  });
+
+  $searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      this.value = '';
+      closeSearch();
+      this.blur();
+    }
+  });
+
+  $searchOverlay.addEventListener('click', closeSearch);
+
+  $searchResults.addEventListener('click', function(e) {
+    var item = e.target.closest('.search-result-item');
+    if (!item) return;
+    var qid = parseInt(item.dataset.qid, 10);
+    var q = questions.find(function(x) { return x.id === qid; });
+    if (!q) return;
+    closeSearch();
+    $searchInput.value = '';
+    if (isExamMode) return;
+    // 把这道题放到当前题目池的最前面，直接跳转过去
+    filteredQuestions = [q].concat(filteredQuestions.filter(function(x) { return x.id !== qid; }));
+    currentIndex = 0;
+    answered = false;
+    multiSelections.clear();
+    renderQuestion(q);
+    updateProgress();
+    saveProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
   // ── Helpers ──
   function shuffle(arr) {
@@ -3744,6 +3867,10 @@ if ('serviceWorker' in navigator) {
       nextQuestion();
     }
     saveProgress();
+  }
+
+  function normAnswer(value) {
+    return String(value || '').toUpperCase().replace(/[^A-D]/g, '').split('').sort().join('');
   }
 
   function updateStats() {
@@ -3978,7 +4105,7 @@ if ('serviceWorker' in navigator) {
   // ── Auto-Generated Analysis ──
   function generateAutoAnalysis(q, userAnswer, isRight) {
     var labels = ['A', 'B', 'C', 'D'];
-    var correctAnswer = q.answer;
+    var correctAnswer = normAnswer(q.answer);
     var correctSet = new Set(correctAnswer.split(''));
     var userSet = new Set(userAnswer.split(''));
     var typeMap = { '单选': '单选题', '多选': '多选题', '主观题': '主观题' };
@@ -4051,7 +4178,7 @@ if ('serviceWorker' in navigator) {
     const chosen = optionEl.dataset.option;
     const q = filteredQuestions[currentIndex];
     const isMulti = q.type === '多选';
-    const correctAnswer = q.answer;
+    const correctAnswer = normAnswer(q.answer);
 
     // ── Exam mode: just select, no feedback ──
     if (isExamMode) {
@@ -4148,11 +4275,11 @@ if ('serviceWorker' in navigator) {
     if (answered) return;
     const q = filteredQuestions[currentIndex];
     const userAnswer = [...multiSelections].sort().join('');
-    const isRight = userAnswer === q.answer;
+    const isRight = userAnswer === normAnswer(q.answer);
     answered = true;
 
     const allOptions = $optionsContainer.querySelectorAll('.option');
-    const correctSet = new Set(q.answer.split(''));
+    const correctSet = new Set(normAnswer(q.answer).split(''));
     allOptions.forEach(el => {
       el.classList.add('disabled');
       if (correctSet.has(el.dataset.option)) {
@@ -4186,6 +4313,7 @@ if ('serviceWorker' in navigator) {
   }
 
   function updateBookmarkBtn(qid) {
+    if (isExamMode) return;
     $bookmarkBtn.className = 'btn btn-bookmark' + (bookmarks.includes(qid) ? ' bookmarked' : '');
     $bookmarkBtn.textContent = bookmarks.includes(qid) ? '★ 已收藏' : '☆ 收藏错题';
   }
@@ -4437,14 +4565,16 @@ if ('serviceWorker' in navigator) {
   }
 
   filterQuestions();
-  // Try to resume from saved question
+  // Try to resume from saved question（直接定位并重绘，避免停留在随机题上）
   if (savedQid && filteredQuestions.length > 0) {
     var foundIdx = -1;
     for (var fi = 0; fi < filteredQuestions.length; fi++) {
       if (filteredQuestions[fi].id === savedQid) { foundIdx = fi; break; }
     }
-    if (foundIdx >= 0) {
-      currentIndex = foundIdx - 1; // nextQuestion will increment
+    if (foundIdx >= 0 && foundIdx !== currentIndex) {
+      currentIndex = foundIdx;
+      renderQuestion(filteredQuestions[currentIndex]);
+      updateProgress();
     }
   }
   renderBookmarks();

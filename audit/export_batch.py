@@ -52,13 +52,17 @@ PROMPT_TPL = """# 任务：为法考题库补写试题解析
 """
 
 
-def load_placeholders(subject, limit, skip_cpa_only):
+def load_placeholders(subject, limit, skip_cpa_only, skip_ids=None):
     fp = os.path.join(QDIR, '%s.json' % subject)
     data = json.load(io.open(fp, encoding='utf-8'))
+    skip_ids = skip_ids or set()
     out = []
     for q in data:
         ana = q.get('analysis') or ''
         if not PLACEHOLDER.search(ana):
+            continue
+        qid = str(q.get('id'))
+        if qid in skip_ids:
             continue
         if skip_cpa_only:
             blob = (q.get('question') or '') + ' '.join(
@@ -66,7 +70,7 @@ def load_placeholders(subject, limit, skip_cpa_only):
             if SKIP.search(blob):
                 continue
         out.append({
-            'id': str(q.get('id')),
+            'id': qid,
             'subject': q.get('subject') or subject,
             'type': q.get('type'),
             'year': q.get('year'),
@@ -79,6 +83,22 @@ def load_placeholders(subject, limit, skip_cpa_only):
     return out
 
 
+def exported_ids():
+    """已经导出过（outbox 里任何 *_input.json）的题目 id，避免重复派活。"""
+    ids = set()
+    for fn in os.listdir(OUT):
+        if not fn.endswith('_input.json'):
+            continue
+        try:
+            items = json.load(io.open(os.path.join(OUT, fn), encoding='utf-8'))
+        except Exception:
+            continue
+        for it in items:
+            if isinstance(it, dict) and it.get('id') is not None:
+                ids.add(str(it.get('id')))
+    return ids
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('subject', nargs='?')
@@ -87,6 +107,12 @@ def main():
     ap.add_argument('--all', action='store_true')
     ap.add_argument('--include-cpa-only', action='store_true',
                     help='包含法考不考的税法/外汇/外贸类题目')
+    ap.add_argument('--suffix', default='',
+                    help='批次名后缀，避免与已导出批次重名（如 _b2）')
+    ap.add_argument('--skip-exported', action='store_true',
+                    help='跳过 outbox 里已导出过的 id，防止重复派活')
+    ap.add_argument('--force', action='store_true',
+                    help='允许覆盖同名输出文件')
     args = ap.parse_args()
 
     os.makedirs(OUT, exist_ok=True)
@@ -100,13 +126,20 @@ def main():
     else:
         ap.error('需指定科目或使用 --all')
 
+    skip_ids = exported_ids() if args.skip_exported else set()
+
     for subj in targets:
-        items = load_placeholders(subj, args.size, not args.include_cpa_only)
+        items = load_placeholders(subj, args.size, not args.include_cpa_only,
+                                  skip_ids)
         if not items:
             continue
-        name = args.name if (args.name and len(targets) == 1) else '%s_%d' % (subj, len(items))
+        base = args.name if (args.name and len(targets) == 1) else '%s_%d' % (subj, len(items))
+        name = base + args.suffix
         fp_in = os.path.join(OUT, '%s_input.json' % name)
         fp_prompt = os.path.join(OUT, '%s_prompt.md' % name)
+        if os.path.exists(fp_in) and not args.force:
+            print('%-12s 跳过（已存在同名文件）%s' % (subj, os.path.basename(fp_in)))
+            continue
         io.open(fp_in, 'w', encoding='utf-8').write(
             json.dumps(items, ensure_ascii=False, indent=1))
         io.open(fp_prompt, 'w', encoding='utf-8').write(PROMPT_TPL.format(name=name))

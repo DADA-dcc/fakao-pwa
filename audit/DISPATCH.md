@@ -156,3 +156,26 @@ ls audit/outbox/
 ```
 
 然后把 `_input.json` 与 `_prompt.md` 一起交给其他 AI 即可。
+
+## 十一、opencode 交付的工具箱（2026-10-19）
+
+| 脚本 | 作用 | 用法 |
+|---|---|---|
+| `audit/apply_all.py` | 批量回收 inbox 解析：逐批 dry-run、汇总表、按 id 集合去重、`--write` 才落库（原子写 + 写前指纹校验） | `python audit/apply_all.py` ／ `python audit/apply_all.py --write` |
+| `audit/qc_sample.py` | 解析质量抽检：每批随机 20%（`--all` 全量），7 项检查；`--length-table` 出长度分布表 | `python audit/qc_sample.py` ／ `python audit/qc_sample.py --all --length-table --json audit/qc_report.json` |
+| `audit/export_T2_T3.py` | 从 report.json 导出 T2 重复题分组、T3 短题干/缺材料 241 条（附 P2 两类各 20 条样本） | `python audit/export_T2_T3.py --dry-run` ／ `python audit/export_T2_T3.py --samples 20` |
+| `audit/fix_subject_tags.py` | T5 学科错标：关键词画像出提案 + 按人工确认的映射搬移题目、改 subject、刷新 index.json（改前备份） | `python audit/fix_subject_tags.py --propose` ／ `python audit/fix_subject_tags.py --apply --map <映射.json>` |
+| `audit/export_batch.py` | 新增 `--suffix`（批次名后缀，避免覆盖旧批）、`--skip-exported`（跳过已派出的 id）、`--force` | `python audit/export_batch.py --all --size 40 --suffix _b2 --skip-exported` |
+
+红线（已遵守）：`audit/inbox/*.json` 只读不改；`questions/*.json` 不由 opencode 写入；
+`audit/fix_stems.py` 不动。落库命令由本人执行。
+
+当前给 WorkBuddy 的工作单：`audit/outbox/WORKBUDDY_TODO.md`（阻塞项 + 返工清单 + 下一批 250 题）。
+
+### 本轮实测结论（inbox 快照 2026-10-19 23:51，指纹见 `apply_all.py` 输出）
+- 13 个 inbox 文件 → 去重后 12 批、385 条，**可写入 383 条**；188/205 因答案口径冲突（文中 D/AD，题库 C/A）被拦下
+- 长度口径：0 条 <120，75 条在 120–220，**310 条 >220**（中位 253，最长 300）；
+  仅按汉字计 208 条 >220 → 与「120–220 字」的要求仍系统性不符
+- 其余 6 项（占位词/英文残留/英文双引号/套话开头/旧法名/存在性）全量 385 条均无命中
+- WorkBuddy 仍在改动 inbox，写库前须用 `apply_all.py` 的批次指纹核对版本（`--write` 时指纹不符会自动中止）
+

@@ -1,66 +1,66 @@
 {
-  "version": "v2",
-  "total": 9839,
-  "subjects": {
-    "民法": {
-      "file": "民法.json",
-      "count": 3148,
-      "size_mb": 5.5
-    },
-    "刑法": {
-      "file": "刑法.json",
-      "count": 1262,
-      "size_mb": 2.76
-    },
-    "行政法": {
-      "file": "行政法.json",
-      "count": 1042,
-      "size_mb": 2.16
-    },
-    "刑诉法": {
-      "file": "刑诉法.json",
-      "count": 887,
-      "size_mb": 2.05
-    },
-    "民诉法": {
-      "file": "民诉法.json",
-      "count": 968,
-      "size_mb": 2.0
-    },
-    "知识产权法": {
-      "file": "知识产权法.json",
-      "count": 332,
-      "size_mb": 0.34
-    },
-    "商经法": {
-      "file": "商经法.json",
-      "count": 1258,
-      "size_mb": 2.62
-    },
-    "宪法": {
-      "file": "宪法.json",
-      "count": 520,
-      "size_mb": 0.69
-    },
-    "国际法": {
-      "file": "国际法.json",
-      "count": 145,
-      "size_mb": 0.29
-    },
-    "法理学": {
-      "file": "法理学.json",
-      "count": 103,
-      "size_mb": 0.18
-    },
-    "法制史": {
-      "file": "法制史.json",
-      "count": 30,
-      "size_mb": 0.04
-    },
-    "司法制度与职业道德": {
-      "file": "司法制度与职业道德.json",
-      "count": 144,
-      "size_mb": 0.29
-    }
+ "version": "v5",
+ "total": 9730,
+ "subjects": {
+  "民法": {
+   "file": "民法.json",
+   "count": 2816,
+   "size_mb": 5.13
+  },
+  "刑法": {
+   "file": "刑法.json",
+   "count": 1262,
+   "size_mb": 2.75
+  },
+  "行政法": {
+   "file": "行政法.json",
+   "count": 1011,
+   "size_mb": 2.16
+  },
+  "刑诉法": {
+   "file": "刑诉法.json",
+   "count": 885,
+   "size_mb": 2.01
+  },
+  "民诉法": {
+   "file": "民诉法.json",
+   "count": 961,
+   "size_mb": 1.98
+  },
+  "知识产权法": {
+   "file": "知识产权法.json",
+   "count": 503,
+   "size_mb": 0.87
+  },
+  "商经法": {
+   "file": "商经法.json",
+   "count": 1362,
+   "size_mb": 2.73
+  },
+  "宪法": {
+   "file": "宪法.json",
+   "count": 477,
+   "size_mb": 0.71
+  },
+  "国际法": {
+   "file": "国际法.json",
+   "count": 182,
+   "size_mb": 0.36
+  },
+  "法理学": {
+   "file": "法理学.json",
+   "count": 98,
+   "size_mb": 0.18
+  },
+  "法制史": {
+   "file": "法制史.json",
+   "count": 30,
+   "size_mb": 0.05
+  },
+  "司法制度与职业道德": {
+   "file": "司法制度与职业道德.json",
+   "count": 143,
+   "size_mb": 0.29
   }
+ }
 }

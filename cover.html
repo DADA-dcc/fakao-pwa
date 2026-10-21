@@ -1260,11 +1260,15 @@
       }
 
       function renderSceneFrame(now) {
-        const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
+        // RAF 首帧的 timestamp 可能小于初始化时的 performance.now()，导致 dt 为负、
+        // masterTime 变负、sceneIndex 取到 -1 而 SCENE_META[-1] 为 undefined。
+        // 这里把 dt 夹在 [0, 0.1] 秒内，并在累加后归一化到 [0, LOOP_DURATION)。
+        const dt = Math.min(0.1, Math.max(0, (now - lastFrameTime) / 1000));
         lastFrameTime = now;
 
         if (isPlaying) {
           masterTime += dt;
+          if (masterTime < 0) masterTime = 0;
           if (lockSingleScene) {
             const minT = lockedSceneIndex * 4 * BEAT_DURATION;
             const maxT = (lockedSceneIndex + 1) * 4 * BEAT_DURATION;
