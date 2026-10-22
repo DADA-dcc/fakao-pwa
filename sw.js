@@ -1,64 +1,148 @@
-const CACHE_NAME = 'fakao-v21';
-const PRECACHE = [
+/**
+ * 法考刷题助手 (fakao-pwa) 升级版 Service Worker (v13)
+ * 优化点：
+ * 1. 拆分核心外壳 (CORE_SHELL) 与 大体积题库资源 (DATA_ASSETS)，避免 caches.addAll 因单个文件超时导致整个 SW 安装失败
+ * 2. 对题库 JSON (./questions/index.json, ./knowledge.json, ./case_library.json) 采用 Stale-While-Revalidate 策略：秒开离线缓存，后台静默更新
+ * 3. 对外部 AI 接口 (api.deepseek.com) 与 GitHub Gist 同步接口 (api.github.com) 严格走 Network Only，防止缓存污染
+ * 4. 支持客户端发送 SKIP_WAITING 消息实现一键热更新
+ */
+
+const CACHE_VERSION = 'fakao-v13';
+const SHELL_CACHE = `${CACHE_VERSION}-shell`;
+const DATA_CACHE = `${CACHE_VERSION}-data`;
+
+const CORE_SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
+];
+
+const OPTIONAL_ASSETS = [
+  './cover.html',
+  './fakao-enhance.js',
+  './vendor/three.r128.min.js',
+  './vendor/tailwind-3.4.17.js',
   './questions/index.json',
   './knowledge.json',
-  './case_library.json',
-  './icon-192.png',
-  './icon-512.png',
-  // 120BPM 动态封面启动页及其本地化依赖（离线也能播放）
-  './cover.html',
-  './vendor/tailwind-3.4.17.js',
-  './vendor/three.r128.min.js'
+  './case_library.json'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
+    (async () => {
+      const shellCache = await caches.open(SHELL_CACHE);
+      // 核心外壳逐个容错缓存，防止单点失败
+      await Promise.allSettled(
+        CORE_SHELL.map((url) =>
+          shellCache.add(url).catch((err) => console.warn('[SW] Core cache skipped:', url, err))
+        )
+      );
+
+      const dataCache = await caches.open(DATA_CACHE);
+      await Promise.allSettled(
+        OPTIONAL_ASSETS.map((url) =>
+          dataCache.add(url).catch((err) => console.warn('[SW] Optional asset skipped:', url, err))
+        )
+      );
+    })()
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.map((key) => {
+          if (key !== SHELL_CACHE && key !== DATA_CACHE) {
+            return caches.delete(key);
+          }
+        })
+      );
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  const { request } = event;
+  if (request.method !== 'GET') return;
 
-  // HTML: network-first so users always get latest code
-  if (event.request.destination === 'document') {
+  const url = new URL(request.url);
+
+  // 排除 AI 接口与 GitHub Gist 同步 API
+  if (
+    url.hostname.includes('deepseek.com') ||
+    url.hostname.includes('api.github.com')
+  ) {
+    return;
+  }
+
+  // 针对 JSON 题库与知识点数据：Stale-While-Revalidate（优先读缓存秒开，同时后台拉取最新题库更新缓存）
+  if (url.pathname.endsWith('.json') && !url.pathname.endsWith('manifest.json')) {
     event.respondWith(
-      // no-cache：在线时强制向服务器校验，保证每次打开都是最新版本（离线自动回退缓存）
-      fetch(event.request, { cache: 'no-cache' })
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
+      (async () => {
+        const cache = await caches.open(DATA_CACHE);
+        const cached = await cache.match(request);
+        const networkPromise = fetch(request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              cache.put(request, response.clone());
+            }
+            return response;
+          })
+          .catch(() => null);
+
+        return cached || (await networkPromise) || new Response('{}', {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })()
     );
     return;
   }
 
-  // Assets: cache-first, update cache in background
+  // 针对页面导航与静态资源：Cache First + Network Fallback + 后台更新
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((response) => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+    (async () => {
+      const cached = await caches.match(request);
+      if (cached) {
+        // 后台静默更新 HTML
+        if (request.mode === 'navigate' || url.pathname.endsWith('.html')) {
+          fetch(request)
+            .then(async (res) => {
+              if (res && res.status === 200) {
+                const shellCache = await caches.open(SHELL_CACHE);
+                await shellCache.put(request, res.clone());
+              }
+            })
+            .catch(() => {});
         }
-        return response;
-      }).catch(() => {});
-      return cached || fetchPromise;
-    })
+        return cached;
+      }
+
+      try {
+        const networkResponse = await fetch(request);
+        if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
+          const targetCache = await caches.open(SHELL_CACHE);
+          targetCache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+      } catch (err) {
+        if (request.mode === 'navigate') {
+          const fallback = await caches.match('./index.html');
+          if (fallback) return fallback;
+        }
+        throw err;
+      }
+    })()
   );
 });
