@@ -82,3 +82,21 @@ python audit/scan.py                        # 全库扫描
 python audit/scan.py --subject 刑法 --json audit/report_刑法.json
 python audit/apply_analysis.py audit/batches/xxx.json [--dry-run]   # 批量写入解析
 ```
+
+## 八、遗留字段 options_text（2026-10-22 记载）
+
+**事实：`options_text` 字段是 `options` 的完整冗余副本，不含独立信息。**
+
+- 全库 98 题带此字段（刑法 13、商经法 18、民法 34、行政法 15、刑诉法 6、宪法 5、司法制度 3、民诉法 2、法制史 1、法理学 1）
+- 逐题核验：98/98 与 `["A."+options.A, "B."+options.B, ...]` **完全一致**，零偏差
+- `index.html` 中 **无任何引用**（`grep -n options_text index.html` 无输出），题目渲染不读取该字段
+- `audit/scan.py` 逐字段取值（`q.get('options')` / `q.get('analysis')` / `q.get('question')`），**不读取 `options_text`**，现有审计链路不会误报
+
+**结论：字段无功能作用，也无信息量。**
+
+**处理约定：**
+1. **不改数据** —— 删除需改 98 题并 bump 版本号，收益为零
+2. **审计脚本不排除也不读取** —— 现有 `scan.py` 已天然不读它
+3. **若将来写全字段 blob 扫描**（如 `json.dumps(q)` 后正则匹配），会把 98 题的旧副本重新扫成「脏字残留」误报。届时在脚本里显式排除该字段即可，**不要据此修改数据**
+
+2026-10-22 的 OCR 修复中，185、241 两题的 `options_text` 副本已同步修正 —— 并非因为它影响功能，而是因为这两题恰好被修到，副本留着旧脏字会让下一轮全字段扫描报出假阳性。
