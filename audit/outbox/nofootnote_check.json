@@ -1,0 +1,88 @@
+{
+  "generatedAt": "2026-10-22T08:32:50.245Z",
+  "url": "http://127.0.0.1:8765/",
+  "total": 6,
+  "pass": 6,
+  "fail": 0,
+  "consoleErrors": [],
+  "results": [
+    {
+      "id": 11,
+      "type": "单选",
+      "checks": {
+        "noNote": true,
+        "noFootnote": true,
+        "noEmptyChildren": true,
+        "answerCorrect": true,
+        "correctOptions": true
+      },
+      "errors": [],
+      "pass": true
+    },
+    {
+      "id": 12,
+      "type": "单选",
+      "checks": {
+        "noNote": true,
+        "noFootnote": true,
+        "noEmptyChildren": true,
+        "answerCorrect": true,
+        "correctOptions": true
+      },
+      "errors": [],
+      "pass": true
+    },
+    {
+      "id": 13,
+      "type": "单选",
+      "checks": {
+        "noNote": true,
+        "noFootnote": true,
+        "noEmptyChildren": true,
+        "answerCorrect": true,
+        "correctOptions": true
+      },
+      "errors": [],
+      "pass": true
+    },
+    {
+      "id": 14,
+      "type": "单选",
+      "checks": {
+        "noNote": true,
+        "noFootnote": true,
+        "noEmptyChildren": true,
+        "answerCorrect": true,
+        "correctOptions": true
+      },
+      "errors": [],
+      "pass": true
+    },
+    {
+      "id": 15,
+      "type": "单选",
+      "checks": {
+        "noNote": true,
+        "noFootnote": true,
+        "noEmptyChildren": true,
+        "answerCorrect": true,
+        "correctOptions": true
+      },
+      "errors": [],
+      "pass": true
+    },
+    {
+      "id": 16,
+      "type": "多选",
+      "checks": {
+        "noNote": true,
+        "noFootnote": true,
+        "noEmptyChildren": true,
+        "answerCorrect": true,
+        "correctOptions": true
+      },
+      "errors": [],
+      "pass": true
+    }
+  ]
+}

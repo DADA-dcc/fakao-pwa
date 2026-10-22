@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-10-22T08:34:35.493Z",
+  "url": "http://127.0.0.1:8765/",
+  "total": 2,
+  "pass": 2,
+  "fail": 0,
+  "consoleErrors": [],
+  "results": [
+    {
+      "id": 4494,
+      "opt": "C",
+      "checks": {
+        "hasNote": true,
+        "footnoteHiddenInitially": true,
+        "footnoteOpens": true,
+        "noteText": true,
+        "notSelectedByNote": true,
+        "footnoteCloses": true,
+        "footnoteClickSelects": true,
+        "answerCorrect": true,
+        "correctOptions": true
+      },
+      "pass": true,
+      "errors": [],
+      "screenshot": "audit/outbox/footnote_4494.png"
+    },
+    {
+      "id": 4542,
+      "opt": "C",
+      "checks": {
+        "hasNote": true,
+        "footnoteHiddenInitially": true,
+        "footnoteOpens": true,
+        "noteText": true,
+        "notSelectedByNote": true,
+        "footnoteCloses": true,
+        "footnoteClickSelects": true,
+        "answerCorrect": true,
+        "correctOptions": true
+      },
+      "pass": true,
+      "errors": [],
+      "screenshot": "audit/outbox/footnote_4542.png"
+    }
+  ]
+}
