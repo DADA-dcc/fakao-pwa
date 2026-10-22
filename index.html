@@ -2422,11 +2422,23 @@
       }
 
       document.getElementById("swApplyUpdateBtn").addEventListener("click", () => {
-        if (waitingWorker) {
-          waitingWorker.postMessage({ type: "SKIP_WAITING" });
-        }
         document.getElementById("swUpdateBanner").classList.add("hidden");
-        location.reload();
+        if (!waitingWorker) {
+          location.reload();
+          return;
+        }
+        // 必须等新 SW 真正接管 (controllerchange) 再刷新，
+        // 否则 reload 发生在激活之前，页面仍由旧缓存提供，更新无效。
+        let reloaded = false;
+        const doReload = () => {
+          if (reloaded) return;
+          reloaded = true;
+          location.reload();
+        };
+        navigator.serviceWorker.addEventListener("controllerchange", doReload);
+        waitingWorker.postMessage({ type: "SKIP_WAITING" });
+        // 兜底：3 秒内未触发 controllerchange 也要刷新一次，避免卡死
+        setTimeout(doReload, 3000);
       });
       document.getElementById("swDismissUpdateBtn").addEventListener("click", () => {
         document.getElementById("swUpdateBanner").classList.add("hidden");
