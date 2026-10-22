@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fakao-v19';
+const CACHE_NAME = 'fakao-v20';
 const PRECACHE = [
   './',
   './index.html',
@@ -34,7 +34,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   // HTML: network-first so users always get latest code
-  if (event.request.destination === 'document' || event.request.url.includes('/questions/')) {
+  if (event.request.destination === 'document') {
     event.respondWith(
       // no-cache：在线时强制向服务器校验，保证每次打开都是最新版本（离线自动回退缓存）
       fetch(event.request, { cache: 'no-cache' })

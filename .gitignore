@@ -1,9 +1,14 @@
+node_modules/
+.bin/
+.vite/
 .DS_Store
 Thumbs.db
 nul
 *.log
 __pycache__/
-audit/work/
+audit/work/*
+!audit/work/*-test.js
+!audit/work/README-TESTS.md
 audit/inbox/
 audit/outbox/*_input.json
 audit/outbox/*_prompt.md
@@ -13,4 +18,4 @@ audit/outbox/WORKBUDDY_TODO.md
 audit/outbox/qoder_*
 audit/qoder_*
 gen_*.py
-*-test.js
+/*-test.js
