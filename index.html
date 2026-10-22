@@ -367,6 +367,22 @@ body {
 }
 .option.disabled { pointer-events: none; opacity: .9; }
 
+/* 选项脚注：真题原文保留说明 */
+.option-note {
+  flex-shrink: 0; margin-left: auto; padding-left: 8px;
+  font-size: 12px; line-height: 1; color: var(--c-accent);
+  cursor: pointer; user-select: none;
+}
+.option-note:hover { text-decoration: underline; }
+.option-footnote {
+  display: none; margin-top: 8px; padding: 8px 10px;
+  border-left: 2px solid var(--c-accent);
+  background: var(--c-accent-lt);
+  border-radius: 0 4px 4px 0;
+  font-size: 12.5px; line-height: 1.6; color: var(--txt-2);
+}
+.option-footnote.open { display: block; }
+
 .option-label {
   flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
   border: 2px solid var(--border);
@@ -2522,7 +2538,7 @@ html.fk-cover-mode #splash { display: none !important; }
   <!-- Search Bar -->
   <div class="search-container" id="searchContainer">
     <span class="search-icon">🔍</span>
-    <input type="text" class="search-input" id="searchInput" placeholder="搜索题目关键词..." autocomplete="off" inputmode="search" enterkeyhint="search">
+    <input type="text" class="search-input" id="searchInput" placeholder="搜索关键词或 #题号（如 9442）..." autocomplete="off" inputmode="search" enterkeyhint="search">
     <div class="search-results" id="searchResults"></div>
     <div class="search-overlay" id="searchOverlay"></div>
   </div>
@@ -2985,7 +3001,7 @@ if ('serviceWorker' in navigator) {
 
     // Determine which subjects are needed (all on first load)
     var cachedVersion = await getMeta(db, 'questions_version');
-    var needReload = (cachedVersion !== 'v9');
+    var needReload = (cachedVersion !== 'v10');
 
     if (needReload) {
       // Load all subjects, cache each one
@@ -3015,7 +3031,7 @@ if ('serviceWorker' in navigator) {
       }
 
       if (questions.length > 0) {
-        await setMeta(db, 'questions_version', 'v9');
+        await setMeta(db, 'questions_version', 'v10');
         await setMeta(db, 'question_count', questions.length);
       }
       showLoading('题库加载完成，初始化中...');
@@ -3044,7 +3060,7 @@ if ('serviceWorker' in navigator) {
           });
         }
         if (questions.length > 0) {
-          await setMeta(db, 'questions_version', 'v9');
+          await setMeta(db, 'questions_version', 'v10');
           await setMeta(db, 'question_count', questions.length);
         }
       }
@@ -3408,9 +3424,17 @@ if ('serviceWorker' in navigator) {
     document.getElementById('optionsContainer').innerHTML = labels.map(function(l) {
       var text = q.options[l];
       if (!text) return '';
+      var note = (q.footnote || {})[l];
+      var noteHtml = note
+        ? '<span class="option-note" data-note="' + l + '" role="button" tabindex="0" aria-label="查看说明">※</span>'
+        : '';
+      var footHtml = note
+        ? '<div class="option-footnote" data-note-for="' + l + '">' + note + '</div>'
+        : '';
       return '<div class="option" data-option="' + l + '">' +
         '<div class="option-label">' + l + '</div>' +
-        '<div>' + text + '</div>' +
+        '<div>' + text + footHtml + '</div>' +
+        noteHtml +
         '</div>';
     }).join('');
 
@@ -3753,7 +3777,7 @@ if ('serviceWorker' in navigator) {
       if (q.options) {
         for (var k in q.options) optText += q.options[k] || '';
       }
-      if (text.toLowerCase().indexOf(lower) === -1 && optText.toLowerCase().indexOf(lower) === -1) continue;
+      if (String(q.id)!==kw.replace(/^#/,'') && text.toLowerCase().indexOf(lower)===-1 && optText.toLowerCase().indexOf(lower)===-1 && (q.analysis||'').toLowerCase().indexOf(lower)===-1) continue;
       hits.push(q);
     }
     if (hits.length === 0) {
@@ -3762,7 +3786,7 @@ if ('serviceWorker' in navigator) {
       $searchResults.innerHTML = hits.map(function(q) {
         return '<div class="search-result-item" data-qid="' + q.id + '">' +
           '<div class="sr-meta"><span class="tag tag-subject">' + escapeHtml(q.subject) + '</span>' +
-          escapeHtml(q.type) + ' · ' + escapeHtml(q.year) + '年</div>' +
+          '#'+q.id+' · '+escapeHtml(q.type)+(q.year?' · '+escapeHtml(q.year)+'年':'')+'</div>' +
           '<div class="sr-text">' + highlight(q.question, kw) + '</div>' +
           '</div>';
       }).join('');
@@ -4048,10 +4072,18 @@ if ('serviceWorker' in navigator) {
     $optionsContainer.innerHTML = labels.map((l, i) => {
       const text = q.options[l];
       if (!text) return '';
+      const note = (q.footnote || {})[l];
+      const noteHtml = note
+        ? `<span class="option-note" data-note="${l}" role="button" tabindex="0" aria-label="查看说明">※</span>`
+        : '';
+      const footHtml = note
+        ? `<div class="option-footnote" data-note-for="${l}">${note}</div>`
+        : '';
       return `
         <div class="option" data-option="${l}">
           <div class="option-label">${l}</div>
-          <div>${text}</div>
+          <div>${text}${footHtml}</div>
+          ${noteHtml}
         </div>
       `;
     }).join('');
@@ -4172,6 +4204,27 @@ if ('serviceWorker' in navigator) {
 
   // ── Answer handling ──
   $optionsContainer.addEventListener('click', function(e) {
+    // 脚注开关：不能触发选项选中
+    const noteEl = e.target.closest('.option-note');
+    if (noteEl) {
+      e.stopPropagation();
+      const box = $optionsContainer.querySelector('.option-footnote[data-note-for="' + noteEl.dataset.note + '"]');
+      if (box) {
+        const isOpen = box.classList.toggle('open');
+        noteEl.textContent = isOpen ? '※ 收起' : '※';
+      }
+      return;
+    }
+    const footEl = e.target.closest('.option-footnote');
+    if (footEl) {
+      // 脚注区点击视同点所属选项，避免吞掉选择
+      const ownLabel = footEl.closest('.option').querySelector('.option-label');
+      if (!ownLabel) return;
+      e.stopPropagation();
+      ownLabel.click();
+      return;
+    }
+
     if (answered) return;
     const optionEl = e.target.closest('.option');
     if (!optionEl) return;
@@ -4247,6 +4300,7 @@ if ('serviceWorker' in navigator) {
   // Multi-choice submit
   let multiSelections = new Set();
   $optionsContainer.addEventListener('click', function(e) {
+    if (e.target.closest('.option-note') || e.target.closest('.option-footnote')) return;
     if (answered) return;
     const optionEl = e.target.closest('.option');
     if (!optionEl) return;
