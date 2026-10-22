@@ -1,5 +1,12 @@
 # 给 Qoder 的工作单
 
+> ⚠️ **2026-10-22 部分作废：xs06.com 切换已取消。**
+>
+> 第 96–103 行的域名验收步骤不再适用 —— 站点当前地址是
+> `https://dada-dcc.github.io/fakao-pwa/`，没有自定义域名。
+> 文中「CACHE_NAME 会 bump 到 v15」也已过时，当前为 `fakao-v20`。
+> 题库审校相关部分（Q1/Q2/Q3）仍然有效且已完成。
+
 - 日期：2026-10-21
 - 仓库：`C:\Users\Krilenxs\Desktop\fakao-pwa`
 - 你的权限：只读 `questions/*.json`、`index.html`、`sw.js`；只写 `audit/outbox/qoder_*`、`audit/qoder_*.js`

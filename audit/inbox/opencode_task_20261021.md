@@ -1,5 +1,17 @@
 # 给 opencode 的工作单
 
+> ⚠️ **2026-10-22 作废：xs06.com 切换取消，域名相关改动以 main 的 `f6c9e8b` 为准。**
+>
+> 本文档第 10–35 行（O1 域名切换）与第 55–59 行（元信息表）中的 `xs06.com`
+> 全部不再适用。仓库已改回 `https://dada-dcc.github.io/fakao-pwa/`。
+> 原因：`xs06.com` 的 DNS 仍托管在 gname 停放页（`sp.gname.net` → `172.65.185.109`），
+> 未指向 GitHub Pages，此时配置自定义域会导致全站 503（已发生两次）。
+>
+> 域名切换的唯一前置条件是**域名持有人**在 gname 后台改 A/CNAME 记录，
+> agent 做不到。DNS 未确认前，不得创建 `CNAME` 文件、不得设置 Pages 自定义域。
+>
+> 其余部分（题库无关的部署常识、事故记录）仍可参考。
+
 - 日期：2026-10-21
 - 仓库：`C:\Users\Krilenxs\Desktop\fakao-pwa`
 - 当前 HEAD：`89f44be`
