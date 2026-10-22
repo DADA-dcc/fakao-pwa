@@ -1,0 +1,67 @@
+{
+  "generatedAt": "2026-10-22T02:39:44.305Z",
+  "url": "http://127.0.0.1:8765/",
+  "total": 3,
+  "pass": 3,
+  "fail": 0,
+  "consoleErrors": [],
+  "results": [
+    {
+      "id": 5230,
+      "subject": "商经法",
+      "type": "多选",
+      "answer": "A,B",
+      "checks": {
+        "idTag": true,
+        "questionMatch": true,
+        "optionsMatch": true,
+        "beforeAnswerHidden": true,
+        "answerCorrect": true,
+        "correctOptions": true,
+        "newTermPresent": true,
+        "oldTermGone": true
+      },
+      "pass": true,
+      "errors": [],
+      "screenshot": "audit/outbox/spot_citation_5230.png"
+    },
+    {
+      "id": 8232,
+      "subject": "民法",
+      "type": "多选",
+      "answer": "AC",
+      "checks": {
+        "idTag": true,
+        "questionMatch": true,
+        "optionsMatch": true,
+        "beforeAnswerHidden": true,
+        "answerCorrect": true,
+        "correctOptions": true,
+        "newTermPresent": true,
+        "oldTermGone": true
+      },
+      "pass": true,
+      "errors": [],
+      "screenshot": "audit/outbox/spot_citation_8232.png"
+    },
+    {
+      "id": 8748,
+      "subject": "民法",
+      "type": "单选",
+      "answer": "C",
+      "checks": {
+        "idTag": true,
+        "questionMatch": true,
+        "optionsMatch": true,
+        "beforeAnswerHidden": true,
+        "answerCorrect": true,
+        "correctOptions": true,
+        "newTermPresent": true,
+        "oldTermGone": true
+      },
+      "pass": true,
+      "errors": [],
+      "screenshot": "audit/outbox/spot_citation_8748.png"
+    }
+  ]
+}

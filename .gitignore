@@ -5,3 +5,4 @@ node_modules/
 console-*.log
 .vite/
 .DS_Store
+audit/work/backup_*/
