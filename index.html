@@ -992,6 +992,33 @@
       return out;
     }
 
+    // 超长解析折叠：>600 字默认只显示前 400 字
+    const ANALYSIS_FOLD_LIMIT = 600;
+    const ANALYSIS_FOLD_PREVIEW = 400;
+    let lastExplanation = "";
+
+    function renderExplanation(rawText) {
+      lastExplanation = String(rawText || "");
+      drawExplanation(false);
+    }
+
+    function drawExplanation(expanded) {
+      const el = document.getElementById("explanationContent");
+      if (!el) return;
+      const full = lastExplanation;
+      if (expanded || full.length <= ANALYSIS_FOLD_LIMIT) {
+        el.innerHTML = formatLegalHighlight(full);
+        if (full.length > ANALYSIS_FOLD_LIMIT) {
+          el.insertAdjacentHTML("beforeend", '<div class="mt-2"><button type="button" id="expFoldBtn" class="text-xs font-semibold text-blue-600 dark:text-blue-300 underline">收起 ▲</button></div>');
+          document.getElementById("expFoldBtn").onclick = () => drawExplanation(false);
+        }
+        return;
+      }
+      el.innerHTML = formatLegalHighlight(full.slice(0, ANALYSIS_FOLD_PREVIEW)) +
+        '<div class="mt-2"><button type="button" id="expFoldBtn" class="text-xs font-semibold text-blue-600 dark:text-blue-300 underline">… 展开全文（' + full.length + ' 字）▼</button></div>';
+      document.getElementById("expFoldBtn").onclick = () => drawExplanation(true);
+    }
+
     // =========================================================================
     // 5. 外部题库自动探测（全面兼容单文件数组、分科清单、字典映射等所有 JSON 格式）
     // =========================================================================
@@ -1052,6 +1079,10 @@
               }
             } else if (v && typeof v === "object" && (v.file || v.path || v.url)) {
               const sub = await extractQuestionsFromData([v], k);
+              dictMerged.push(...sub);
+            } else if (v && typeof v === "object") {
+              // 嵌套字典：index.json 的 {version,total,subjects:{科目:{file:...}}}
+              const sub = await extractQuestionsFromData(v, k);
               dictMerged.push(...sub);
             }
           })
@@ -1504,7 +1535,7 @@
         verdictBadge.textContent = "❌ 回答错误（已加入错题本）";
       }
 
-      document.getElementById("explanationContent").innerHTML = formatLegalHighlight(q.explanation);
+      renderExplanation(q.explanation);
 
       const basisContainer = document.getElementById("lawBasisBadge");
       basisContainer.innerHTML = "";
