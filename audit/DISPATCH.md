@@ -168,7 +168,7 @@ ls audit/outbox/
 | `audit/export_batch.py` | 新增 `--suffix`（批次名后缀，避免覆盖旧批）、`--skip-exported`（跳过已派出的 id）、`--force` | `python audit/export_batch.py --all --size 40 --suffix _b2 --skip-exported` |
 
 红线（已遵守）：`audit/inbox/*.json` 只读不改；`questions/*.json` 不由 opencode 写入；
-`audit/fix_stems.py` 不动。落库命令由本人执行。
+`audit/rescue/fix_stems.py` 不动。落库命令由本人执行。
 
 当前给 WorkBuddy 的工作单：`audit/outbox/WORKBUDDY_TODO.md`（阻塞项 + 返工清单 + 下一批 250 题）。
 
