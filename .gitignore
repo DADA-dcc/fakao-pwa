@@ -6,6 +6,12 @@ Thumbs.db
 nul
 *.log
 __pycache__/
+
+# Cloudflare Pages 构建产物（由 scripts/build.mjs 生成）
+dist/
+.wrangler/
+.dev.vars
+.perch_*
 audit/work/*
 !audit/work/*-test.js
 !audit/work/README-TESTS.md

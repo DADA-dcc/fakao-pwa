@@ -1093,7 +1093,8 @@
     }
 
     async function tryLoadExternalRepoData() {
-      if (!location.hostname.includes("github.io") && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") return;
+      // 仅在 HTTP/HTTPS 同源部署下加载外部题库（GitHub Pages / Cloudflare Pages / 自定义域名 / 本地预览均可）
+      if (location.protocol !== "http:" && location.protocol !== "https:") return;
       try {
         const qEndpoint = [".", "questions", "index.json"].join("/");
         const res = await fetch(qEndpoint);
@@ -1860,46 +1861,73 @@
         apiKey = localStorage.getItem(STORAGE_KEYS.DEEPSEEK_KEY) || "";
       } catch (e) {}
 
-      if (!apiKey) {
-        textEl.textContent =
-          `【本地结构化考点拆解（可在顶部“🤖 AI解析”配置 DeepSeek Key 开启实时追问）】\n` +
-          `1. 考查核心科目与题型：${q.subject} · ${q.type}\n` +
-          `2. 命题人题眼提示：注意审题中的主体关系（如第三人善意/恶意、是否届期、管辖连接点）以及否定词。\n` +
-          `3. 核心法条锚点：${(q.lawBasis && q.lawBasis.join("、")) || "详见上方解析条文"}\n` +
-          (customFollowup ? `4. 针对你的追问「${customFollowup}」：建议重点比对上方法条构成要件中的但书条款与例外规定。` : "");
-        return;
-      }
+      const buildLocalFallback = () =>
+        `【本地结构化考点拆解（可在顶部“🤖 AI解析”配置 DeepSeek Key 开启实时追问）】\n` +
+        `1. 考查核心科目与题型：${q.subject} · ${q.type}\n` +
+        `2. 命题人题眼提示：注意审题中的主体关系（如第三人善意/恶意、是否届期、管辖连接点）以及否定词。\n` +
+        `3. 核心法条锚点：${(q.lawBasis && q.lawBasis.join("、")) || "详见上方解析条文"}\n` +
+        (customFollowup ? `4. 针对你的追问「${customFollowup}」：建议重点比对上方法条构成要件中的但书条款与例外规定。` : "");
 
-      textEl.textContent = "🤖 DeepSeek 法考助教正在为你推演法理与要件...";
+      const prompt = customFollowup
+        ? `题目：${q.title}\n选项：${JSON.stringify(q.options)}\n标准答案：${q.answer.join("")}`
+        : `题目：${q.title}\n选项：${JSON.stringify(q.options)}\n标准答案：${q.answer.join("")}`;
+
+      textEl.textContent = "🤖 法考助教正在为你推演法理与要件...";
+
+      // 优先走同源边缘函数 /api/ai（密钥保存在服务端，用户无需自备 Key）
+      let served = false;
       try {
-        const prompt = customFollowup
-          ? `题目：${q.title}\n选项：${JSON.stringify(q.options)}\n标准答案：${q.answer.join("")}\n考生追问：${customFollowup}\n请用简明扼要的法考应试语言解答考生的追问。`
-          : `题目：${q.title}\n选项：${JSON.stringify(q.options)}\n标准答案：${q.answer.join("")}\n请从【命题陷阱】【请求权基础/构成要件】【同类题秒杀口诀】三个维度进行精炼拆解。`;
-
-        const res = await fetch("https://api.deepseek.com/chat/completions", {
+        const proxyRes = await fetch([".", "api", "ai"].join("/"), {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [
-              { role: "system", content: "你是一位资深的国家统一法律职业资格考试（法考）辅导名师，擅长提炼题眼、拆解请求权基础与犯罪构成要件。" },
-              { role: "user", content: prompt }
-            ],
-            temperature: 0.3
-          })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, followup: customFollowup || "" })
         });
-        const data = await res.json();
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-          textEl.textContent = data.choices[0].message.content;
-        } else {
-          textEl.textContent = "AI 接口返回异常，请检查 API Key 是否有效。";
+        if (proxyRes.ok) {
+          const proxyData = await proxyRes.json();
+          if (proxyData && proxyData.content) {
+            textEl.textContent = proxyData.content;
+            served = true;
+          }
+        } else if (proxyRes.status === 429) {
+          textEl.textContent = "请求过于频繁，请稍后再试。";
+          served = true;
         }
-      } catch (err) {
-        textEl.textContent = "网络请求受限或 API Key 无效，已切换为本地考点提示。";
+      } catch (e) {
+        // 代理不可用（本地 file:// 预览、静态托管无 Functions 等），走下面的回退
       }
+
+      if (served) return;
+
+      // 回退一：用户自备 DeepSeek Key，浏览器直连
+      if (apiKey) {
+        try {
+          const res = await fetch("https://api.deepseek.com/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model: "deepseek-chat",
+              messages: [
+                { role: "system", content: "你是一位资深的国家统一法律职业资格考试（法考）辅导名师，擅长提炼题眼、拆解请求权基础与犯罪构成要件。" },
+                { role: "user", content: customFollowup ? `${prompt}\n考生追问：${customFollowup}\n请用简明扼要的法考应试语言解答考生的追问。` : `${prompt}\n请从【命题陷阱】【请求权基础/构成要件】【同类题秒杀口诀】三个维度进行精炼拆解。` }
+              ],
+              temperature: 0.3
+            })
+          });
+          const data = await res.json();
+          if (data.choices && data.choices[0] && data.choices[0].message) {
+            textEl.textContent = data.choices[0].message.content;
+            return;
+          }
+        } catch (err) {
+          // 落到本地提示
+        }
+      }
+
+      // 回退二：本地结构化考点拆解
+      textEl.textContent = buildLocalFallback();
     }
 
     // =========================================================================
@@ -2401,7 +2429,7 @@
 
       // 8. 注册 Service Worker 与版本更新提示 (仅在同源 HTTP/HTTPS 部署环境下启用)
       let waitingWorker = null;
-      if ("serviceWorker" in navigator && (location.hostname.includes("github.io") || location.hostname === "localhost")) {
+      if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
         const swPath = [".", "sw.js"].join("/");
         navigator.serviceWorker.register(swPath).then((reg) => {
           if (reg.waiting) {

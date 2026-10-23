@@ -1,0 +1,20 @@
+# Cloudflare Pages 项目配置
+# 部署方式二选一：
+#   A. Dashboard 连接 Git 仓库（推荐，推代码自动部署）
+#   B. 本地命令行：npx wrangler pages deploy .
+#
+# 注意：本文件只用于本地 wrangler 部署与 KV 绑定声明。
+#       Dashboard 连接 Git 时，构建输出目录请在后台填 "."，构建命令留空。
+
+name = "fakao-pwa"
+pages_build_output_dir = "."
+compatibility_date = "2026-10-01"
+
+# 可选：AI 代理限流用的 KV 命名空间。
+# 创建：npx wrangler kv namespace create AI_RATE_LIMIT_KV
+# 然后把返回的 id 填到下面，并取消注释。
+# 不绑定也能跑，只是限流退化为单实例内存计数。
+#
+# [[kv_namespaces]]
+# binding = "AI_RATE_LIMIT_KV"
+# id = "<your-kv-namespace-id>"
