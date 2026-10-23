@@ -19,3 +19,8 @@ audit/outbox/qoder_*
 audit/qoder_*
 gen_*.py
 /*-test.js
+
+# audit 运行产物（可由脚本重新生成）
+audit/qc_report.json
+audit/rescue/_mf_*
+audit/rescue/民法.before.json
