@@ -7,7 +7,7 @@
  * 4. 支持客户端发送 SKIP_WAITING 消息实现一键热更新
  */
 
-const CACHE_VERSION = 'fakao-v22';
+const CACHE_VERSION = 'fakao-v23';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 
@@ -21,8 +21,7 @@ const CORE_SHELL = [
 
 const OPTIONAL_ASSETS = [
   './cover.html',
-  './fakao-enhance.js',
-  './vendor/three.r128.min.js',
+    './vendor/three.r128.min.js',
   './vendor/tailwind-3.4.17.js',
   './questions/index.json',
   './knowledge.json',
