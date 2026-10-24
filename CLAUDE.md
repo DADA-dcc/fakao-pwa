@@ -23,3 +23,4 @@
 - 固定约束：xs06.com 方案已废弃；`archive/do-not-merge-20261021` @ `84aa112` 不合并、不 cherry-pick（含 CNAME=xs06.com）；版本号（questions_version / sw CACHE_NAME）只由用户修改；一 agent 一 worktree，禁用 `git add -A`，提交前核对 `git diff --cached --name-only`。
 - 分工（2026-10-22 约定）：题库 `questions/*.json`、`index.html` body/style/script、`sw.js`、`audit/` 归 Claude Code；`index.html` head meta、`robots.txt`、`sitemap.xml`、Pages 设置、仓库 About/Homepage 归另一 agent（opencode）。
 - claude-mem 凭据只能由用户在终端执行 `/login`（2026-10-22 22:29 已执行过），agent 无法代做。
+- `fakao-v23` 升级：修复 `sw.js` 缓存克隆与幽灵引用、拆分 `manifest.json` 图标声明、修复 `preload.js`/`main.js` 流式异常与 IPC 泄漏、补齐 `index.html` 12 科目映射与计时器清理。
