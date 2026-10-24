@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('aiTeacher', {
   getApiKey: () => ipcRenderer.invoke('get-api-key'),
 
   chatStream: (messages, onChunk) => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {ipcRenderer.removeAllListeners('ai-chat-chunk');
       const handler = (_event, chunk) => {
         if (chunk === '[[DONE]]') {
           ipcRenderer.removeListener('ai-chat-chunk', handler);
