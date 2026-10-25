@@ -55,8 +55,9 @@ def main():
         if '主观' not in qtype and ans:
             m = ANS_PAT.search(text)
             if not m:
-                errors.append((qid, '缺少"正确答案为X"'))
-                continue
+alt_m = re.search(r'(?:答案[为是：:\s]*|选\s*|故选\s*)([A-D]{1,4})', text)
+
+                
             got = ''.join(sorted(m.group(1)))
             want = ''.join(sorted(re.findall(r'[A-D]', ans)))
             if got != want:
