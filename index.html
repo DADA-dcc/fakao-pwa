@@ -1248,7 +1248,7 @@
         } else if (currentSubject === "主观题") {
           if (q.type !== "主观题") return false;
         } else if (currentSubject !== "全部") {
-          if (q.subject !== currentSubject) return false;
+          if ((currentSubject === '三国法' ? '国际法' : currentSubject) !== q.subject) return false;
         }
 
         // 2. 题型筛选
