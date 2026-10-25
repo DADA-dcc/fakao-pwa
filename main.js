@@ -56,9 +56,9 @@ ipcMain.handle('ai-chat-stream', async (event, messages) => {
     throw new Error('请先设置 DeepSeek API Key');
   }
 
-  const deepseek = createDeepSeek({ apiKey });
-
-  try {
+  
+  try {const deepseek = createDeepSeek({ apiKey });
+       
     const result = streamText({
       model: deepseek('deepseek-reasoner'),
       messages,
@@ -71,7 +71,7 @@ ipcMain.handle('ai-chat-stream', async (event, messages) => {
     }
     event.sender.send('ai-chat-chunk', '[[DONE]]');
   } catch (err) {
-    event.sender.send('ai-chat-chunk', '[[ERROR]]' + (err.message || '未知错误'));
+          event.sender.send('ai-chat-chunk', '[[ERROR]]' + (err.message || 'AI调用异常'));
   }
 });
 

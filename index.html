@@ -819,7 +819,7 @@
       { key: "商经法", label: "商经法" },
       { key: "宪法", label: "宪法" },
       { key: "法理学", label: "法理学" },
-      { key: "国际法", label: "国际法" },
+      { key: "国际法", label: "国际法" },{ key: "法制史", label: "法制史" },{ key: "司法制度与职业道德", label: "司法制度与职业道德" },
       { key: "主观题", label: "主观案例" }
     ];
 
@@ -1249,7 +1249,7 @@
         } else if (currentSubject === "主观题") {
           if (q.type !== "主观题") return false;
         } else if (currentSubject !== "全部") {
-          if (q.subject !== currentSubject) return false;
+          if ((currentSubject === '三国法' ? '国际法' : currentSubject) !== q.subject) return false;
         }
 
         // 2. 题型筛选
