@@ -30,3 +30,11 @@ gen_*.py
 audit/qc_report.json
 audit/rescue/_mf_*
 audit/rescue/民法.before.json
+
+# 本地验证/预览产物（截图、旧封面引擎备份），不入库
+/cover_*.png
+/index_*_preview.png
+/live_splash_preview.png
+/hero_preview.png
+/*.bak-*
+/cover-legacy-120bpm.html
