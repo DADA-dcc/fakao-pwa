@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>法考刷题助手 Pro · 以法律塑正义公正之剑</title>
+<style>
+  :root {
+    --ink: #12233f;
+    --ink-soft: #40506b;
+    --brand: #1a3a6b;
+    --brand-hover: #24497f;
+    --accent: #e2542a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    overflow: hidden;
+    background: #FFF1EB;
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── 背景：移植自 Motion Prompt #095（动画渐变）── */
+  #splashCanvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 0;
+  }
+  /* 中央柔和白雾，保证文字在彩色渐变上也清晰 */
+  .veil {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: radial-gradient(60% 55% at 50% 46%, rgba(255,255,255,.78) 0%, rgba(255,255,255,.35) 45%, rgba(255,255,255,0) 72%);
+  }
+
+  /* ── 版式 ── */
+  .splash {
+    position: relative;
+    z-index: 2;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: max(22px, env(safe-area-inset-top)) 22px max(22px, env(safe-area-inset-bottom));
+    text-align: center;
+  }
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: max(14px, env(safe-area-inset-top)) 20px 14px;
+    font-size: 12px;
+    letter-spacing: .12em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .topbar .mark {
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    border-radius: 8px;
+    background: var(--brand);
+    color: #fff;
+    font-size: 15px;
+    box-shadow: 0 6px 16px -6px rgba(26,58,107,.7);
+  }
+
+  .content { max-width: 760px; width: 100%; }
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: clamp(12px, 1.6vw, 14px);
+    font-weight: 700;
+    letter-spacing: .05em;
+    color: var(--accent);
+    background: rgba(255,255,255,.5);
+    border: 1px solid rgba(226,84,42,.28);
+    padding: 5px 12px;
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  h1 {
+    margin: clamp(16px, 3vw, 26px) 0 0;
+    font-size: clamp(28px, 6.6vw, 64px);
+    line-height: 1.14;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  h1 .grad {
+    background: linear-gradient(92deg, #1a3a6b 0%, #3B64E8 55%, #e2542a 120%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .sub {
+    margin: clamp(14px, 2.4vw, 20px) auto 0;
+    max-width: 40em;
+    font-size: clamp(13px, 1.9vw, 17px);
+    line-height: 1.75;
+    color: var(--ink-soft);
+  }
+  .sub b { color: var(--ink); font-weight: 700; }
+
+  .cta {
+    margin-top: clamp(26px, 4vw, 40px);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    border-radius: 999px;
+    transition: transform .14s ease, background .16s ease, box-shadow .16s ease;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--brand);
+    color: #fff;
+    font-size: clamp(15px, 2vw, 18px);
+    padding: 14px 30px;
+    box-shadow: 0 14px 30px -12px rgba(26,58,107,.85);
+  }
+  .btn-primary:hover { background: var(--brand-hover); transform: translateY(-2px); box-shadow: 0 18px 36px -12px rgba(26,58,107,.9); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-ghost {
+    background: rgba(255,255,255,.55);
+    color: var(--brand);
+    font-size: clamp(13px, 1.7vw, 15px);
+    padding: 14px 22px;
+    border: 1px solid rgba(26,58,107,.22);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .btn-ghost:hover { background: #fff; transform: translateY(-2px); }
+
+  .bottom {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 0 20px;
+    pointer-events: none;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 6px 16px;
+    justify-content: center;
+    font-size: clamp(11px, 1.4vw, 12.5px);
+    color: var(--ink-soft);
+    text-align: center;
+  }
+  .meta span { opacity: .9; }
+  .meta .dot { opacity: .4; }
+  .credit {
+    font-size: 10px;
+    color: rgba(18,35,63,.42);
+    letter-spacing: .02em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="splashCanvas" aria-hidden="true"></canvas>
+<div class="veil" aria-hidden="true"></div>
+
+<div class="topbar">
+  <span class="mark" aria-hidden="true">⚖️</span>
+  <span>FAKAO · 法考刷题助手 Pro</span>
+</div>
+
+<main class="splash">
+  <div class="content">
+    <span class="kicker">✦ 2026 法考 · 稳过计划</span>
+    <h1>以法律，塑<span class="grad">正义公正之剑</span></h1>
+    <p class="sub">
+      民法 · 刑法 · 行政法 · 宪法 · 民诉 · 刑诉 · 商经 · 法理 ——<br>
+      <b>近万道真题</b>与<b>遗忘曲线复习</b>，陪你稳过法考。
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary" href="./index.html">进入刷题 <span aria-hidden="true">→</span></a>
+      <a class="btn btn-ghost" href="./index.html">查看功能</a>
+    </div>
+  </div>
+</main>
+
+<div class="bottom">
+  <div class="meta">
+    <span>📚 12 大科目</span><span class="dot">·</span>
+    <span>🧠 智能复习</span><span class="dot">·</span>
+    <span>📴 离线可用</span><span class="dot">·</span>
+    <span>📱 可添加到主屏幕</span>
+  </div>
+  <div class="credit">Motion Prompt #095 · MIT License (c) 2026 Shohei Ohtaki</div>
+</div>
+
+<script>
+/* =====================================================================
+   背景渐变：移植自 Motion Prompt #095（Animated gradient）
+   Motion Prompt #095 · MIT License (c) 2026 Shohei Ohtaki
+   https://github.com/showheyohtaki/motion-prompt
+   —— 仅保留「4 团径向色块沿椭圆漂移」的流动，铺满整屏，4.8s 无缝循环。
+   ===================================================================== */
+(function () {
+  var canvas = document.getElementById('splashCanvas');
+  var ctx = canvas.getContext('2d');
+  var CYCLE = 4.8;
+  // x/y/ax/ay 为视口比例；r 为「max(宽,高)」的比例，保证横竖屏都铺满
+  var BLOBS = [
+    { c: '#FF5A2C', x: 0.24, y: 0.24, r: 0.55, ax: 0.10, ay: 0.10, ph: 0.0 },
+    { c: '#FFB08F', x: 0.80, y: 0.18, r: 0.50, ax: 0.09, ay: 0.11, ph: 2.1 },
+    { c: '#3B64E8', x: 0.74, y: 0.72, r: 0.58, ax: 0.12, ay: 0.10, ph: 4.2 },
+    { c: '#9DB6FB', x: 0.20, y: 0.80, r: 0.52, ax: 0.08, ay: 0.11, ph: 1.0 }
+  ];
+  var W = 0, H = 0, dpr = 1;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(1, window.innerWidth);
+    H = Math.max(1, window.innerHeight);
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+  }
+
+  function draw(u) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#FFF1EB';
+    ctx.fillRect(0, 0, W, H);
+    var a = 2 * Math.PI * u / CYCLE;
+    var R = Math.max(W, H);
+    for (var i = 0; i < BLOBS.length; i++) {
+      var b = BLOBS[i];
+      var cx = (b.x + b.ax * Math.cos(a + b.ph)) * W;
+      var cy = (b.y + b.ay * Math.sin(a + b.ph)) * H;
+      var rad = b.r * R;
+      var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      g.addColorStop(0, b.c);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  resize();
+  if (reduce) {
+    draw(0.9);
+  } else {
+    var t0 = performance.now();
+    (function loop() {
+      draw(((performance.now() - t0) / 1000) % CYCLE);
+      requestAnimationFrame(loop);
+    })();
+  }
+
+  var rt;
+  window.addEventListener('resize', function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () { resize(); if (reduce) draw(0.9); }, 120);
+  });
+})();
+</script>
+</body>
+</html>

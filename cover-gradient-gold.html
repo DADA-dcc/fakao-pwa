@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6d1b2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>法考刷题助手 Pro · 以法律塑正义公正之剑</title>
+<style>
+  :root {
+    --ink: #2a1420;
+    --ink-soft: #5c4650;
+    --brand: #6d1b2e;
+    --brand-hover: #86304a;
+    --gold: #b8862e;
+    --gold-soft: #d9b25f;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    overflow: hidden;
+    background: #f8efe6;
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── 背景：移植自 Motion Prompt #095（动画渐变），酒红 + 金配色 ── */
+  #splashCanvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 0;
+  }
+  .veil {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: radial-gradient(60% 55% at 50% 46%, rgba(255,250,244,.82) 0%, rgba(255,250,244,.38) 45%, rgba(255,250,244,0) 72%);
+  }
+
+  /* ── 版式 ── */
+  .splash {
+    position: relative;
+    z-index: 2;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: max(22px, env(safe-area-inset-top)) 22px max(22px, env(safe-area-inset-bottom));
+    text-align: center;
+  }
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: max(14px, env(safe-area-inset-top)) 20px 14px;
+    font-size: 12px;
+    letter-spacing: .12em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .topbar .mark {
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #6d1b2e, #a23a54);
+    color: #f6e2b8;
+    font-size: 15px;
+    box-shadow: 0 6px 16px -6px rgba(109,27,46,.7);
+  }
+
+  .content { max-width: 760px; width: 100%; }
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: clamp(12px, 1.6vw, 14px);
+    font-weight: 700;
+    letter-spacing: .05em;
+    color: var(--brand);
+    background: rgba(255,250,244,.55);
+    border: 1px solid rgba(184,134,46,.45);
+    padding: 5px 13px;
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  h1 {
+    margin: clamp(16px, 3vw, 26px) 0 0;
+    font-size: clamp(28px, 6.6vw, 64px);
+    line-height: 1.14;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  h1 .grad {
+    background: linear-gradient(92deg, #6d1b2e 0%, #a23a54 48%, #c79a3b 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .sub {
+    margin: clamp(14px, 2.4vw, 20px) auto 0;
+    max-width: 40em;
+    font-size: clamp(13px, 1.9vw, 17px);
+    line-height: 1.75;
+    color: var(--ink-soft);
+  }
+  .sub b { color: var(--ink); font-weight: 700; }
+
+  /* 距法考倒计时 */
+  .countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: clamp(14px, 2.2vw, 20px);
+    padding: 7px 16px;
+    border-radius: 999px;
+    font-size: clamp(12.5px, 1.6vw, 15px);
+    color: var(--ink);
+    background: rgba(255,250,244,.6);
+    border: 1px solid rgba(184,134,46,.5);
+    box-shadow: 0 6px 18px -12px rgba(109,27,46,.6);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .countdown .spark { color: var(--gold); }
+  .countdown b {
+    font-size: 1.24em;
+    color: var(--brand);
+    font-variant-numeric: tabular-nums;
+    padding: 0 2px;
+  }
+
+  .cta {
+    margin-top: clamp(24px, 3.6vw, 38px);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    border-radius: 999px;
+    transition: transform .14s ease, background .16s ease, box-shadow .16s ease;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #6d1b2e, #8e2a44);
+    color: #fbe9c8;
+    font-size: clamp(15px, 2vw, 18px);
+    padding: 14px 30px;
+    border: 1px solid rgba(217,178,95,.6);
+    box-shadow: 0 14px 30px -12px rgba(109,27,46,.9);
+  }
+  .btn-primary:hover { background: linear-gradient(135deg, #7d2136, #9c3450); transform: translateY(-2px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-ghost {
+    background: rgba(255,250,244,.6);
+    color: var(--brand);
+    font-size: clamp(13px, 1.7vw, 15px);
+    padding: 14px 22px;
+    border: 1px solid rgba(109,27,46,.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .btn-ghost:hover { background: #fffaf4; transform: translateY(-2px); }
+
+  .bottom {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 0 20px;
+    pointer-events: none;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 6px 16px;
+    justify-content: center;
+    font-size: clamp(11px, 1.4vw, 12.5px);
+    color: var(--ink-soft);
+    text-align: center;
+  }
+  .meta span { opacity: .92; }
+  .meta .dot { color: var(--gold); opacity: .8; }
+  .credit {
+    font-size: 10px;
+    color: rgba(42,20,32,.42);
+    letter-spacing: .02em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="splashCanvas" aria-hidden="true"></canvas>
+<div class="veil" aria-hidden="true"></div>
+
+<div class="topbar">
+  <span class="mark" aria-hidden="true">⚖️</span>
+  <span>FAKAO · 法考刷题助手 Pro</span>
+</div>
+
+<main class="splash">
+  <div class="content">
+    <span class="kicker">✦ 法考 · 稳过计划</span>
+    <h1>以法律，塑<span class="grad">正义公正之剑</span></h1>
+    <p class="sub">
+      民法 · 刑法 · 行政法 · 宪法 · 民诉 · 刑诉 · 商经 · 法理 ——<br>
+      <b>近万道真题</b>与<b>遗忘曲线复习</b>，陪你稳过法考。
+    </p>
+
+    <div class="countdown" id="countdown">
+      <span class="spark" aria-hidden="true">✦</span>
+      <span id="cdLabel">距离 2028 法考还有 <b id="cdDays">—</b> 天</span>
+    </div>
+
+    <div class="cta">
+      <a class="btn btn-primary" href="./index.html">进入刷题 <span aria-hidden="true">→</span></a>
+      <a class="btn btn-ghost" href="./index.html">查看功能</a>
+    </div>
+  </div>
+</main>
+
+<div class="bottom">
+  <div class="meta">
+    <span>📚 12 大科目</span><span class="dot">·</span>
+    <span>🧠 智能复习</span><span class="dot">·</span>
+    <span>📴 离线可用</span><span class="dot">·</span>
+    <span>📱 可添加到主屏幕</span>
+  </div>
+  <div class="credit">Motion Prompt #095 · MIT License (c) 2026 Shohei Ohtaki</div>
+</div>
+
+<script>
+/* =====================================================================
+   背景渐变：移植自 Motion Prompt #095（Animated gradient）· 酒红+金配色
+   Motion Prompt #095 · MIT License (c) 2026 Shohei Ohtaki
+   https://github.com/showheyohtaki/motion-prompt
+   ===================================================================== */
+(function () {
+  var canvas = document.getElementById('splashCanvas');
+  var ctx = canvas.getContext('2d');
+  var CYCLE = 4.8;
+  var BLOBS = [
+    { c: '#b23a5b', x: 0.24, y: 0.24, r: 0.55, ax: 0.10, ay: 0.10, ph: 0.0 },
+    { c: '#e8a6b8', x: 0.80, y: 0.18, r: 0.50, ax: 0.09, ay: 0.11, ph: 2.1 },
+    { c: '#c89b3c', x: 0.74, y: 0.74, r: 0.56, ax: 0.12, ay: 0.10, ph: 4.2 },
+    { c: '#ead3a0', x: 0.20, y: 0.80, r: 0.52, ax: 0.08, ay: 0.11, ph: 1.0 }
+  ];
+  var W = 0, H = 0, dpr = 1;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(1, window.innerWidth);
+    H = Math.max(1, window.innerHeight);
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+  }
+
+  function draw(u) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#f8efe6';
+    ctx.fillRect(0, 0, W, H);
+    var a = 2 * Math.PI * u / CYCLE;
+    var R = Math.max(W, H);
+    for (var i = 0; i < BLOBS.length; i++) {
+      var b = BLOBS[i];
+      var cx = (b.x + b.ax * Math.cos(a + b.ph)) * W;
+      var cy = (b.y + b.ay * Math.sin(a + b.ph)) * H;
+      var rad = b.r * R;
+      var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      g.addColorStop(0, b.c);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  resize();
+  if (reduce) {
+    draw(0.9);
+  } else {
+    var t0 = performance.now();
+    (function loop() {
+      draw(((performance.now() - t0) / 1000) % CYCLE);
+      requestAnimationFrame(loop);
+    })();
+  }
+
+  var rt;
+  window.addEventListener('resize', function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () { resize(); if (reduce) draw(0.9); }, 120);
+  });
+})();
+
+/* 倒计时：只改下面三个数字即可（2028 客观题按「9 月第三个周六」暂定，具体以官方公告为准） */
+(function () {
+  var EXAM_YEAR = 2028;
+  var EXAM_MONTH = 9;
+  var EXAM_DAY = 16;
+  var label = document.getElementById('cdLabel');
+  var days = document.getElementById('cdDays');
+  if (!label || !days) return;
+
+  var target = new Date(EXAM_YEAR, EXAM_MONTH - 1, EXAM_DAY, 9, 0, 0);
+  function tick() {
+    label.firstChild.nodeValue = '距离 ' + EXAM_YEAR + ' 法考还有 ';
+    days.textContent = Math.max(0, Math.ceil((target.getTime() - Date.now()) / 86400000));
+  }
+  tick();
+  setInterval(tick, 60000);
+})();
+</script>
+</body>
+</html>

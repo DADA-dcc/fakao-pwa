@@ -160,9 +160,152 @@
     .anim-slide-right {
       animation: slidePulseRight 0.22s ease-out;
     }
+
+    /* ── 首页动态渐变 Hero（移植自 Motion Prompt #095 · 动画渐变）── */
+    #heroGlow {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1rem;
+      isolation: isolate;
+      box-shadow: 0 12px 34px -16px rgba(26, 58, 107, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.35) inset;
+    }
+    html[data-theme="dark"] #heroGlow {
+      box-shadow: 0 12px 34px -16px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+    }
+    #heroGlowCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+    }
+    .hero-glow-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      min-height: clamp(150px, 25vw, 184px);
+      padding: clamp(16px, 3vw, 26px);
+    }
+    .hero-glow-panel {
+      max-width: min(600px, 94%);
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.80);
+      background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+      -webkit-backdrop-filter: blur(7px);
+      backdrop-filter: blur(7px);
+    }
+    .hero-glow-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #e2542a;
+    }
+    .hero-glow-title {
+      margin: 6px 0 5px;
+      font-size: clamp(19px, 3.4vw, 27px);
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+      line-height: 1.15;
+    }
+    .hero-glow-sub {
+      margin: 0 0 13px;
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--text-muted);
+    }
+    .hero-glow-btn {
+      border: 0;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+      background: #1a3a6b;
+      padding: 8px 17px;
+      border-radius: 999px;
+      box-shadow: 0 8px 18px -8px rgba(26, 58, 107, 0.8);
+      transition: transform 0.12s ease, background 0.15s ease;
+    }
+    .hero-glow-btn:hover { background: #24497f; transform: translateY(-1px); }
+    .hero-glow-btn:active { transform: translateY(0); }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
+
+  <!-- ===== 开屏封面：Motion Prompt #095 动态渐变 · 酒红+金（启动即显示，点按/3 秒后淡出） ===== -->
+  <div id="splashCover" role="dialog" aria-label="法考刷题助手 Pro 开屏">
+    <canvas id="splashCoverCanvas" aria-hidden="true"></canvas>
+    <div class="sc-veil" aria-hidden="true"></div>
+    <div class="sc-top"><span class="sc-mark" aria-hidden="true">⚖️</span><span>FAKAO · 法考刷题助手 Pro</span></div>
+    <div class="sc-inner">
+      <span class="sc-kicker">✦ 法考 · 稳过计划</span>
+      <h1 class="sc-title">以法律，塑<span class="sc-grad">正义公正之剑</span></h1>
+      <p class="sc-sub">民法 · 刑法 · 行政法 · 宪法 · 民诉 · 刑诉 · 商经 · 法理 ——<br><b>近万道真题</b>与<b>遗忘曲线复习</b>，陪你稳过法考。</p>
+      <div class="sc-count"><span class="sc-spark" aria-hidden="true">✦</span><span>距离 2028 法考还有 <b id="scCdDays">—</b> 天</span></div>
+      <button id="splashEnter" type="button" class="sc-btn">进入刷题 <span aria-hidden="true">→</span></button>
+      <div class="sc-hint">轻触任意处进入</div>
+    </div>
+    <div class="sc-credit">Motion Prompt #095 · MIT License (c) 2026 Shohei Ohtaki</div>
+  </div>
+  <style>
+    #splashCover{position:fixed;inset:0;z-index:2147483000;overflow:hidden;background:#f8efe6;color:#2a1420;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:max(22px,env(safe-area-inset-top)) 22px max(22px,env(safe-area-inset-bottom));font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;transition:opacity .5s ease,visibility .5s ease;-webkit-tap-highlight-color:transparent}
+    #splashCover.sc-hide{opacity:0;visibility:hidden;pointer-events:none}
+    #splashCoverCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0}
+    #splashCover .sc-veil{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(60% 55% at 50% 46%,rgba(255,250,244,.82) 0%,rgba(255,250,244,.38) 45%,rgba(255,250,244,0) 72%)}
+    #splashCover .sc-top{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;align-items:center;gap:10px;padding:max(14px,env(safe-area-inset-top)) 20px 14px;font-size:12px;letter-spacing:.12em;color:#5c4650;text-transform:uppercase}
+    #splashCover .sc-mark{width:26px;height:26px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(145deg,#6d1b2e,#a23a54);color:#f6e2b8;font-size:15px;box-shadow:0 6px 16px -6px rgba(109,27,46,.7)}
+    #splashCover .sc-inner{position:relative;z-index:2;width:100%;max-width:760px}
+    #splashCover .sc-kicker{display:inline-flex;align-items:center;gap:8px;font-size:clamp(12px,1.6vw,14px);font-weight:700;letter-spacing:.05em;color:#6d1b2e;background:rgba(255,250,244,.55);border:1px solid rgba(184,134,46,.45);padding:5px 13px;border-radius:999px}
+    #splashCover .sc-title{margin:clamp(16px,3vw,26px) 0 0;font-size:clamp(28px,6.6vw,64px);line-height:1.14;font-weight:800;letter-spacing:-.02em;color:#2a1420;overflow-wrap:anywhere;word-break:break-word}
+    #splashCover .sc-grad{background:linear-gradient(92deg,#6d1b2e 0%,#a23a54 48%,#c79a3b 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+    #splashCover .sc-sub{margin:clamp(14px,2.4vw,20px) auto 0;max-width:40em;font-size:clamp(13px,1.9vw,17px);line-height:1.75;color:#5c4650}
+    #splashCover .sc-sub b{color:#2a1420;font-weight:700}
+    #splashCover .sc-count{display:flex;width:fit-content;margin-left:auto;margin-right:auto;align-items:center;gap:8px;margin-top:clamp(14px,2.2vw,20px);padding:7px 16px;border-radius:999px;font-size:clamp(12.5px,1.6vw,15px);color:#2a1420;background:rgba(255,250,244,.6);border:1px solid rgba(184,134,46,.5);box-shadow:0 6px 18px -12px rgba(109,27,46,.6)}
+    #splashCover .sc-spark{color:#b8862e}
+    #splashCover .sc-count b{font-size:1.24em;color:#6d1b2e;font-variant-numeric:tabular-nums;padding:0 2px}
+    #splashCover .sc-btn{display:flex;width:fit-content;margin-left:auto;margin-right:auto;align-items:center;gap:8px;margin-top:clamp(24px,3.6vw,38px);text-decoration:none;font-weight:700;font-size:clamp(15px,2vw,18px);padding:14px 30px;border-radius:999px;cursor:pointer;color:#fbe9c8;background:linear-gradient(135deg,#6d1b2e,#8e2a44);border:1px solid rgba(217,178,95,.6);box-shadow:0 14px 30px -12px rgba(109,27,46,.9);transition:transform .14s ease,background .16s ease}
+    #splashCover .sc-btn:hover{transform:translateY(-2px)}
+    #splashCover .sc-btn:active{transform:translateY(0)}
+    #splashCover .sc-hint{margin-top:14px;font-size:12px;color:#8a6d76;letter-spacing:.08em;opacity:.85}
+    #splashCover .sc-credit{position:absolute;left:0;right:0;bottom:max(10px,env(safe-area-inset-bottom));z-index:3;font-size:10px;color:rgba(42,20,32,.42);letter-spacing:.02em;text-align:center}
+  </style>
+  <script>
+  (function(){
+    // 开屏：每次完整打开 index.html（含 Electron 启动 / 刷新）都会显示；点按任意处或 3 秒后淡出。
+    var overlay=document.getElementById('splashCover');
+    if(!overlay) return;
+    var canvas=document.getElementById('splashCoverCanvas'), ctx=canvas.getContext('2d');
+    var CYCLE=4.8;
+    var BLOBS=[
+      {c:'#b23a5b',x:.24,y:.24,r:.55,ax:.10,ay:.10,ph:0.0},
+      {c:'#e8a6b8',x:.80,y:.18,r:.50,ax:.09,ay:.11,ph:2.1},
+      {c:'#c89b3c',x:.74,y:.74,r:.56,ax:.12,ay:.10,ph:4.2},
+      {c:'#ead3a0',x:.20,y:.80,r:.52,ax:.08,ay:.11,ph:1.0}
+    ];
+    var W=0,H=0,dpr=1;
+    function resize(){ dpr=Math.min(window.devicePixelRatio||1,2); W=Math.max(1,window.innerWidth); H=Math.max(1,window.innerHeight); canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr); }
+    function draw(u){ ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle='#f8efe6'; ctx.fillRect(0,0,W,H); var a=2*Math.PI*u/CYCLE, R=Math.max(W,H); for(var i=0;i<BLOBS.length;i++){ var b=BLOBS[i]; var cx=(b.x+b.ax*Math.cos(a+b.ph))*W; var cy=(b.y+b.ay*Math.sin(a+b.ph))*H; var rad=b.r*R; var g=ctx.createRadialGradient(cx,cy,0,cx,cy,rad); g.addColorStop(0,b.c); g.addColorStop(1,'rgba(255,255,255,0)'); ctx.globalAlpha=0.8; ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1; } }
+    var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resize();
+    if(reduce){ draw(0.9); } else { var t0=performance.now(); (function loop(){ if(!document.body.contains(overlay)) return; draw(((performance.now()-t0)/1000)%CYCLE); requestAnimationFrame(loop); })(); }
+    var rt; window.addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(function(){ resize(); if(reduce) draw(0.9); },120); });
+    // 倒计时（2028 法考：9 月第三个周六，具体以官方公告为准）
+    var cdD=document.getElementById('scCdDays');
+    if(cdD){ var target=new Date(2028,8,16,9,0,0).getTime(); cdD.textContent=Math.max(0,Math.ceil((target-Date.now())/86400000)); }
+    // 关闭
+    var closed=false;
+    function close(){ if(closed) return; closed=true; overlay.classList.add('sc-hide'); setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); },600); }
+    document.getElementById('splashEnter').addEventListener('click',function(e){ e.stopPropagation(); close(); });
+    overlay.addEventListener('click',close);
+    document.addEventListener('keydown',close);
+    setTimeout(close,3000);
+  })();
+  </script>
 
   <!-- SW 更新提醒横幅 (默认隐藏) -->
   <div id="swUpdateBanner" class="hidden bg-amber-500 text-slate-950 px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-between shadow-md z-50">
@@ -257,6 +400,19 @@
 
   <!-- 主体内容容器 -->
   <main class="flex-1 max-w-4xl w-full mx-auto px-3 sm:px-5 pt-3 space-y-3">
+
+    <!-- 首页动态渐变 Hero（移植自 Motion Prompt #095 · 动画渐变，文案改为法考主题） -->
+    <section id="heroGlow" aria-label="法考刷题助手 · 以法律为剑">
+      <canvas id="heroGlowCanvas" aria-hidden="true"></canvas>
+      <div class="hero-glow-inner">
+        <div class="hero-glow-panel">
+          <div class="hero-glow-kicker">⚖️ 法考刷题助手 Pro</div>
+          <h2 class="hero-glow-title">以法律为剑，稳过法考</h2>
+          <p class="hero-glow-sub">民法 · 刑法 · 行政法 · 宪法 · 民诉 · 刑诉 —— 近万道真题陪你上岸</p>
+          <button id="heroStartBtn" type="button" class="hero-glow-btn">开始刷题 ↓</button>
+        </div>
+      </div>
+    </section>
 
     <!-- 实时统计数据栏 -->
     <section class="theme-card rounded-xl p-3 shadow-sm">
@@ -2474,6 +2630,83 @@
     }
 
     window.addEventListener("DOMContentLoaded", initApp);
+  </script>
+
+  <!-- 首页动态渐变 Hero：移植自 Motion Prompt #095（动画渐变），仅保留渐变流动，文案见上方 section -->
+  <!-- Motion Prompt #095 · MIT License (c) 2026 Shohei Ohtaki · https://github.com/showheyohtaki/motion-prompt -->
+  <script>
+    (function () {
+      var section = document.getElementById('heroGlow');
+      var canvas = document.getElementById('heroGlowCanvas');
+      if (!section || !canvas) return;
+      var ctx = canvas.getContext('2d');
+      var CYCLE = 4.8; // 与 #095 原卡一致：4.8 秒一轮，无缝循环
+      var BLOBS = [
+        { c: '#FF5A2C', x: 0.28, y: 0.30, r: 0.42, ax: 0.10, ay: 0.16, ph: 0.0 },
+        { c: '#FFB08F', x: 0.70, y: 0.22, r: 0.36, ax: 0.09, ay: 0.18, ph: 2.1 },
+        { c: '#3B64E8', x: 0.62, y: 0.74, r: 0.44, ax: 0.12, ay: 0.16, ph: 4.2 },
+        { c: '#9DB6FB', x: 0.16, y: 0.80, r: 0.34, ax: 0.08, ay: 0.18, ph: 1.0 }
+      ];
+      var W = 0, H = 0, dpr = 1;
+
+      function resize() {
+        var rect = section.getBoundingClientRect();
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        W = Math.max(1, Math.round(rect.width));
+        H = Math.max(1, Math.round(rect.height));
+        canvas.width = Math.round(W * dpr);
+        canvas.height = Math.round(H * dpr);
+      }
+
+      function draw(u) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = '#FFF1EB';
+        ctx.fillRect(0, 0, W, H);
+        var a = 2 * Math.PI * u / CYCLE;
+        for (var i = 0; i < BLOBS.length; i++) {
+          var b = BLOBS[i];
+          var cx = (b.x + b.ax * Math.cos(a + b.ph)) * W;
+          var cy = (b.y + b.ay * Math.sin(a + b.ph)) * H;
+          var rad = b.r * Math.max(W, H);
+          var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+          g.addColorStop(0, b.c);
+          g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      resize();
+      if (reduce) {
+        draw(0.8);
+      } else {
+        var t0 = performance.now();
+        (function loop() {
+          draw(((performance.now() - t0) / 1000) % CYCLE);
+          requestAnimationFrame(loop);
+        })();
+      }
+
+      var rt;
+      window.addEventListener('resize', function () {
+        clearTimeout(rt);
+        rt = setTimeout(function () { resize(); if (reduce) draw(0.8); }, 120);
+      });
+
+      var btn = document.getElementById('heroStartBtn');
+      if (btn) btn.addEventListener('click', function () {
+        var target = document.getElementById('questionCard');
+        if (!target) return;
+        var header = document.querySelector('header');
+        var y = target.getBoundingClientRect().top + window.scrollY - ((header ? header.offsetHeight : 0) + 12);
+        window.scrollTo({ top: Math.max(0, y), behavior: reduce ? 'auto' : 'smooth' });
+      });
+    })();
   </script>
 </body>
 </html>
