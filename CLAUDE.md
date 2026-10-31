@@ -13,7 +13,7 @@
 
 ## 当前进度（2026-10-23 00:09 交接）
 
-- `main` @ `9ee128a` 已与 origin 同步。线上 https://dada-dcc.github.io/fakao-pwa/ 实测 9730 题，SW 缓存只剩 `fakao-v22-shell` / `fakao-v22-data`。
+- `main` @ `9ee128a` 已与 origin 同步。线上 https://xs06.de5.net/ 实测 9730 题，SW 缓存只剩 `fakao-v22-shell` / `fakao-v22-data`。
 - 最近三个提交：
   - `8174747` 背题模式升级、移动端手势、IndexedDB 双写守护
   - `c01e810` 修复题库加载丢失（index.json 嵌套字典递归）+ 长解析折叠，SW v13→v22
