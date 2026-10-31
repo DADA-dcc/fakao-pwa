@@ -1,5 +1,5 @@
 /**
- * 法考刷题助手 (fakao-pwa) 升级版 Service Worker (v30)
+ * 法考刷题助手 (fakao-pwa) 升级版 Service Worker (v31)
  * 优化点：
  * 1. 拆分核心外壳 (CORE_SHELL) 与 大体积题库资源 (DATA_ASSETS)，避免 caches.addAll 因单个文件超时导致整个 SW 安装失败
  * 2. 对题库 JSON (./questions/index.json, ./knowledge.json, ./case_library.json) 采用 Stale-While-Revalidate 策略：秒开离线缓存，后台静默更新
@@ -7,7 +7,7 @@
  * 4. 支持客户端发送 SKIP_WAITING 消息实现一键热更新
  */
 
-const CACHE_VERSION = 'fakao-v30';
+const CACHE_VERSION = 'fakao-v31';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 
