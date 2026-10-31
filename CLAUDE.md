@@ -11,13 +11,17 @@
 - 功能：随机出题、显示解析、记录错题、按科目筛选
 - 界面：中文，简洁清晰，适合长时间刷题
 
-## 当前进度（2026-10-23 00:09 交接）
+## 当前进度（2026-10-31 交接）
 
-- `main` @ `9ee128a` 已与 origin 同步。线上 https://xs06.de5.net/ 实测 9730 题，SW 缓存只剩 `fakao-v22-shell` / `fakao-v22-data`。
-- 最近三个提交：
-  - `8174747` 背题模式升级、移动端手势、IndexedDB 双写守护
-  - `c01e810` 修复题库加载丢失（index.json 嵌套字典递归）+ 长解析折叠，SW v13→v22
-  - `9ee128a` 修复「立即更新」竞态（等 `controllerchange` 再 reload）
+- `main` @ `668de7b` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v25`。
+- 现状功能：单文件 SPA；开屏为**内联 3D 天平+法槌**（Three.js r128 + `vendor/GLTFLoader.js`，模型 `assets/models/legal.glb`）+ 酒红金渐变，倒计时目标 2028-09-16；左下角有**动态版本角标**（读 sw `CACHE_VERSION`，用于确认是否已更新到最新）。
+- SEO：`robots.txt` / `sitemap.xml` / `index.html` `<head>`（canonical、og、twitter）均已统一为 `https://xs06.de5.net/`；全仓库已无已废弃的旧域名引用。
+- 最近提交：
+  - `668de7b` chore(docs): 移除已废弃历史归档与两份作废简报（git 历史仍可追溯）
+  - `5507fee` chore(seo): 域名/SEO 元数据统一为 xs06.de5.net
+  - `b812b0d` feat(ui): 左下角动态版本角标（v25）
+  - `1d42f7f` / `fb8e3c2` docs: 历史文档旧域名清理
+  - `06c5809` / `d05863b` / `c1a76f3` feat(splash): 3D 封面 + 开屏内联 3D + 层级修复（SW v24→v25）
 - `audit/` 残留已处置（2026-10-23）：工具脚本 4 个 + `HANDOFF_GEMINI.md` + `verify_reply_20261019.md` + `outbox/archive_nonfakao.json` + `rescue/{fix_stems.py,applied_stem_fixes.json,minfa_03.json}` 已提交；`qc_report.json`、`rescue/_mf_*`、`rescue/民法.before.json` 为可重生成产物，已写入 `.gitignore`。工作区无未跟踪文件。
 - 待用户裁定（未改动）：`rescue/minfa_03.json` 与 `audit/inbox/minfa_03_output.json` 内容不同，前者部分解析疑似未落库（如 202/227）；`rescue/民法.before.json` 等于 `a14496c` 版题库，可作回滚点。
 - 固定约束：`archive/do-not-merge-20261021` @ `84aa112` 不合并、不 cherry-pick（其历史自定义域名 CNAME 已作废）；版本号（questions_version / sw CACHE_NAME）只由用户修改；一 agent 一 worktree，禁用 `git add -A`，提交前核对 `git diff --cached --name-only`。
