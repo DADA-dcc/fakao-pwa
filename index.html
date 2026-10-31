@@ -2766,6 +2766,23 @@
 .aiqa-save{margin-top:6px;padding:3px 8px;border-radius:6px;border:1px solid #1a3a6b;background:transparent;color:#1a3a6b;font:12px/1.2 system-ui,sans-serif;cursor:pointer}
 .aiqa-save:hover{background:#1a3a6b;color:#fff}
 </style>
+<style>
+#verBadge{position:fixed;left:10px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:9000;font:600 11px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;color:#5a1524;background:rgba(255,255,255,.72);border:1px solid rgba(90,21,36,.22);padding:3px 8px;border-radius:999px;opacity:.75;pointer-events:none;user-select:none;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+</style>
+<div id="verBadge" title="当前前端缓存版本（用于确认是否已更新到最新）">v…</div>
+<script>
+(function(){
+  var el=document.getElementById('verBadge'); if(!el) return;
+  function paint(v){ if(v){ el.textContent='v'+String(v).replace(/^v/,''); } }
+  function fromSwFile(){ fetch('./sw.js',{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){ var m=t.match(/CACHE_VERSION\s*=\s*['"]fakao-(v\d+)['"]/); paint(m?m[1]:'?'); }).catch(function(){ paint('?'); }); }
+  if('caches' in window){
+    caches.keys().then(function(keys){
+      var hit=null; for(var i=0;i<keys.length;i++){ var m=keys[i].match(/fakao-(v\d+)-/); if(m){ hit=m[1]; break; } }
+      if(hit){ paint(hit); } else { fromSwFile(); }
+    }).catch(fromSwFile);
+  } else { fromSwFile(); }
+})();
+</script>
 <button id="aiqa-btn" type="button">AI 答疑</button>
 <div id="aiqa-panel" role="dialog" aria-label="AI 答疑">
   <div id="aiqa-head"><span>AI 答疑 · 法考</span><button id="aiqa-close" type="button" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer">×</button></div>
