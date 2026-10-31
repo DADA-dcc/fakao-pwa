@@ -7,7 +7,7 @@
  * 4. 支持客户端发送 SKIP_WAITING 消息实现一键热更新
  */
 
-const CACHE_VERSION = 'fakao-v24';
+const CACHE_VERSION = 'fakao-v25';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 

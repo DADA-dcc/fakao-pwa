@@ -243,6 +243,7 @@
     <div class="sc-veil" aria-hidden="true"></div>
     <div class="sc-top"><span class="sc-mark" aria-hidden="true">⚖️</span><span>FAKAO · 法考刷题助手 Pro</span></div>
     <div class="sc-inner">
+      <div class="sc-model" id="scModel" aria-hidden="true"><canvas id="scModelCanvas"></canvas></div>
       <span class="sc-kicker">✦ 法考 · 稳过计划</span>
       <h1 class="sc-title">以法律，塑<span class="sc-grad">正义公正之剑</span></h1>
       <p class="sc-sub">民法 · 刑法 · 行政法 · 宪法 · 民诉 · 刑诉 · 商经 · 法理 ——<br><b>近万道真题</b>与<b>遗忘曲线复习</b>，陪你稳过法考。</p>
@@ -273,6 +274,13 @@
     #splashCover .sc-btn:active{transform:translateY(0)}
     #splashCover .sc-hint{margin-top:14px;font-size:12px;color:#8a6d76;letter-spacing:.08em;opacity:.85}
     #splashCover .sc-credit{position:absolute;left:0;right:0;bottom:max(10px,env(safe-area-inset-bottom));z-index:3;font-size:10px;color:rgba(42,20,32,.42);letter-spacing:.02em;text-align:center}
+    #splashCover .sc-model{width:min(56vw,240px);height:min(56vw,240px);margin:0 auto 2px;position:relative;opacity:0;transform:translateY(6px);transition:opacity .8s ease,transform .8s ease;filter:drop-shadow(0 20px 34px rgba(109,27,46,.26))}
+    #splashCover .sc-model.is-ready{opacity:1;transform:translateY(0)}
+    #splashCover .sc-model::before{content:"";position:absolute;inset:-10%;border-radius:50%;z-index:-1;background:radial-gradient(circle at 50% 46%,rgba(200,155,60,.24),rgba(109,27,46,.13) 46%,transparent 70%);filter:blur(4px)}
+    #scModelCanvas{width:100%;height:100%;display:block}
+    @media (max-height:760px){#splashCover .sc-model{width:min(40vw,168px);height:min(40vw,168px)}}
+    @media (max-height:600px){#splashCover .sc-model{display:none}}
+    @media (prefers-reduced-motion: reduce){#splashCover .sc-model{transition:none}}
   </style>
   <script>
   (function(){
@@ -304,6 +312,37 @@
     overlay.addEventListener('click',close);
     document.addEventListener('keydown',close);
     setTimeout(close,3000);
+    // ── 开屏 3D：Blender 建模的天平+法槌（Three.js 动态加载，失败自动回退渐变）──
+    function hideSplashModel(){ var m=document.getElementById('scModel'); if(m){ m.style.display='none'; } }
+    function initSplash3D(){
+      var wrap=document.getElementById('scModel'), cv=document.getElementById('scModelCanvas');
+      if(!wrap||!cv||!window.THREE){ hideSplashModel(); return; }
+      var THREE=window.THREE, renderer;
+      try{ renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); }catch(e){ hideSplashModel(); return; }
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+      renderer.setClearColor(0x000000,0);
+      if('outputEncoding' in renderer) renderer.outputEncoding=THREE.sRGBEncoding;
+      renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.12;
+      var scene=new THREE.Scene();
+      var camera=new THREE.PerspectiveCamera(38,1,0.1,200); camera.position.set(0,0.1,5);
+      function makeEnv(){ var c=document.createElement('canvas'); c.width=1024; c.height=512; var g=c.getContext('2d'); var grd=g.createLinearGradient(0,0,0,512); grd.addColorStop(0,'#fff3e2'); grd.addColorStop(.45,'#f0d9bd'); grd.addColorStop(.55,'#b9825f'); grd.addColorStop(1,'#3a1620'); g.fillStyle=grd; g.fillRect(0,0,1024,512); var rg=g.createRadialGradient(700,130,0,700,130,340); rg.addColorStop(0,'rgba(255,255,255,.95)'); rg.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=rg; g.fillRect(0,0,1024,512); var tex=new THREE.CanvasTexture(c); tex.mapping=THREE.EquirectangularReflectionMapping; return tex; }
+      try{ var pmrem=new THREE.PMREMGenerator(renderer); var envTex=makeEnv(); var envRT=pmrem.fromEquirectangular(envTex); scene.environment=envRT.texture; envTex.dispose(); pmrem.dispose(); }catch(e){}
+      scene.add(new THREE.HemisphereLight(0xfff3e2,0x3a0d18,0.85));
+      var kl=new THREE.DirectionalLight(0xfff0d8,1.7); kl.position.set(3.5,5.5,4); scene.add(kl);
+      var rl=new THREE.DirectionalLight(0xffd9b0,1.1); rl.position.set(-4,2.5,-3.5); scene.add(rl);
+      scene.add(new THREE.AmbientLight(0xffffff,0.30));
+      var pivot=new THREE.Group(); scene.add(pivot);
+      function resize(){ var r=wrap.getBoundingClientRect(); var w=Math.max(1,Math.round(r.width)), h=Math.max(1,Math.round(r.height)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+      function frame(model){ var box=new THREE.Box3().setFromObject(model); var size=new THREE.Vector3(); box.getSize(size); var center=new THREE.Vector3(); box.getCenter(center); model.position.sub(center); pivot.add(model); var md=Math.max(size.x,size.y,size.z)||1; var fov=camera.fov*Math.PI/180; var dist=(md*0.5)/Math.tan(fov/2)*1.22; camera.position.set(0,md*0.08,dist); camera.lookAt(0,0,0); pivot.rotation.x=-0.04; }
+      var t0=performance.now();
+      function animate(){ if(!document.body.contains(overlay)) return; requestAnimationFrame(animate); var t=(performance.now()-t0)/1000; pivot.rotation.y=t*0.55; pivot.position.y=Math.sin(t*1.1)*0.035; renderer.render(scene,camera); }
+      resize();
+      var loader=new THREE.GLTFLoader();
+      loader.load('./assets/models/legal.glb', function(gltf){ if(!document.body.contains(overlay)) return; var model=gltf.scene; model.traverse(function(o){ if(o.isMesh) o.frustumCulled=false; }); frame(model); resize(); wrap.classList.add('is-ready'); if(reduce){ renderer.render(scene,camera); } else { animate(); } }, undefined, function(err){ if(window.console) console.warn('[splash3d] 模型加载失败，回退渐变开屏',err); hideSplashModel(); });
+      window.addEventListener('resize', function(){ resize(); if(reduce) renderer.render(scene,camera); });
+    }
+    function loadScriptOnce(src, ok, fail){ var s=document.createElement('script'); s.src=src; s.async=false; s.onload=ok; s.onerror=fail||function(){}; (document.head||document.documentElement).appendChild(s); }
+    loadScriptOnce('./vendor/three.r128.min.js', function(){ loadScriptOnce('./vendor/GLTFLoader.js', initSplash3D, hideSplashModel); }, hideSplashModel);
   })();
   </script>
 
