@@ -2730,7 +2730,8 @@
 </div>
 <script id="aiqa-script">
 (function(){
-  var API='https://ai.xs06.de5.net/';
+  var API='https://ai.xs06.de5.net/v1/chat/completions';
+  var APIKEY='fakao-ai-2026';
   var btn=document.getElementById('aiqa-btn'), panel=document.getElementById('aiqa-panel'), msgs=document.getElementById('aiqa-msgs'), inp=document.getElementById('aiqa-in'), send=document.getElementById('aiqa-send'), close=document.getElementById('aiqa-close');
   if(!btn||!panel) return;
   var history=[{role:'system',content:'你是「法考答疑助手」，专门服务国家统一法律职业资格考试（客观题与主观题）。要求：1) 先给结论，再给依据；2) 引用法条必须写明法律名称与条文号（如《民法典》第577条），不确定就直说，严禁编造；3) 讲题按「考点→法条→逐项分析→结论」；4) 用简洁中文，适合手机阅读；5) 只回答法考与法律学习相关问题，无关话题礼貌拒绝。'}];
@@ -2742,7 +2743,7 @@
     inp.value=''; add('user',q); history.push({role:'user',content:q});
     send.disabled=true; var thinking=document.createElement('div'); thinking.className='aiqa-m aiqa-a'; thinking.textContent='思考中…'; msgs.appendChild(thinking); msgs.scrollTop=msgs.scrollHeight;
     try{
-      var r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history,max_tokens:800})});
+      var r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+APIKEY},body:JSON.stringify({messages:history,max_tokens:800})});
       var j=await r.json(); var ans=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||JSON.stringify(j);
       thinking.remove(); add('assistant',ans); history.push({role:'assistant',content:ans});
     }catch(e){ thinking.remove(); add('assistant','请求失败：'+e.message); }
