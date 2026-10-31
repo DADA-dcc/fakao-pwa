@@ -3,14 +3,14 @@
 <p align="center">民法 · 刑法 · 行政法 · 宪法 …… 陪你稳过法考</p>
 
 <p align="center">
-  <a href="https://dada-dcc.github.io/fakao-pwa/"><img src="preview/cover.jpg" width="420" alt="开屏封面 · 酒红金渐变（Motion Prompt #095）"></a>
+  <a href="https://xs06.de5.net/"><img src="preview/cover.jpg" width="420" alt="开屏封面 · 酒红金渐变（Motion Prompt #095）"></a>
 </p>
 
 <p align="center">
-  <a href="https://dada-dcc.github.io/fakao-pwa/"><b>▶️ 点我直接开始刷题</b></a>
+  <a href="https://xs06.de5.net/"><b>▶️ 点我直接开始刷题</b></a>
 </p>
 
-<p align="center"><code>https://dada-dcc.github.io/fakao-pwa/</code></p>
+<p align="center"><code>https://xs06.de5.net/</code></p>
 
 ---
 
