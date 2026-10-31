@@ -3,7 +3,7 @@
 > ⚠️ **2026-10-22 作废：xs06.com 切换取消，域名相关改动以 main 的 `f6c9e8b` 为准。**
 >
 > 本文档第 10–35 行（O1 域名切换）与第 55–59 行（元信息表）中的 `xs06.com`
-> 全部不再适用。仓库已改回 `https://dada-dcc.github.io/fakao-pwa/`。
+> 全部不再适用。仓库已改回 `https://xs06.de5.net/`。
 > 原因：`xs06.com` 的 DNS 仍托管在 gname 停放页（`sp.gname.net` → `172.65.185.109`），
 > 未指向 GitHub Pages，此时配置自定义域会导致全站 503（已发生两次）。
 >
@@ -43,7 +43,7 @@ nslookup www.xs06.com 8.8.8.8
 5. 证书签发后：`gh api -X PUT repos/DADA-dcc/fakao-pwa/pages -F https_enforced=true`
 6. 验证：
    - `curl -I https://xs06.com/` → 200
-   - `curl -I https://dada-dcc.github.io/fakao-pwa/` → 301 到 `https://xs06.com/`
+   - `curl -I https://xs06.de5.net/` → 301 到 `https://xs06.com/`
    - `gh api repos/DADA-dcc/fakao-pwa/pages` → `status: built`、`cname: xs06.com`、`https_enforced: true`
 
 ### 失败就回滚

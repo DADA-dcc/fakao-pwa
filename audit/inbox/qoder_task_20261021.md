@@ -3,7 +3,7 @@
 > ⚠️ **2026-10-22 部分作废：xs06.com 切换已取消。**
 >
 > 第 96–103 行的域名验收步骤不再适用 —— 站点当前地址是
-> `https://dada-dcc.github.io/fakao-pwa/`，没有自定义域名。
+> `https://xs06.de5.net/`（已启用自定义域名）。
 > 文中「CACHE_NAME 会 bump 到 v15」也已过时，当前为 `fakao-v20`。
 > 题库审校相关部分（Q1/Q2/Q3）仍然有效且已完成。
 
@@ -107,7 +107,7 @@ Claude 用负向前瞻重扫得到 **34 处 / 31 题**（`(?<!劳动)(?<!原)《
 2. 确认 `https://xs06.com/manifest.json` 的 `start_url` / `scope` 仍是 `.`
 3. 确认 `https://xs06.com/sw.js` 的 `CACHE_NAME` 是新的（Claude 会 bump 到 v15）
 4. 用 Playwright：首次访问 → 装 PWA → 离线刷新 → 确认能打开
-5. 确认 `https://dada-dcc.github.io/fakao-pwa/` 301 到 `https://xs06.com/`
+5. 确认 `https://xs06.de5.net/` 301 到 `https://xs06.com/`
 
 **产出**：`audit/outbox/qoder_domain_verify.md`
 
