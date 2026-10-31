@@ -21,7 +21,9 @@ const CORE_SHELL = [
 
 const OPTIONAL_ASSETS = [
   './cover.html',
-    './vendor/three.r128.min.js',
+  './vendor/three.r128.min.js',
+  './vendor/GLTFLoader.js',
+  './assets/models/legal.glb',
   './vendor/tailwind-3.4.17.js',
   './questions/index.json',
   './knowledge.json',

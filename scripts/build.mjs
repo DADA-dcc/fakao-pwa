@@ -33,6 +33,7 @@ const INCLUDE = [
   "case_library.json",
   "questions",
   "vendor",
+  "assets",
   "preview",
   "_headers"
 ];
