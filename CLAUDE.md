@@ -13,10 +13,11 @@
 
 ## 当前进度（2026-10-31 交接）
 
-- `main` @ `a8dc06c` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v29`。
+- `main` @ `49ac92f` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v30`。
 - 现状功能：单文件 SPA；开屏为**内联 3D 天平+法槌**（Three.js r128 + `vendor/GLTFLoader.js`，模型 `assets/models/legal.glb`）+ 酒红金渐变，倒计时目标 2028-09-16；左下角有**动态版本角标**（读 sw `CACHE_VERSION`，用于确认是否已更新到最新）。
 - SEO：`robots.txt` / `sitemap.xml` / `index.html` `<head>`（canonical、og、twitter）均已统一为 `https://xs06.de5.net/`；全仓库已无已废弃的旧域名引用。
 - 最近提交：
+  - `49ac92f` feat(ui): 解析/背题「正确答案」渐变 chip 强调（作答中性 chip）+ 难度筛选下拉带 ★ 星级（SW v29→v30）
   - `a8dc06c` feat(ui): 答题卡图例圆点改同款渐变 + 选项判定态右上角 ✓(对)/✕(错)/!(漏选) 角标（SW v28→v29）
   - `57a2684` feat(ui): 第四轮精修（题卡头部标签圆角化/难度★星级、错题本与收藏空状态插画、答题卡已答对绿✓/错红✕ 渐变配色；空状态隐藏残留标签，SW v27→v28）
   - `0ad9b47` feat(ui): 第三轮精修（Hero 渐变字/kicker 徽章、统计图标徽章、答题卡·知识点·同步弹窗统一风格，SW v26→v27）
