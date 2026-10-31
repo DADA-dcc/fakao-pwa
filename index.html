@@ -2745,9 +2745,32 @@
   function add(role,text){ var d=document.createElement('div'); d.className='aiqa-m '+(role==='user'?'aiqa-u':'aiqa-a'); d.textContent=text; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
   btn.addEventListener('click',function(){ panel.classList.toggle('open'); if(panel.classList.contains('open')) inp.focus(); });
   close.addEventListener('click',function(){ panel.classList.remove('open'); });
+  // 读取当前题 / 错题上下文
+  function getCurrentQuestion(){
+    try{ if(typeof filteredQuestions!=='undefined' && typeof currentIndex!=='undefined' && filteredQuestions[currentIndex]){
+      var q=filteredQuestions[currentIndex];
+      var opts=q.options; var optTxt='';
+      if(Array.isArray(opts)){ opts.forEach(function(o,i){ optTxt+='\n'+String.fromCharCode(65+i)+'. '+o; }); }
+      else if(opts && typeof opts==='object'){ Object.keys(opts).forEach(function(k){ optTxt+='\n'+k+'. '+opts[k]; }); }
+      return '当前题目：'+(q.stem||'')+(optTxt?'\n选项：'+optTxt:'')+(q.answer?'\n标准答案:'+q.answer:'')+(q.explanation?'\n解析:'+q.explanation:'')+'\n';
+    }}catch(e){}
+    return '';
+  }
+  function getWrongSummary(){
+    try{
+      var wrongs=(typeof wrongQuestions!=='undefined'?wrongQuestions:[])||[];
+      if(!wrongs.length) return '当前错题本为空。\n';
+      var ids=wrongs.slice(0,8); var parts=[];
+      ids.forEach(function(id){ var q=(typeof questions!=='undefined')?(questions.find||questions.filter)(function(x){return x.id===id;}) : null; if(q){ parts.push(q.stem||id); } });
+      return '我的错题（取前几个题干）：'+parts.join(' / ')+'\n共'+wrongs.length+'题错题，请给复习建议。\n';
+    }catch(e){ return ''; }
+  }
   function askWith(q){
-    if(!q.trim()||send.disabled) return;
-    inp.value=''; add('user',q); history.push({role:'user',content:q});
+    if(!q||!q.trim()||send.disabled) return;
+    var realQ=q;
+    if(q==='讲一下当前这道题') realQ='请讲一下这道题：\n'+getCurrentQuestion()+'\n按「考点→法条→逐项分析→结论」讲解。';
+    else if(q==='我的错题怎么做') realQ='分析我的错题本并给出复习计划：'+getWrongSummary();
+    inp.value=''; add('user',realQ); history.push({role:'user',content:realQ});
     send.disabled=true;
     var thinking=document.createElement('div'); thinking.className='aiqa-m aiqa-a'; thinking.textContent='思考中…'; msgs.appendChild(thinking); msgs.scrollTop=msgs.scrollHeight;
     fetch(API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+APIKEY},body:JSON.stringify({messages:history,max_tokens:900})})
