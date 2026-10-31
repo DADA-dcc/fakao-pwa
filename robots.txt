@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dada-dcc.github.io/fakao-pwa/sitemap.xml
+Sitemap: https://xs06.de5.net/sitemap.xml
