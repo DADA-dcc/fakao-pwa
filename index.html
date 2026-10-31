@@ -467,6 +467,86 @@
     html[data-theme="sepia"] #questionCard::before{ background:linear-gradient(90deg,#6d4522,#8b5a2b 45%,#c79a3b); }
     html[data-theme="sepia"] header::after{ background:linear-gradient(90deg,#8b5a2b,#c79a3b); }
 
+    /* ───────────────── v3：Hero / 统计图标 / 弹窗统一 ───────────────── */
+    /* Hero 标题渐变字（主题自适应；不支持 background-clip 时保留原色回退） */
+    .hero-glow-title{
+      background:linear-gradient(92deg,#12233f 0%,#1a3a6b 46%,#b45309 100%);
+      -webkit-background-clip:text; background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
+    html[data-theme="dark"] .hero-glow-title{
+      background:linear-gradient(92deg,#e0ecff 0%,#93c5fd 50%,#fcd34d 100%);
+      -webkit-background-clip:text; background-clip:text;
+    }
+    html[data-theme="sepia"] .hero-glow-title{
+      background:linear-gradient(92deg,#4a2e1a 0%,#8b5a2b 55%,#b45309 100%);
+      -webkit-background-clip:text; background-clip:text;
+    }
+    /* Hero kicker 做成小徽章 */
+    .hero-glow-kicker{
+      display:inline-flex; align-items:center; gap:4px;
+      padding:3px 10px; border-radius:999px;
+      background:rgba(226,84,42,.10); border:1px solid rgba(226,84,42,.28);
+    }
+
+    /* 统计卡图标徽章 */
+    .stat-ico{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:19px; height:19px; margin-right:3px; border-radius:6px;
+      font-size:11px; vertical-align:-4px;
+      background:rgba(37,99,235,.12);
+    }
+    section .grid-cols-5 > *:nth-child(1) .stat-ico{ background:rgba(37,99,235,.14); }
+    section .grid-cols-5 > *:nth-child(2) .stat-ico{ background:rgba(16,185,129,.16); }
+    section .grid-cols-5 > *:nth-child(3) .stat-ico{ background:rgba(239,68,68,.15); }
+    section .grid-cols-5 > *:nth-child(4) .stat-ico{ background:rgba(245,158,11,.18); }
+    section .grid-cols-5 > *:nth-child(5) .stat-ico{ background:rgba(99,102,241,.16); }
+    html[data-theme="sepia"] .stat-ico{ background:rgba(139,90,43,.16); }
+
+    /* 弹窗统一：更强遮罩 + 顶部渐变条 + 深阴影 */
+    #answerSheetModal, #knowledgeModal, #syncModal{
+      -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+      background:rgba(2,6,23,.66);
+    }
+    #answerSheetModal > .theme-card, #knowledgeModal > .theme-card, #syncModal > .theme-card{
+      position:relative; overflow:hidden;
+      box-shadow:0 30px 70px -30px rgba(2,6,23,.75) !important;
+    }
+    #answerSheetModal > .theme-card::before,
+    #knowledgeModal > .theme-card::before,
+    #syncModal > .theme-card::before{
+      content:""; position:absolute; left:0; right:0; top:0; height:4px;
+      background:linear-gradient(90deg,#3b82f6,#8b5cf6 55%,#f59e0b); opacity:.9;
+    }
+    html[data-theme="sepia"] #answerSheetModal > .theme-card::before,
+    html[data-theme="sepia"] #knowledgeModal > .theme-card::before,
+    html[data-theme="sepia"] #syncModal > .theme-card::before{
+      background:linear-gradient(90deg,#8b5a2b,#c79a3b);
+    }
+
+    /* 关闭按钮：悬浮旋转变红 */
+    #closeSheetModalBtn, #closeKnowledgeModalBtn, #closeSyncModalBtn{
+      transition:transform .16s ease, background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    #closeSheetModalBtn:hover, #closeKnowledgeModalBtn:hover, #closeSyncModalBtn:hover{
+      transform:rotate(90deg); border-color:#ef4444; color:#ef4444;
+    }
+
+    /* 答题卡网格按钮悬浮 */
+    #answerSheetGrid button{ transition:transform .12s ease, box-shadow .16s ease; }
+    #answerSheetGrid button:hover{ transform:translateY(-2px) scale(1.05); box-shadow:0 8px 18px -10px rgba(15,35,70,.55); }
+
+    /* 知识点 tab 激活 / 同步主按钮 渐变 */
+    #tabKnowledgeCardsBtn{ background:linear-gradient(135deg,#3b82f6,#2563eb) !important; box-shadow:0 6px 14px -8px rgba(37,99,235,.8); }
+    #syncModal button[class*="1a3a6b"]{ background:linear-gradient(135deg,#3b82f6,#2563eb) !important; box-shadow:0 6px 14px -8px rgba(37,99,235,.8); }
+    html[data-theme="sepia"] #tabKnowledgeCardsBtn,
+    html[data-theme="sepia"] #syncModal button[class*="1a3a6b"]{
+      background:linear-gradient(135deg,#8b5a2b,#6d4522) !important;
+    }
+
+    /* AI 解析 / 追问框微光 */
+    #aiResponseBox{ box-shadow:0 10px 24px -18px rgba(99,102,241,.6); }
+
     @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
   </style>
 </head>
@@ -692,23 +772,23 @@
     <section class="theme-card rounded-xl p-3 shadow-sm">
       <div class="grid grid-cols-5 gap-2 text-center">
         <div class="p-1.5 rounded-lg theme-subtle border">
-          <div class="text-[11px] theme-muted">📋 已答题</div>
+          <div class="text-[11px] theme-muted"><span class="stat-ico">📋</span>已答题</div>
           <div id="statAnswered" class="text-sm sm:text-base font-bold mt-0.5">0</div>
         </div>
         <div class="p-1.5 rounded-lg theme-subtle border">
-          <div class="text-[11px] theme-muted">✅ 正确率</div>
+          <div class="text-[11px] theme-muted"><span class="stat-ico">✅</span>正确率</div>
           <div id="statAccuracy" class="text-sm sm:text-base font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">0%</div>
         </div>
         <button id="quickFilterWrongBtn" type="button" class="p-1.5 rounded-lg theme-subtle border hover:border-rose-400 transition text-center">
-          <div class="text-[11px] theme-muted">🔴 错题本</div>
+          <div class="text-[11px] theme-muted"><span class="stat-ico">🔴</span>错题本</div>
           <div id="statWrong" class="text-sm sm:text-base font-bold text-rose-600 dark:text-rose-400 mt-0.5">0</div>
         </button>
         <button id="quickFilterFavBtn" type="button" class="p-1.5 rounded-lg theme-subtle border hover:border-amber-400 transition text-center">
-          <div class="text-[11px] theme-muted">⭐ 收藏夹</div>
+          <div class="text-[11px] theme-muted"><span class="stat-ico">⭐</span>收藏夹</div>
           <div id="statFav" class="text-sm sm:text-base font-bold text-amber-600 dark:text-amber-400 mt-0.5">0</div>
         </button>
         <button id="quickFilterReviewBtn" type="button" class="p-1.5 rounded-lg theme-subtle border hover:border-indigo-400 transition text-center">
-          <div class="text-[11px] theme-muted">🧠 待复习</div>
+          <div class="text-[11px] theme-muted"><span class="stat-ico">🧠</span>待复习</div>
           <div id="statReview" class="text-sm sm:text-base font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">0</div>
         </button>
       </div>
