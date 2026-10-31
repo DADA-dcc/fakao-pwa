@@ -547,6 +547,60 @@
     /* AI 解析 / 追问框微光 */
     #aiResponseBox{ box-shadow:0 10px 24px -18px rgba(99,102,241,.6); }
 
+    /* ───────── v4：题卡标签/难度星级 · 空状态插画 · 答题卡配色 ───────── */
+    /* 题卡头部标签精修 */
+    #qIndexBadge, #qSubjectBadge, #qTypeBadge, #qDiffBadge, #qYearBadge{
+      padding:.12rem .5rem; line-height:1.5; border-radius:8px;
+    }
+    #qIndexBadge{
+      background:linear-gradient(135deg,#16305a,#1a3a6b) !important;
+      letter-spacing:.02em; box-shadow:0 4px 12px -6px rgba(26,58,107,.85);
+    }
+    #qSubjectBadge{
+      background:rgba(37,99,235,.12) !important; color:#1d4ed8 !important;
+      border:1px solid rgba(37,99,235,.22);
+    }
+    #qTypeBadge{
+      background:rgba(139,92,246,.13) !important; color:#6d28d9 !important;
+      border:1px solid rgba(139,92,246,.24);
+    }
+    #qDiffBadge{ box-shadow:0 3px 10px -7px rgba(15,35,70,.5); }
+    html[data-theme="dark"] #qSubjectBadge{ background:rgba(96,165,250,.16) !important; color:#93c5fd !important; border-color:rgba(147,197,253,.28); }
+    html[data-theme="dark"] #qTypeBadge{ background:rgba(167,139,250,.16) !important; color:#c4b5fd !important; border-color:rgba(196,181,253,.28); }
+    html[data-theme="sepia"] #qIndexBadge{ background:linear-gradient(135deg,#6d4522,#8b5a2b) !important; }
+    html[data-theme="sepia"] #qSubjectBadge{ background:rgba(139,90,43,.14) !important; color:#8b5a2b !important; border-color:rgba(139,90,43,.32); }
+    html[data-theme="sepia"] #qTypeBadge{ background:rgba(120,80,40,.14) !important; color:#6d4522 !important; border-color:rgba(109,69,34,.32); }
+
+    /* 空状态插画 */
+    .empty-illust{ padding:1.6rem .75rem; display:flex; flex-direction:column; align-items:center; gap:.2rem; }
+    .empty-illust .empty-ico{
+      width:58px; height:58px; display:flex; align-items:center; justify-content:center;
+      font-size:27px; border-radius:50%; margin-bottom:.55rem;
+      background:radial-gradient(circle at 32% 28%, rgba(37,99,235,.20), rgba(37,99,235,.05) 70%);
+      box-shadow:inset 0 0 0 1px rgba(37,99,235,.18), 0 12px 26px -16px rgba(37,99,235,.6);
+    }
+    .empty-illust .empty-title{ font-size:.9rem; font-weight:700; color:var(--text-main); }
+    .empty-illust .empty-desc{ font-size:.75rem; color:var(--text-muted); max-width:21rem; line-height:1.5; }
+    html[data-theme="sepia"] .empty-illust .empty-ico{
+      background:radial-gradient(circle at 32% 28%, rgba(139,90,43,.24), rgba(139,90,43,.06) 70%);
+      box-shadow:inset 0 0 0 1px rgba(139,90,43,.28), 0 12px 26px -16px rgba(139,90,43,.6);
+    }
+
+    /* 答题卡格子：已答对/错 更鲜明（渐变 + 角标） */
+    #answerSheetGrid button.sheet-correct{
+      background:linear-gradient(135deg,#34d399,#059669) !important;
+      color:#fff !important; border-color:#047857 !important;
+      box-shadow:0 8px 18px -10px rgba(5,150,105,.95), inset 0 1px 0 rgba(255,255,255,.25);
+    }
+    #answerSheetGrid button.sheet-wrong{
+      background:linear-gradient(135deg,#fb7185,#e11d48) !important;
+      color:#fff !important; border-color:#be123c !important;
+      box-shadow:0 8px 18px -10px rgba(225,29,72,.95), inset 0 1px 0 rgba(255,255,255,.22);
+    }
+    #answerSheetGrid button.sheet-correct:hover, #answerSheetGrid button.sheet-wrong:hover{
+      transform:translateY(-2px) scale(1.06);
+    }
+
     @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
   </style>
 </head>
@@ -1806,7 +1860,12 @@
 
       if (filteredQuestions.length === 0) {
         document.getElementById("qIndexBadge").textContent = "0 / 0";
-        titleEl.innerHTML = `<div class="py-8 text-center theme-muted text-sm">当前筛选条件下暂无题目，请点击上方“📚 全部题目”或清空搜索条件。</div>`;
+        let eIcon = "🗂️", eTitle = "当前筛选条件下暂无题目", eDesc = "试试切换科目，或点击上方“📚 全部题目”清空筛选条件。";
+        if (currentSubject === "我的收藏") { eIcon = "⭐"; eTitle = "还没有收藏的题目"; eDesc = "点击题目右上角的 ☆ 收藏重点题，考前随时回看。"; }
+        else if (currentSubject === "错题重做") { eIcon = "📕"; eTitle = "错题本还是空的"; eDesc = "答错的题目会自动收录到这里，方便集中攻克。"; }
+        else if (currentSubject === "智能复习") { eIcon = "🧠"; eTitle = "暂无待复习题目"; eDesc = "按记忆曲线到期的题会自动出现在这里。"; }
+        titleEl.innerHTML = `<div class="empty-illust"><div class="empty-ico">${eIcon}</div><div class="empty-title">${eTitle}</div><div class="empty-desc">${eDesc}</div></div>`;
+        ["qSubjectBadge", "qTypeBadge", "qDiffBadge", "qYearBadge"].forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
         optsContainer.innerHTML = "";
         subjContainer.classList.add("hidden");
         expBox.classList.add("hidden");
@@ -1816,6 +1875,7 @@
 
       const q = filteredQuestions[index];
       currentSelectedOptions.clear();
+      ["qSubjectBadge", "qTypeBadge", "qDiffBadge", "qYearBadge"].forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = ""; });
 
       // 恢复已答状态
       const record = userProgress[q.id];
@@ -1828,8 +1888,15 @@
       document.getElementById("dockSheetProgress").textContent = `${index + 1}/${filteredQuestions.length}`;
       document.getElementById("qSubjectBadge").textContent = q.subject;
       document.getElementById("qTypeBadge").textContent = q.type.includes("题") ? q.type : `${q.type}题`;
-      const diffMap = { 易: "🟢 易", 中: "🟡 中", 难: "🔴 难" };
-      document.getElementById("qDiffBadge").textContent = diffMap[q.difficulty] || q.difficulty;
+      const diffStarMap = { 易: "★☆☆", 中: "★★☆", 难: "★★★" };
+      const diffColorCls = {
+        易: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
+        中: "bg-amber-500/12 text-amber-600 dark:text-amber-300 border-amber-500/30",
+        难: "bg-rose-500/12 text-rose-600 dark:text-rose-300 border-rose-500/30",
+      };
+      const qDiffBadge = document.getElementById("qDiffBadge");
+      qDiffBadge.className = "px-2 py-0.5 rounded-md text-xs font-semibold border " + (diffColorCls[q.difficulty] || "theme-subtle border");
+      qDiffBadge.innerHTML = `<span class="opacity-80 mr-0.5">难度</span><span class="tracking-tight">${diffStarMap[q.difficulty] || escapeHtml(q.difficulty || "")}</span>`;
       document.getElementById("qYearBadge").textContent = q.year || "历年真题";
 
       // 掌握状态显示
@@ -2132,7 +2199,7 @@
       container.innerHTML = "";
 
       if (wrongQuestions.length === 0) {
-        container.innerHTML = `<div class="py-4 text-center text-xs theme-muted">🎉 当前错题本为空！答错的题目会自动收录于此，方便考前集中攻克。</div>`;
+        container.innerHTML = `<div class="empty-illust"><div class="empty-ico">🎉</div><div class="empty-title">错题本空空如也</div><div class="empty-desc">答错的题目会自动收录于此，考前集中攻克薄弱点。</div></div>`;
         return;
       }
 
@@ -2188,16 +2255,17 @@
         btn.type = "button";
 
         let colorCls = "theme-subtle border";
+        let mark = "";
         if (rec && rec.answered) {
-          colorCls = rec.isCorrect
-            ? "bg-emerald-600 text-white border-emerald-600"
-            : "bg-rose-600 text-white border-rose-600";
+          colorCls = rec.isCorrect ? "sheet-correct border-emerald-600" : "sheet-wrong border-rose-600";
+          mark = rec.isCorrect ? "✓" : "✕";
         }
         const activeRing = idx === currentIndex ? "ring-2 ring-blue-500 ring-offset-1" : "";
         const favRing = isFav ? "ring-2 ring-amber-400" : "";
 
         btn.className = `h-10 rounded-lg text-xs font-bold flex flex-col items-center justify-center relative transition ${colorCls} ${activeRing} ${favRing}`;
         btn.innerHTML = `
+          ${mark ? `<span class="absolute top-0.5 right-1 text-[10px] leading-none font-bold opacity-90">${mark}</span>` : ""}
           <span>${idx + 1}</span>
           ${hasNote ? `<span class="text-[9px] leading-none">📝</span>` : ""}
         `;
