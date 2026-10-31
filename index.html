@@ -2724,6 +2724,8 @@
 #aiqa-chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 2px;background:#f6f8fb}
 #aiqa-chips .aiqa-chip{padding:5px 10px;border-radius:999px;border:1px solid #c9d4e6;background:#fff;color:#1a3a6b;font:13px/1 system-ui,sans-serif;cursor:pointer}
 #aiqa-chips .aiqa-chip:hover{background:#eef2f8;border-color:#1a3a6b}
+.aiqa-save{margin-top:6px;padding:3px 8px;border-radius:6px;border:1px solid #1a3a6b;background:transparent;color:#1a3a6b;font:12px/1.2 system-ui,sans-serif;cursor:pointer}
+.aiqa-save:hover{background:#1a3a6b;color:#fff}
 </style>
 <button id="aiqa-btn" type="button">AI 答疑</button>
 <div id="aiqa-panel" role="dialog" aria-label="AI 答疑">
@@ -2742,7 +2744,20 @@
   // 快捷提问
   var quickTexts=['讲一下当前这道题','总结一个法考知识点','给我出一道练习题','我的错题怎么做','还剩多久考试'];
   quickTexts.forEach(function(t){ var b=document.createElement('button'); b.type='button'; b.className='aiqa-chip'; b.textContent=t; b.addEventListener('click',function(){ inp.value=''; askWith(t); }); chips.appendChild(b); });
-  function add(role,text){ var d=document.createElement('div'); d.className='aiqa-m '+(role==='user'?'aiqa-u':'aiqa-a'); d.textContent=text; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
+  function add(role,text,btnFn){ var d=document.createElement('div'); d.className='aiqa-m '+(role==='user'?'aiqa-u':'aiqa-a'); d.textContent=text; if(btnFn){ var b=document.createElement('button'); b.className='aiqa-save'; b.textContent='📌 存成笔记'; b.type='button'; b.addEventListener('click',btnFn); d.appendChild(document.createElement('br')); d.appendChild(b); } msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
+  function saveToNote(ansText){
+    try{
+      var text=ansText||'';
+      if(typeof userNotes!=='undefined' && typeof STORAGE_KEYS!=='undefined' && typeof safeSaveJSON!=='undefined'){
+        var q=(typeof filteredQuestions!=='undefined'&&typeof currentIndex!=='undefined')?filteredQuestions[currentIndex]:null;
+        var stamped='\n\n['+(new Date().toLocaleString())+' · AI答疑]\n'+text;
+        var key=q?q.id:'ai_general';
+        userNotes[key]=(userNotes[key]?userNotes[key]:'')+stamped;
+        safeSaveJSON(STORAGE_KEYS.NOTES,userNotes);
+        alert(q?('已保存到本页题目笔记'):('已保存到"AI答疑"通用笔记'));
+      } else { alert('笔记系统未就绪'); }
+    }catch(e){ alert('保存失败: '+e.message); }
+  }
   btn.addEventListener('click',function(){ panel.classList.toggle('open'); if(panel.classList.contains('open')) inp.focus(); });
   close.addEventListener('click',function(){ panel.classList.remove('open'); });
   // 读取当前题 / 错题上下文
@@ -2765,17 +2780,26 @@
       return '我的错题（取前几个题干）：'+parts.join(' / ')+'\n共'+wrongs.length+'题错题，请给复习建议。\n';
     }catch(e){ return ''; }
   }
+  function getWrongSubjects(){
+    try{
+      var wrongs=(typeof wrongQuestions!=='undefined'?wrongQuestions:[])||[];
+      var subs=[];
+      wrongs.slice(0,12).forEach(function(id){ var q=(typeof questions!=='undefined')?(questions.find||questions.filter)(function(x){return x.id===id;}):null; if(q&&q.subject&&subs.indexOf(q.subject)<0) subs.push(q.subject); });
+      return subs.length?subs.join('、'):'';
+    }catch(e){ return ''; }
+  }
   function askWith(q){
     if(!q||!q.trim()||send.disabled) return;
     var realQ=q;
     if(q==='讲一下当前这道题') realQ='请讲一下这道题：\n'+getCurrentQuestion()+'\n按「考点→法条→逐项分析→结论」讲解。';
     else if(q==='我的错题怎么做') realQ='分析我的错题本并给出复习计划：'+getWrongSummary();
+    else if(q==='给我出一道练习题'){ var wsub=getWrongSubjects(); realQ=(wsub?'根据我常错的科目（'+wsub+'），出一道有针对性的法考练习题，含选项、正确答案和解析。':'给出一道理科综合性法考单选题，含选项、正确答案和解析。'); }
     inp.value=''; add('user',realQ); history.push({role:'user',content:realQ});
     send.disabled=true;
     var thinking=document.createElement('div'); thinking.className='aiqa-m aiqa-a'; thinking.textContent='思考中…'; msgs.appendChild(thinking); msgs.scrollTop=msgs.scrollHeight;
     fetch(API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+APIKEY},body:JSON.stringify({messages:history,max_tokens:900})})
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-      .then(function(j){ var ans=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||JSON.stringify(j); thinking.remove(); add('assistant',ans); history.push({role:'assistant',content:ans}); })
+      .then(function(j){ var ans=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||JSON.stringify(j); thinking.remove(); var saved=ans; add('assistant',ans,function(){ saveToNote(saved); }); history.push({role:'assistant',content:ans}); })
       .catch(function(e){ thinking.remove(); add('assistant','请求失败：'+e.message); })
       .finally(function(){ send.disabled=false; inp.focus(); });
   }
