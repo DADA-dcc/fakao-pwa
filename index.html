@@ -2708,5 +2708,49 @@
       });
     })();
   </script>
+<style id="aiqa-style">
+#aiqa-btn{position:fixed;right:18px;bottom:18px;z-index:2147483000;padding:10px 14px;border-radius:999px;background:#1a3a6b;color:#fff;border:0;font:600 14px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+#aiqa-panel{position:fixed;right:18px;bottom:70px;width:min(360px,calc(100vw - 36px));max-height:70vh;background:#fff;color:#111;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:none;flex-direction:column;z-index:2147483001;overflow:hidden;font:14px/1.5 system-ui,sans-serif}
+#aiqa-panel.open{display:flex}
+#aiqa-head{padding:10px 12px;background:#1a3a6b;color:#fff;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+#aiqa-msgs{padding:10px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px;background:#f6f8fb}
+.aiqa-m{padding:8px 10px;border-radius:10px;max-width:90%;white-space:pre-wrap;word-break:break-word}
+.aiqa-u{align-self:flex-end;background:#1a3a6b;color:#fff}
+.aiqa-a{align-self:flex-start;background:#fff;border:1px solid #e3e8f0}
+#aiqa-foot{display:flex;gap:6px;padding:8px;border-top:1px solid #e3e8f0;background:#fff}
+#aiqa-in{flex:1;padding:8px;border:1px solid #cfd8e6;border-radius:8px;font:14px/1.4 system-ui,sans-serif}
+#aiqa-send{padding:8px 12px;border:0;border-radius:8px;background:#1a3a6b;color:#fff;font-weight:600;cursor:pointer}
+#aiqa-send:disabled{opacity:.5}
+</style>
+<button id="aiqa-btn" type="button">AI 答疑</button>
+<div id="aiqa-panel" role="dialog" aria-label="AI 答疑">
+  <div id="aiqa-head"><span>AI 答疑 · 法考</span><button id="aiqa-close" type="button" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer">×</button></div>
+  <div id="aiqa-msgs"></div>
+  <div id="aiqa-foot"><input id="aiqa-in" placeholder="问一道题或一个知识点…"/><button id="aiqa-send" type="button">发送</button></div>
+</div>
+<script id="aiqa-script">
+(function(){
+  var API='https://ai.xs06.de5.net/';
+  var btn=document.getElementById('aiqa-btn'), panel=document.getElementById('aiqa-panel'), msgs=document.getElementById('aiqa-msgs'), inp=document.getElementById('aiqa-in'), send=document.getElementById('aiqa-send'), close=document.getElementById('aiqa-close');
+  if(!btn||!panel) return;
+  var history=[{role:'system',content:'你是法考答疑助手，回答要准确、简洁，先给结论再给依据，必要时引用相关法条或概念。'}];
+  function add(role,text){ var d=document.createElement('div'); d.className='aiqa-m '+(role==='user'?'aiqa-u':'aiqa-a'); d.textContent=text; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
+  btn.addEventListener('click',function(){ panel.classList.toggle('open'); if(panel.classList.contains('open')) inp.focus(); });
+  close.addEventListener('click',function(){ panel.classList.remove('open'); });
+  async function ask(){
+    var q=inp.value.trim(); if(!q||send.disabled) return;
+    inp.value=''; add('user',q); history.push({role:'user',content:q});
+    send.disabled=true; var thinking=document.createElement('div'); thinking.className='aiqa-m aiqa-a'; thinking.textContent='思考中…'; msgs.appendChild(thinking); msgs.scrollTop=msgs.scrollHeight;
+    try{
+      var r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history,max_tokens:800})});
+      var j=await r.json(); var ans=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||JSON.stringify(j);
+      thinking.remove(); add('assistant',ans); history.push({role:'assistant',content:ans});
+    }catch(e){ thinking.remove(); add('assistant','请求失败：'+e.message); }
+    send.disabled=false; inp.focus();
+  }
+  send.addEventListener('click',ask);
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); ask(); } });
+})();
+</script>
 </body>
 </html>
