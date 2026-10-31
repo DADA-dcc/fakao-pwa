@@ -13,10 +13,11 @@
 
 ## 当前进度（2026-10-31 交接）
 
-- `main` @ `668de7b` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v25`。
+- `main` @ `a591053` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v26`。
 - 现状功能：单文件 SPA；开屏为**内联 3D 天平+法槌**（Three.js r128 + `vendor/GLTFLoader.js`，模型 `assets/models/legal.glb`）+ 酒红金渐变，倒计时目标 2028-09-16；左下角有**动态版本角标**（读 sw `CACHE_VERSION`，用于确认是否已更新到最新）。
 - SEO：`robots.txt` / `sitemap.xml` / `index.html` `<head>`（canonical、og、twitter）均已统一为 `https://xs06.de5.net/`；全仓库已无已废弃的旧域名引用。
 - 最近提交：
+  - `a591053` feat(ui): 精致质感升级（统计分色卡/蓝靛 CTA/磨砂底栏/选项徽章/错题条/顶栏品牌渐变线）+ 深色与羊皮纸主题精修（SW v25→v26）
   - `668de7b` chore(docs): 移除已废弃历史归档与两份作废简报（git 历史仍可追溯）
   - `5507fee` chore(seo): 域名/SEO 元数据统一为 xs06.de5.net
   - `b812b0d` feat(ui): 左下角动态版本角标（v25）
