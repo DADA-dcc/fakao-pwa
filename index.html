@@ -732,6 +732,63 @@
     html[data-theme="sepia"] .mastery-ok{ color:#0f766e; background:rgba(15,118,110,.12); border-color:rgba(15,118,110,.28); }
     html[data-theme="sepia"] .mastery-bad{ color:#9f1239; background:rgba(159,18,57,.12); border-color:rgba(159,18,57,.28); }
 
+    /* ───────── v10：顶部液态七彩玻璃流体 ───────── */
+    header{ position:relative; overflow:hidden; isolation:isolate; }
+    header h1, header #dataSourceSubtitle{ text-shadow:0 1px 8px rgba(5,14,32,.42); }
+    header > .liquid-top{
+      position:absolute; inset:-62% -14% -20%; z-index:0; pointer-events:none;
+      opacity:.72; mix-blend-mode:screen; filter:blur(18px) saturate(150%);
+    }
+    header > .liquid-top .lt-blob{
+      position:absolute; display:block; border-radius:50%;
+      width:42%; aspect-ratio:1; opacity:.85;
+      transform:translate3d(0,0,0); will-change:transform;
+    }
+    header .lt-b1{ left:-4%; top:-10%; background:radial-gradient(circle at 38% 42%,rgba(34,211,238,.95),rgba(56,189,248,.55) 42%,rgba(59,130,246,0) 72%); animation:ltDriftA 17s ease-in-out infinite alternate; }
+    header .lt-b2{ left:18%; top:-38%; width:38%; background:radial-gradient(circle at 45% 45%,rgba(167,139,250,.95),rgba(99,102,241,.5) 45%,rgba(79,70,229,0) 72%); animation:ltDriftB 21s ease-in-out infinite alternate; }
+    header .lt-b3{ left:42%; top:-16%; background:radial-gradient(circle at 50% 45%,rgba(244,114,182,.9),rgba(236,72,153,.45) 45%,rgba(219,39,119,0) 72%); animation:ltDriftC 19s ease-in-out infinite alternate; }
+    header .lt-b4{ left:64%; top:-44%; width:35%; background:radial-gradient(circle at 45% 45%,rgba(251,191,36,.9),rgba(245,158,11,.45) 45%,rgba(217,119,6,0) 72%); animation:ltDriftB 24s ease-in-out infinite alternate-reverse; }
+    header .lt-b5{ left:84%; top:-8%; background:radial-gradient(circle at 45% 45%,rgba(52,211,153,.9),rgba(16,185,129,.45) 45%,rgba(5,150,105,0) 72%); animation:ltDriftA 20s ease-in-out infinite alternate-reverse; }
+    header > .liquid-top .lt-sheen{
+      position:absolute; inset:-20% -30%;
+      background:linear-gradient(112deg,transparent 8%,rgba(255,255,255,.28) 24%,rgba(255,255,255,.05) 36%,transparent 46%,rgba(255,255,255,.18) 64%,transparent 78%);
+      mix-blend-mode:overlay; opacity:.7; animation:ltSheen 13s ease-in-out infinite;
+    }
+    header > :not(.liquid-top){ position:relative; z-index:2; }
+    header::after{
+      content:""; position:absolute; left:0; right:0; bottom:0; height:2px; z-index:3;
+      background:linear-gradient(90deg,#22d3ee,#60a5fa,#a78bfa,#f472b6,#fbbf24,#34d399,#22d3ee);
+      background-size:300% 100%; animation:ltRim 10s linear infinite;
+      box-shadow:0 0 14px -2px rgba(147,197,253,.55);
+      opacity:.9; pointer-events:none;
+    }
+    html[data-theme="dark"] header > .liquid-top{ opacity:.55; }
+    html[data-theme="sepia"] header > .liquid-top{ opacity:.4; filter:blur(18px) saturate(115%); }
+    @keyframes ltDriftA{
+      0%{ transform:translate3d(-8%,0,0) scale(1) rotate(0deg); }
+      50%{ transform:translate3d(10%,16%,0) scale(1.18) rotate(18deg); }
+      100%{ transform:translate3d(-2%,30%,0) scale(1.05) rotate(-8deg); }
+    }
+    @keyframes ltDriftB{
+      0%{ transform:translate3d(6%,6%,0) scale(1.05) rotate(0deg); }
+      50%{ transform:translate3d(-10%,18%,0) scale(1.2) rotate(-16deg); }
+      100%{ transform:translate3d(12%,28%,0) scale(1.1) rotate(12deg); }
+    }
+    @keyframes ltDriftC{
+      0%{ transform:translate3d(0,4%,0) scale(1) rotate(0deg); }
+      50%{ transform:translate3d(-8%,20%,0) scale(1.16) rotate(14deg); }
+      100%{ transform:translate3d(9%,32%,0) scale(1.06) rotate(-10deg); }
+    }
+    @keyframes ltSheen{
+      0%,100%{ transform:translateX(-16%) rotate(0deg); }
+      50%{ transform:translateX(14%) translateY(5%) rotate(3deg); }
+    }
+    @keyframes ltRim{ 0%{ background-position:0% 50%; } 100%{ background-position:300% 50%; } }
+    @media (max-width:640px){
+      header > .liquid-top{ inset:-70% -30% -22%; filter:blur(16px) saturate(145%); opacity:.62; }
+      header > .liquid-top .lt-blob{ width:58%; }
+    }
+
     @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
   </style>
 </head>
@@ -857,6 +914,15 @@
 
   <!-- 顶部导航栏 -->
   <header class="sticky top-0 z-30 bg-[#1a3a6b] text-white shadow-md">
+    <!-- 顶部液态七彩玻璃流体（纯装饰） -->
+    <div class="liquid-top" aria-hidden="true">
+      <span class="lt-blob lt-b1"></span>
+      <span class="lt-blob lt-b2"></span>
+      <span class="lt-blob lt-b3"></span>
+      <span class="lt-blob lt-b4"></span>
+      <span class="lt-blob lt-b5"></span>
+      <span class="lt-sheen"></span>
+    </div>
     <div class="max-w-4xl mx-auto px-3 sm:px-5 py-2.5 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
         <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center font-bold text-base shrink-0">⚖️</div>
