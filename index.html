@@ -209,11 +209,15 @@
       backdrop-filter: blur(7px);
     }
     .hero-glow-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.04em;
       color: #e2542a;
     }
+    .hero-glow-kicker svg{ width: 14px; height: 14px; }
     .hero-glow-title {
       margin: 6px 0 5px;
       font-size: clamp(19px, 3.4vw, 27px);
@@ -537,9 +541,10 @@
     #answerSheetGrid button:hover{ transform:translateY(-2px) scale(1.05); box-shadow:0 8px 18px -10px rgba(15,35,70,.55); }
 
     /* 知识点 tab 激活 / 同步主按钮 渐变 */
-    #tabKnowledgeCardsBtn{ background:linear-gradient(135deg,#3b82f6,#2563eb) !important; box-shadow:0 6px 14px -8px rgba(37,99,235,.8); }
+    .m-tab.is-active{ box-shadow:0 6px 14px -8px rgba(37,99,235,.8); }
+    #knowledgePane.hidden, #myNotesPane.hidden{ display:none !important; }
+    .empty-ico svg{ width:26px; height:26px; opacity:.8; }
     #syncModal button[class*="1a3a6b"]{ background:linear-gradient(135deg,#3b82f6,#2563eb) !important; box-shadow:0 6px 14px -8px rgba(37,99,235,.8); }
-    html[data-theme="sepia"] #tabKnowledgeCardsBtn,
     html[data-theme="sepia"] #syncModal button[class*="1a3a6b"]{
       background:linear-gradient(135deg,#8b5a2b,#6d4522) !important;
     }
@@ -791,6 +796,325 @@
 
     @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
   </style>
+
+  <!-- ===== v11 精修层：弹窗体系 / 答题卡分页 / 知识点检索 / 移动端密度 / 专注模式 ===== -->
+  <style id="ui-v11">
+    /* 顶栏装饰溢出不得产生可滚动区域，否则点击按钮会把整栏横向滚走 */
+    header{ overflow:clip !important; }
+
+    /* 弹窗层级高于底栏、版本角标与 AI 悬浮按钮 */
+    #answerSheetModal, #knowledgeModal, #syncModal, #aiConfigModal{ z-index:70 !important; }
+    /* 更新卡片出现时，先收起右下角 AI 与左下角版本角标，避免遮挡操作 */
+    body:has(#swUpdateBanner:not(.hidden)) #aiqa-btn,
+    body:has(#swUpdateBanner:not(.hidden)) #aiqa-panel,
+    body:has(#swUpdateBanner:not(.hidden)) #verBadge{ display:none !important; }
+
+    /* ── 统一弹窗头部 ── */
+    .modal-head{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+      padding-bottom:12px; border-bottom:1px solid var(--border-color);
+    }
+    .modal-head-main{ display:flex; align-items:center; gap:10px; min-width:0; }
+    .modal-head-ico{
+      width:34px; height:34px; flex-shrink:0; border-radius:10px;
+      display:inline-flex; align-items:center; justify-content:center;
+      color:#fff; background:linear-gradient(135deg,#1e4482,#2563eb);
+      box-shadow:0 6px 14px -8px rgba(37,99,235,.85), inset 0 1px 0 rgba(255,255,255,.25);
+    }
+    .modal-head-ico svg{ width:18px; height:18px; }
+    .modal-title{ font-size:15px; font-weight:800; letter-spacing:-.01em; line-height:1.25; }
+    .modal-sub{ font-size:11px; color:var(--text-muted); margin-top:2px; line-height:1.45; }
+    .modal-close{
+      width:32px; height:32px; flex-shrink:0; border-radius:9px;
+      display:inline-flex; align-items:center; justify-content:center;
+      background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-muted);
+      transition:transform .16s ease, color .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .modal-close:hover{ transform:rotate(90deg); color:#ef4444; border-color:#ef4444; background:rgba(239,68,68,.08); }
+    .modal-close svg{ width:15px; height:15px; }
+    .m-tab{
+      display:inline-flex; align-items:center; gap:5px; padding:6px 10px; border-radius:8px;
+      font-size:11.5px; font-weight:700; color:var(--text-muted);
+      background:var(--bg-subtle) !important; border:1px solid var(--border-color);
+      transition:color .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .m-tab:hover{ border-color:#93c5fd; color:var(--text-main); }
+    .m-tab.is-active{
+      color:#fff !important; border-color:transparent !important;
+      background:linear-gradient(135deg,#3b82f6,#2563eb) !important;
+      box-shadow:0 6px 14px -8px rgba(37,99,235,.8);
+    }
+    html[data-theme="sepia"] .m-tab.is-active{ background:linear-gradient(135deg,#8b5a2b,#b45309) !important; }
+
+    /* ── 知识点中心 ── */
+    #knowledgeModal > .theme-card{ max-height:88vh; }
+    .k-toolbar{ padding:10px 0 8px; display:flex; flex-direction:column; gap:8px; border-bottom:1px solid var(--border-color); }
+    .k-search{ position:relative; display:flex; align-items:center; }
+    .k-search input{
+      width:100%; padding:8px 32px 8px 32px; border-radius:10px; font-size:12px;
+      background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-main);
+    }
+    .k-search input:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.14); }
+    .k-search input[type="search"]::-webkit-search-cancel-button,
+    .k-search input[type="search"]::-webkit-search-decoration{ -webkit-appearance:none; appearance:none; }
+    .k-search .k-ico{ position:absolute; left:10px; width:14px; height:14px; opacity:.55; pointer-events:none; }
+    .k-search .k-clear{ position:absolute; right:6px; width:22px; height:22px; border-radius:6px; display:none; align-items:center; justify-content:center; opacity:.6; }
+    .k-search .k-clear:hover{ opacity:1; background:rgba(148,163,184,.18); }
+    .k-search .k-clear.is-visible{ display:inline-flex; }
+    .k-chips{
+      display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none;
+      -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 18px),transparent 100%);
+      mask-image:linear-gradient(90deg,#000 calc(100% - 18px),transparent 100%);
+    }
+    .k-chips::-webkit-scrollbar{ display:none; }
+    .k-chip{
+      flex-shrink:0; padding:4px 9px; border-radius:999px; font-size:11px; font-weight:600;
+      border:1px solid var(--border-color); background:var(--bg-subtle); color:var(--text-muted);
+      transition:background .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .k-chip b{ font-weight:700; opacity:.62; margin-left:3px; font-variant-numeric:tabular-nums; }
+    .k-chip:hover{ border-color:#60a5fa; color:var(--text-main); }
+    .k-chip.is-active{ background:linear-gradient(135deg,#1e4482,#2563eb); border-color:transparent; color:#fff; box-shadow:0 5px 12px -8px rgba(37,99,235,.9); }
+    .k-chip.is-active b{ opacity:.8; }
+    .k-meta{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0 4px; font-size:11px; color:var(--text-muted); }
+    .k-list{ padding:2px 0 8px; overflow-y:auto; flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; }
+    .k-card{
+      padding:11px 12px; border-radius:12px; background:var(--bg-subtle);
+      border:1px solid var(--border-color); border-left:3px solid #3b82f6;
+      transition:border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    }
+    .k-card:hover{ border-color:#93c5fd; box-shadow:0 8px 20px -16px rgba(15,35,70,.55); }
+    .k-card-head{ display:flex; align-items:flex-start; gap:8px; margin-bottom:5px; }
+    .k-subject{
+      flex-shrink:0; padding:2px 7px; border-radius:6px; font-size:10px; font-weight:700; line-height:1.5;
+      color:#1d4ed8; background:rgba(37,99,235,.12); border:1px solid rgba(37,99,235,.2);
+    }
+    html[data-theme="dark"] .k-subject{ color:#93c5fd; background:rgba(59,130,246,.16); border-color:rgba(96,165,250,.24); }
+    html[data-theme="sepia"] .k-subject{ color:#8b5a2b; background:rgba(139,90,43,.12); border-color:rgba(139,90,43,.22); }
+    .k-point{ font-size:13px; font-weight:700; line-height:1.5; letter-spacing:-.01em; }
+    .k-body{ font-size:12px; line-height:1.75; color:var(--text-muted); white-space:pre-line; overflow-wrap:anywhere; }
+    .k-body.is-clamped{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+    .k-more{
+      margin-top:5px; font-size:11px; font-weight:600; color:#2563eb;
+      display:inline-flex; align-items:center; gap:3px;
+    }
+    html[data-theme="dark"] .k-more{ color:#93c5fd; }
+    .k-more svg{ width:12px; height:12px; transition:transform .18s ease; }
+    .k-card.is-open .k-more svg{ transform:rotate(180deg); }
+    .k-empty{ padding:38px 12px; text-align:center; }
+    .k-pager, .sheet-pager{
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding-top:9px; border-top:1px solid var(--border-color); flex-wrap:wrap;
+    }
+    .pager-btn{
+      min-width:30px; height:30px; padding:0 10px; border-radius:8px; font-size:11px; font-weight:700;
+      display:inline-flex; align-items:center; justify-content:center; gap:3px;
+      background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-main);
+      transition:border-color .15s ease, background .15s ease, opacity .15s ease;
+    }
+    .pager-btn:hover:not(:disabled){ border-color:#3b82f6; color:#2563eb; }
+    .pager-btn:disabled{ opacity:.38; cursor:not-allowed; }
+    .pager-info{ font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .pager-jump{ display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); }
+    .pager-jump input{
+      width:48px; height:28px; text-align:center; border-radius:7px; font-size:11px; font-weight:700;
+      background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-main);
+      font-variant-numeric:tabular-nums;
+    }
+    .pager-jump input:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.16); }
+
+    /* ── 答题卡：进度概览 + 分页 ── */
+    .sheet-overview{ display:flex; flex-wrap:wrap; gap:6px; padding:8px 0 0; }
+    .sheet-stat{
+      flex:1 1 0; min-width:62px; padding:6px 8px; border-radius:9px; text-align:center;
+      background:var(--bg-subtle); border:1px solid var(--border-color);
+    }
+    .sheet-stat b{ display:block; font-size:14px; line-height:1.2; font-variant-numeric:tabular-nums; }
+    .sheet-stat span{ font-size:10px; color:var(--text-muted); white-space:nowrap; }
+    .sheet-stat.ok b{ color:#059669; }
+    .sheet-stat.bad b{ color:#e11d48; }
+    .sheet-stat.left b{ color:#2563eb; }
+    #answerSheetGrid{ min-height:0; flex:1; align-content:start; }
+    #answerSheetGrid button{ min-height:34px; height:auto; padding:5px 0; }
+    .sheet-page-tag{
+      position:absolute; top:2px; left:3px; font-size:8px; font-weight:700; opacity:.45; line-height:1;
+      font-variant-numeric:tabular-nums;
+    }
+
+    /* ── SW 更新卡片：悬浮于底栏之上 ── */
+    #swUpdateBanner{
+      position:fixed !important; left:50%; transform:translateX(-50%);
+      bottom:calc(86px + env(safe-area-inset-bottom)); z-index:45;
+      width:calc(100% - 24px); max-width:440px;
+      padding:11px 12px; border-radius:14px; color:#eaf2ff;
+      background:linear-gradient(135deg,rgba(14,34,66,.97),rgba(26,58,107,.97) 58%,rgba(37,99,235,.94));
+      border:1px solid rgba(147,197,253,.38);
+      box-shadow:0 18px 40px -18px rgba(2,8,23,.9), inset 0 1px 0 rgba(255,255,255,.2);
+      -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+      display:block;
+    }
+    #swUpdateBanner.hidden{ display:none !important; }
+    .sw-update-main{ display:flex; align-items:center; gap:9px; }
+    .sw-update-ico{
+      width:32px; height:32px; flex-shrink:0; border-radius:9px; display:inline-flex; align-items:center; justify-content:center;
+      color:#fcd34d; background:rgba(251,191,36,.16); border:1px solid rgba(251,191,36,.32);
+    }
+    .sw-update-ico svg{ width:17px; height:17px; }
+    .sw-update-title{ font-size:12px; font-weight:800; letter-spacing:.01em; }
+    .sw-update-sub{ font-size:10.5px; color:#bfdbfe; margin-top:1px; }
+    .sw-update-actions{ display:flex; align-items:center; gap:6px; margin-top:9px; }
+    .sw-update-actions .sw-primary{
+      flex:1; padding:6px 10px; border-radius:8px; font-size:11px; font-weight:800;
+      color:#0b1a33; background:linear-gradient(135deg,#fcd34d,#f59e0b);
+      box-shadow:0 5px 12px -8px rgba(245,158,11,.9);
+    }
+    .sw-update-actions .sw-ghost{ padding:6px 12px; border-radius:8px; font-size:11px; font-weight:600; color:#cbd5e1; border:1px solid rgba(255,255,255,.18); }
+    .sw-update-actions .sw-ghost:hover{ background:rgba(255,255,255,.1); color:#fff; }
+
+    /* ── Toast：避开顶栏/模式条，移动端靠近底部但高于 dock ── */
+    #toastContainer{ top:calc(env(safe-area-inset-top) + 84px) !important; width:calc(100% - 28px); max-width:420px; }
+    #toastContainer > div{ text-align:center; box-shadow:0 12px 30px -14px rgba(2,8,23,.65); }
+
+    /* ── Hero 右侧倒计时环（桌面） ── */
+    #heroGlow{ position:relative; }
+    .hero-countdown{
+      position:absolute; right:20px; top:50%; transform:translateY(-50%);
+      width:104px; height:104px; display:flex; align-items:center; justify-content:center;
+      z-index:2; pointer-events:none;
+    }
+    .hero-cd-ring{
+      position:absolute; inset:0; border-radius:50%;
+      background:conic-gradient(from -90deg,#fbbf24 0 calc(var(--cd-p,0) * 1%),rgba(255,255,255,.34) calc(var(--cd-p,0) * 1%) 100%);
+      -webkit-mask:radial-gradient(circle,transparent 61%,#000 62%);
+      mask:radial-gradient(circle,transparent 61%,#000 62%);
+      filter:drop-shadow(0 2px 6px rgba(120,53,15,.35));
+    }
+    .hero-cd-inner{
+      position:relative; width:82px; height:82px; border-radius:50%;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      background:rgba(255,255,255,.72); border:1px solid rgba(255,255,255,.85);
+      box-shadow:0 8px 20px -12px rgba(26,58,107,.6);
+      -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    }
+    html[data-theme="dark"] .hero-cd-inner{ background:rgba(15,30,55,.72); border-color:rgba(147,197,253,.25); }
+    html[data-theme="sepia"] .hero-cd-inner{ background:rgba(255,248,236,.78); border-color:rgba(139,90,43,.28); }
+    .hero-cd-num{ font-size:23px; font-weight:900; line-height:1; color:#b45309; font-variant-numeric:tabular-nums; letter-spacing:-.03em; }
+    html[data-theme="dark"] .hero-cd-num{ color:#fcd34d; }
+    .hero-cd-label{ font-size:9px; font-weight:700; color:var(--text-muted); margin-top:2px; letter-spacing:.03em; }
+    .hero-cd-cap{ font-size:8.5px; color:var(--text-muted); opacity:.8; margin-top:1px; }
+    @media (max-width:899px){ .hero-countdown{ display:none; } }
+
+    /* ── 专注模式：背题/模拟考时收起 Hero 与统计 ── */
+    body.focus-mode #heroGlow,
+    body.focus-mode #statsSection{ display:none !important; }
+    body.focus-mode main{ padding-top:8px !important; }
+    body.focus-mode header #dataSourceSubtitle{ display:none; }
+    body.focus-mode header > div.max-w-4xl{ padding-top:5px; padding-bottom:5px; }
+    body.focus-mode header .mode-toggle > span:not(.toggle-pill){ display:none; }
+    body.focus-mode header .mode-toggle{ padding:.28rem .5rem; }
+    body.focus-mode #toastContainer{ top:calc(env(safe-area-inset-top) + 82px) !important; }
+    @media (max-width:640px){
+      /* 专注模式第二行必须在 390px 内单行放下：模式组 + 计时 + 高亮 */
+      body.focus-mode #modePracticeBtn,
+      body.focus-mode #modeReciteBtn,
+      body.focus-mode #modeExamBtn{ padding:3px 4px !important; font-size:10px; }
+      body.focus-mode #modePracticeBtn .nav-ico,
+      body.focus-mode #modeReciteBtn .nav-ico,
+      body.focus-mode #modeExamBtn .nav-ico{ width:11px; height:11px; }
+      body.focus-mode #examTimerBox{ padding:.2rem .35rem; font-size:10px; gap:.25rem; }
+      body.focus-mode #examResetTimerBtn{ display:none; }
+    }
+    @media (max-width:360px){
+      body.focus-mode #toggleHighlightBtn{ display:none; }
+    }
+
+    /* ── 科目条两端渐隐 ── */
+    #subjectFilterBar{
+      -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10px,#000 calc(100% - 14px),transparent 100%);
+      mask-image:linear-gradient(90deg,transparent 0,#000 10px,#000 calc(100% - 14px),transparent 100%);
+    }
+
+    /* ── 同步弹窗分区 ── */
+    .sync-section{ padding:11px 12px; border-radius:12px; background:var(--bg-subtle); border:1px solid var(--border-color); }
+    .sync-section-head{ display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:800; margin-bottom:8px; }
+    .sync-section-head svg{ width:14px; height:14px; opacity:.85; }
+    .sync-danger{ border-color:rgba(244,63,94,.34); background:rgba(244,63,94,.06); }
+    .sync-danger .sync-section-head{ color:#e11d48; }
+    html[data-theme="dark"] .sync-danger .sync-section-head{ color:#fb7185; }
+    .sync-btn{ display:inline-flex; align-items:center; gap:5px; padding:7px 10px; border-radius:8px; font-size:11px; font-weight:700; }
+    .sync-btn svg{ width:13px; height:13px; }
+    .sync-btn-primary{ color:#fff; background:linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 5px 12px -8px rgba(37,99,235,.9); }
+    .sync-btn-ghost{ background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); }
+    .sync-btn-ghost:hover{ border-color:#60a5fa; }
+    .sync-btn-danger{ color:#e11d48; background:rgba(244,63,94,.1); border:1px solid rgba(244,63,94,.3); }
+    html[data-theme="dark"] .sync-btn-danger{ color:#fb7185; }
+
+    /* ── 移动端密度 ── */
+    main{ padding-bottom:96px; }
+    @media (max-width:640px){
+      main{ padding-bottom:104px; }
+      header > div.max-w-4xl{ padding:.4rem .7rem; gap:.4rem; }
+      header h1{ font-size:.9rem; line-height:1.25; }
+      #dataSourceSubtitle{ display:none; }
+      header .w-8.h-8{ width:26px; height:26px; border-radius:7px; font-size:13px; }
+      header button{ padding:.35rem .45rem; border-radius:7px; }
+      header .nav-ico{ width:15px; height:15px; }
+      header > div:last-child > div.max-w-4xl{ padding-top:3px; padding-bottom:3px; gap:.3rem; }
+      #modePracticeBtn, #modeReciteBtn, #modeExamBtn{ padding:3px 7px !important; font-size:10.5px; }
+      #modePracticeBtn .nav-ico, #modeReciteBtn .nav-ico, #modeExamBtn .nav-ico{ width:12px; height:12px; }
+      .mode-toggle{ padding:.2rem .4rem; font-size:9.5px; gap:.22rem; }
+      .mode-toggle .toggle-pill{ font-size:9px; padding:.05rem .32rem; }
+      #examTimerBox{ padding:.2rem .4rem; font-size:10px; }
+
+      section .grid-cols-5{ gap:4px; }
+      section .grid-cols-5 > *{ padding:5px 2px !important; border-radius:8px; }
+      section .grid-cols-5 > * > div:first-child{
+        display:flex; flex-direction:column; align-items:center; gap:1px;
+        font-size:9.5px; line-height:1.2; white-space:nowrap; letter-spacing:-.02em;
+      }
+      .stat-ico{ width:21px; height:21px; margin:0 auto 1px; border-radius:6px; }
+      .stat-ico svg{ width:12px; height:12px; }
+      section .grid-cols-5 > * > div:last-child{ font-size:14px; line-height:1.2; margin-top:2px; }
+
+      nav.fixed .grid{ gap:4px; }
+      nav.fixed .grid > button{
+        flex-direction:column; gap:2px; padding:5px 1px; border-radius:9px;
+        font-size:9.5px; line-height:1.15; letter-spacing:-.02em; white-space:nowrap;
+      }
+      nav.fixed .grid > button .nav-ico{ width:16px; height:16px; }
+      nav.fixed .grid > button span{ font-size:9.5px; }
+
+      .modal-head{ padding-bottom:9px; }
+      .modal-head-ico{ width:30px; height:30px; border-radius:8px; }
+      .modal-head-ico svg{ width:16px; height:16px; }
+      .modal-title{ font-size:13.5px; }
+      .modal-sub{ font-size:10px; }
+      #knowledgeModal > .theme-card, #answerSheetModal > .theme-card{ max-height:90vh; }
+      .k-card{ padding:9px 10px; }
+      .k-point{ font-size:12px; }
+      .k-body{ font-size:11px; line-height:1.65; }
+      .sheet-stat{ min-width:56px; padding:5px 4px; }
+      .sheet-stat b{ font-size:12.5px; }
+      .sheet-stat span{ font-size:9px; }
+      .sheet-pager{ gap:5px; }
+      .pager-btn{ height:28px; min-width:28px; font-size:10.5px; padding:0 7px; }
+      .pager-info{ font-size:10px; }
+      .pager-jump input{ width:42px; height:26px; }
+      #toastContainer{ top:calc(env(safe-area-inset-top) + 84px) !important; }
+    }
+    @media (max-width:360px){
+      header .mode-toggle > span:not(.toggle-pill){ display:none; }
+      header .mode-toggle{ padding:.22rem .36rem; }
+      section .grid-cols-5 > * > div:first-child{ font-size:8.5px; }
+    }
+
+    /* ── 主题切换：圆形揭示（View Transition） ── */
+    ::view-transition-old(root), ::view-transition-new(root){ animation:none; mix-blend-mode:normal; }
+    ::view-transition-new(root){ z-index:9999; }
+    @media (prefers-reduced-motion: reduce){
+      ::view-transition-old(root), ::view-transition-new(root){ animation:none !important; }
+    }
+  </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -798,7 +1122,7 @@
   <div id="splashCover" role="dialog" aria-label="法考刷题助手 Pro 开屏">
     <canvas id="splashCoverCanvas" aria-hidden="true"></canvas>
     <div class="sc-veil" aria-hidden="true"></div>
-    <div class="sc-top"><span class="sc-mark" aria-hidden="true">⚖️</span><span>FAKAO · 法考刷题助手 Pro</span></div>
+    <div class="sc-top"><span class="sc-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2.5 6h5z"/><path d="M19 7l-2.5 6h5z"/><path d="M8 21h8"/></svg></span><span>FAKAO · 法考刷题助手 Pro</span></div>
     <div class="sc-inner">
       <div class="sc-model" id="scModel" aria-hidden="true"><canvas id="scModelCanvas"></canvas></div>
       <span class="sc-kicker">✦ 法考 · 稳过计划</span>
@@ -817,6 +1141,7 @@
     #splashCover .sc-veil{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(60% 55% at 50% 46%,rgba(255,250,244,.82) 0%,rgba(255,250,244,.38) 45%,rgba(255,250,244,0) 72%)}
     #splashCover .sc-top{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;align-items:center;gap:10px;padding:max(14px,env(safe-area-inset-top)) 20px 14px;font-size:12px;letter-spacing:.12em;color:#5c4650;text-transform:uppercase}
     #splashCover .sc-mark{width:26px;height:26px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(145deg,#6d1b2e,#a23a54);color:#f6e2b8;font-size:15px;box-shadow:0 6px 16px -6px rgba(109,27,46,.7)}
+    #splashCover .sc-mark svg{width:15px;height:15px}
     #splashCover .sc-inner{position:relative;z-index:2;width:100%;max-width:760px}
     #splashCover .sc-kicker{display:inline-flex;align-items:center;gap:8px;font-size:clamp(12px,1.6vw,14px);font-weight:700;letter-spacing:.05em;color:#6d1b2e;background:rgba(255,250,244,.55);border:1px solid rgba(184,134,46,.45);padding:5px 13px;border-radius:999px}
     #splashCover .sc-title{margin:clamp(16px,3vw,26px) 0 0;font-size:clamp(28px,6.6vw,64px);line-height:1.14;font-weight:800;letter-spacing:-.02em;color:#2a1420;overflow-wrap:anywhere;word-break:break-word}
@@ -903,12 +1228,18 @@
   })();
   </script>
 
-  <!-- SW 更新提醒横幅 (默认隐藏) -->
-  <div id="swUpdateBanner" class="hidden bg-amber-500 text-slate-950 px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-between shadow-md z-50">
-    <span>🚀 检测到新版离线题库与功能更新，是否立即刷新应用？</span>
-    <div class="flex items-center gap-2">
-      <button id="swApplyUpdateBtn" type="button" class="px-2.5 py-1 rounded bg-slate-900 text-white text-xs font-semibold">立即更新</button>
-      <button id="swDismissUpdateBtn" type="button" class="px-2 py-1 rounded hover:bg-amber-600/30 text-xs">稍后</button>
+  <!-- SW 更新提醒卡片（默认隐藏，悬浮于底栏之上） -->
+  <div id="swUpdateBanner" class="hidden" role="status" aria-live="polite">
+    <div class="sw-update-main">
+      <span class="sw-update-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      <div class="min-w-0">
+        <div class="sw-update-title">新版本题库与界面已就绪</div>
+        <div class="sw-update-sub"><span id="swUpdateVersion">离线缓存已更新</span> · 刷新后即可使用</div>
+      </div>
+    </div>
+    <div class="sw-update-actions">
+      <button id="swApplyUpdateBtn" type="button" class="sw-primary">立即刷新</button>
+      <button id="swDismissUpdateBtn" type="button" class="sw-ghost">稍后</button>
     </div>
   </div>
 
@@ -925,12 +1256,15 @@
     </div>
     <div class="max-w-4xl mx-auto px-3 sm:px-5 py-2.5 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
-        <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center font-bold text-base shrink-0">⚖️</div>
+        <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center font-bold text-base shrink-0" aria-hidden="true">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2.5 6h5z"/><path d="M19 7l-2.5 6h5z"/><path d="M8 21h8"/></svg>
+        </div>
         <div class=" truncate">
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-base sm:text-lg tracking-tight truncate">法考刷题助手 Pro</h1>
             <span id="idbStatusBadge" class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/20 text-emerald-200 border border-emerald-400/30" title="LocalStorage + IndexedDB 双写防丢保护运行中">
-              🛡️ 双写守护
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+              双写守护
             </span>
           </div>
           <p id="dataSourceSubtitle" class="text-[11px] text-blue-200 truncate">内置精选真题库 · 部署至仓库自动加载 9,839 题</p>
@@ -983,7 +1317,7 @@
         <div class="flex items-center gap-2 text-xs">
           <!-- 模拟考场计时器 -->
           <div id="examTimerBox" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-500/20 border border-rose-400/40 text-rose-200 font-mono text-xs">
-            <span>⏳</span>
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
             <span id="examTimerText">00:00</span>
             <button id="examResetTimerBtn" type="button" class="underline ml-1 text-[11px] hover:text-white">重置</button>
           </div>
@@ -1014,16 +1348,24 @@
       <canvas id="heroGlowCanvas" aria-hidden="true"></canvas>
       <div class="hero-glow-inner">
         <div class="hero-glow-panel">
-          <div class="hero-glow-kicker">⚖️ 法考刷题助手 Pro</div>
+          <div class="hero-glow-kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2.5 6h5z"/><path d="M19 7l-2.5 6h5z"/><path d="M8 21h8"/></svg>法考刷题助手 Pro</div>
           <h2 class="hero-glow-title">以法律为剑，稳过法考</h2>
           <p class="hero-glow-sub">民法 · 刑法 · 行政法 · 宪法 · 民诉 · 刑诉 —— 近万道真题陪你上岸</p>
           <button id="heroStartBtn" type="button" class="hero-glow-btn">开始刷题 ↓</button>
         </div>
       </div>
+      <div class="hero-countdown" aria-hidden="true" title="距离 2028 年法考客观题考试">
+        <span class="hero-cd-ring" id="heroCdRing"></span>
+        <span class="hero-cd-inner">
+          <span class="hero-cd-num" id="heroCdDays">—</span>
+          <span class="hero-cd-label">天后开考</span>
+          <span class="hero-cd-cap">2028 · 9 · 16</span>
+        </span>
+      </div>
     </section>
 
     <!-- 实时统计数据栏 -->
-    <section class="theme-card rounded-xl p-3 shadow-sm">
+    <section id="statsSection" class="theme-card rounded-xl p-3 shadow-sm">
       <div class="grid grid-cols-5 gap-2 text-center">
         <div class="p-1.5 rounded-lg theme-subtle border">
           <div class="text-[11px] theme-muted"><span class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h6"/></svg></span>已答题</div>
@@ -1070,22 +1412,23 @@
           <!-- 难度筛选 -->
           <select id="diffFilterSelect" aria-label="难度筛选" class="px-2.5 py-1.5 rounded-lg text-xs font-medium theme-subtle border focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="ALL">全部难度</option>
-            <option value="易">🟢 易 ★☆☆</option>
-            <option value="中">🟡 中 ★★☆</option>
-            <option value="难">🔴 难 ★★★</option>
+            <option value="易">易 · ★☆☆</option>
+            <option value="中">中 · ★★☆</option>
+            <option value="难">难 · ★★★</option>
           </select>
 
           <!-- 乱序刷题按钮 -->
-          <button id="shuffleQuestionsBtn" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-medium theme-subtle border hover:border-blue-400 transition">
-            🔀 随机抽题
+          <button id="shuffleQuestionsBtn" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-medium theme-subtle border hover:border-blue-400 transition inline-flex items-center gap-1">
+            <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+            <span>随机抽题</span>
           </button>
         </div>
 
         <!-- 关键词搜索框 -->
         <div class="relative flex-1 sm:max-w-xs">
           <input id="searchInput" type="search" placeholder="搜索题干、法条、考点或笔记..." class="w-full pl-8 pr-7 py-1.5 rounded-lg text-xs theme-subtle border focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs opacity-60">🔍</span>
-          <button id="clearSearchBtn" type="button" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-xs opacity-60 hover:opacity-100">✕</button>
+          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-55 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <button id="clearSearchBtn" type="button" aria-label="清除搜索" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-xs opacity-60 hover:opacity-100">✕</button>
         </div>
       </div>
     </section>
@@ -1098,7 +1441,7 @@
           <span id="qIndexBadge" class="px-2.5 py-0.5 rounded-md bg-[#1a3a6b] text-white text-xs font-bold">1 / 12</span>
           <span id="qSubjectBadge" class="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-300 text-xs font-semibold">民法</span>
           <span id="qTypeBadge" class="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-300 text-xs font-semibold">多选题</span>
-          <span id="qDiffBadge" class="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-300 text-xs font-semibold">🟡 中</span>
+          <span id="qDiffBadge" class="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-300 text-xs font-semibold">难度 ★★☆</span>
           <span id="qYearBadge" class="px-2 py-0.5 rounded-md theme-subtle border text-[11px] theme-muted">2024真题改编</span>
         </div>
 
@@ -1123,7 +1466,11 @@
       <!-- 手机滑动提示条 -->
       <div class="flex items-center justify-between text-[11px] theme-muted mb-2">
         <span id="qMasteryStatus"><span class="mastery-chip mastery-idle"><span class="mastery-dot"></span>尚未作答</span></span>
-        <span class="opacity-75">👈 左右滑动卡片可快速切题 👉</span>
+        <span class="opacity-75 inline-flex items-center gap-1">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          左右滑动卡片可快速切题
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
       </div>
 
       <!-- 题干展示 -->
@@ -1183,7 +1530,10 @@
         <!-- AI 追问回复展示区 -->
         <div id="aiResponseBox" class="hidden p-3 rounded-lg bg-indigo-500/10 border border-indigo-400/30 text-xs sm:text-sm space-y-2">
           <div class="font-semibold text-indigo-600 dark:text-indigo-300 flex items-center justify-between">
-            <span>🤖 DeepSeek 法考助教深度拆解</span>
+            <span class="inline-flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1" fill="currentColor" stroke="none"/></svg>
+              DeepSeek 法考助教深度拆解
+            </span>
             <button id="closeAiResponseBtn" type="button" class="text-xs opacity-70 hover:opacity-100">收起</button>
           </div>
           <div id="aiResponseText" class="leading-relaxed whitespace-pre-line"></div>
@@ -1271,101 +1621,202 @@
   <!-- 弹窗 1：可视化答题卡抽屉 -->
   <div id="answerSheetModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="theme-card w-full max-w-2xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[82vh] flex flex-col shadow-2xl">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-200/70 dark:border-slate-700/70">
-        <div>
-          <h3 class="font-bold text-base">🗂️ 可视化答题卡快速跳转</h3>
-          <p class="text-xs theme-muted mt-0.5">点击任意题号直接跳转 · 颜色代表当前掌握状态</p>
+      <div class="modal-head">
+        <div class="modal-head-main">
+          <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+          <div class="min-w-0">
+            <h3 class="modal-title">可视化答题卡</h3>
+            <p id="sheetModalSub" class="modal-sub">点击题号直接跳转 · 颜色代表掌握状态</p>
+          </div>
         </div>
-        <button id="closeSheetModalBtn" type="button" class="w-8 h-8 rounded-lg theme-subtle border flex items-center justify-center text-sm font-bold">✕</button>
+        <button id="closeSheetModalBtn" type="button" class="modal-close" aria-label="关闭答题卡">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
       </div>
 
-      <!-- 图例与快捷重置 -->
-      <div class="flex flex-wrap items-center justify-between gap-2 py-2.5 text-xs border-b border-slate-200/60 dark:border-slate-700/60">
-        <div class="flex flex-wrap items-center gap-3">
+      <!-- 作答进度概览 -->
+      <div id="sheetOverview" class="sheet-overview">
+        <div class="sheet-stat ok"><b id="sheetCorrectCount">0</b><span>已答对</span></div>
+        <div class="sheet-stat bad"><b id="sheetWrongCount">0</b><span>已答错</span></div>
+        <div class="sheet-stat left"><b id="sheetLeftCount">0</b><span>未作答</span></div>
+        <div class="sheet-stat"><b id="sheetProgressPct">0%</b><span>完成度</span></div>
+      </div>
+
+      <!-- 图例与快捷跳转 -->
+      <div class="flex flex-wrap items-center justify-between gap-2 py-2 text-[11px] border-b border-slate-200/60 dark:border-slate-700/60">
+        <div class="flex flex-wrap items-center gap-2.5">
           <span class="inline-flex items-center gap-1"><span class="legend-dot legend-correct"></span> 已答对</span>
           <span class="inline-flex items-center gap-1"><span class="legend-dot legend-wrong"></span> 已答错</span>
           <span class="inline-flex items-center gap-1"><span class="legend-dot legend-fav"></span> 已收藏</span>
           <span class="inline-flex items-center gap-1"><span class="legend-dot legend-unanswered"></span> 未作答</span>
         </div>
-        <button id="jumpFirstUnansweredBtn" type="button" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
-          🎯 跳至首个未做题
+        <button id="jumpFirstUnansweredBtn" type="button" class="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
+          跳至首个未做题
         </button>
       </div>
 
       <div id="answerSheetGrid" class="grid grid-cols-6 sm:grid-cols-10 gap-2 py-3 overflow-y-auto">
-        <!-- 动态渲染题号网格 -->
+        <!-- 动态渲染题号网格（分页） -->
+      </div>
+
+      <!-- 分页与题号跳转 -->
+      <div class="sheet-pager">
+        <button id="sheetPrevBtn" type="button" class="pager-btn">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          上一页
+        </button>
+        <span id="sheetPageInfo" class="pager-info">第 1 / 1 页</span>
+        <label class="pager-jump">
+          <span>跳至</span>
+          <input id="sheetJumpInput" type="number" min="1" inputmode="numeric" aria-label="跳转到第几题" />
+          <button id="sheetJumpBtn" type="button" class="pager-btn">题</button>
+        </label>
+        <button id="sheetNextBtn" type="button" class="pager-btn">
+          下一页
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
       </div>
     </div>
   </div>
 
   <!-- 弹窗 2：知识点速记与笔记汇总中心 -->
   <div id="knowledgeModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="theme-card w-full max-w-3xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[85vh] flex flex-col shadow-2xl">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-200/70 dark:border-slate-700/70">
-        <div class="flex items-center gap-2">
-          <button id="tabKnowledgeCardsBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold">📚 核心考点速记</button>
-          <button id="tabMyNotesBtn" type="button" class="px-3 py-1.5 rounded-lg theme-subtle border text-xs font-semibold">📝 我的随手笔记</button>
+    <div class="theme-card w-full max-w-3xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[88vh] flex flex-col shadow-2xl">
+      <div class="modal-head">
+        <div class="modal-head-main">
+          <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span>
+          <div class="min-w-0">
+            <h3 class="modal-title">知识点与笔记中心</h3>
+            <p class="modal-sub">按科目检索核心考点 · 随手笔记自动汇总</p>
+          </div>
         </div>
-        <button id="closeKnowledgeModalBtn" type="button" class="w-8 h-8 rounded-lg theme-subtle border flex items-center justify-center text-sm font-bold">✕</button>
+        <button id="closeKnowledgeModalBtn" type="button" class="modal-close" aria-label="关闭知识点中心">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
       </div>
 
-      <div id="knowledgeListContainer" class="py-3 space-y-2.5 overflow-y-auto flex-1"></div>
-      <div id="myNotesListContainer" class="hidden py-3 space-y-2.5 overflow-y-auto flex-1"></div>
+      <div class="modal-tabs flex items-center gap-1.5 pt-2.5">
+        <button id="tabKnowledgeCardsBtn" type="button" class="m-tab is-active">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          核心考点速记
+        </button>
+        <button id="tabMyNotesBtn" type="button" class="m-tab">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.4 2.6a2 2 0 0 1 3 3L11 16l-4 1 1-4z"/></svg>
+          我的随手笔记
+          <span id="myNotesCount" class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-500/15">0</span>
+        </button>
+      </div>
+
+      <div id="knowledgePane" class="flex-1 flex flex-col min-h-0">
+        <div class="k-toolbar">
+          <div class="k-search">
+            <svg class="k-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input id="knowledgeSearchInput" type="search" placeholder="搜索考点标题、正文或科目..." autocomplete="off" />
+            <button id="knowledgeSearchClear" type="button" class="k-clear" aria-label="清除考点搜索">✕</button>
+          </div>
+          <div id="kSubjectChips" class="k-chips" aria-label="考点科目筛选"></div>
+        </div>
+        <div class="k-meta">
+          <span id="kResultMeta">共 0 条考点</span>
+          <button id="kResetFilterBtn" type="button" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">重置筛选</button>
+        </div>
+        <div id="knowledgeListContainer" class="k-list"></div>
+        <div class="k-pager">
+          <button id="kPrevBtn" type="button" class="pager-btn">上一页</button>
+          <span id="kPageInfo" class="pager-info">第 1 / 1 页</span>
+          <button id="kNextBtn" type="button" class="pager-btn">下一页</button>
+        </div>
+      </div>
+
+      <div id="myNotesPane" class="hidden flex-1 flex-col min-h-0">
+        <div class="k-meta">
+          <span id="notesCountLabel">共 0 条随手笔记</span>
+          <span class="opacity-70">在题目下方输入后自动汇总</span>
+        </div>
+        <div id="myNotesListContainer" class="k-list"></div>
+      </div>
     </div>
   </div>
 
   <!-- 弹窗 3：数据安全备份、导入恢复与 GitHub Gist 云同步 -->
   <div id="syncModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="theme-card w-full max-w-xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[88vh] overflow-y-auto shadow-2xl space-y-4">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-200/70 dark:border-slate-700/70">
-        <div>
-          <h3 class="font-bold text-base">💾 PWA 离线数据守护与云同步中心</h3>
-          <p class="text-xs theme-muted">LocalStorage + IndexedDB 自动双写 · 支持 JSON 导入恢复与 Gist 云同步</p>
+    <div class="theme-card w-full max-w-xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[88vh] overflow-y-auto shadow-2xl space-y-3">
+      <div class="modal-head">
+        <div class="modal-head-main">
+          <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>
+          <div class="min-w-0">
+            <h3 class="modal-title">数据守护与云同步</h3>
+            <p class="modal-sub">本地双写 · JSON 备份 · GitHub Gist 跨设备同步</p>
+          </div>
         </div>
-        <button id="closeSyncModalBtn" type="button" class="w-8 h-8 rounded-lg theme-subtle border flex items-center justify-center text-sm font-bold">✕</button>
+        <button id="closeSyncModalBtn" type="button" class="modal-close" aria-label="关闭数据同步">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
       </div>
 
       <!-- 本地备份导出与导入 -->
-      <div class="p-3.5 rounded-xl theme-subtle border space-y-3">
-        <div class="text-xs font-bold flex items-center justify-between">
-          <span>📦 本地全量备份（答题记录 + 错题 + 收藏 + 笔记）</span>
-          <span id="idbSyncTimeText" class="text-[11px] text-emerald-600 dark:text-emerald-400 font-normal">IndexedDB 已同步</span>
+      <div class="sync-section">
+        <div class="sync-section-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+          <span>本地全量备份</span>
+          <span id="idbSyncTimeText" class="ml-auto text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">IndexedDB 已同步</span>
         </div>
+        <p class="text-[11px] theme-muted mb-2.5">包含答题记录、错题、收藏与随手笔记，可离线导出或换机恢复。</p>
         <div class="flex flex-wrap gap-2">
-          <button id="exportFullJsonBtn" type="button" class="px-3 py-2 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold">
-            📥 导出 JSON 全量备份文件
+          <button id="exportFullJsonBtn" type="button" class="sync-btn sync-btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            导出 JSON 备份
           </button>
-          <label class="px-3 py-2 rounded-lg theme-card border text-xs font-semibold cursor-pointer hover:border-blue-400">
-            📤 从 JSON 文件导入恢复
+          <label class="sync-btn sync-btn-ghost cursor-pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M5 3h14"/></svg>
+            导入 JSON 恢复
             <input id="importJsonFileInput" type="file" accept=".json,application/json" class="hidden" />
           </label>
-          <button id="clearAllProgressBtn" type="button" class="px-3 py-2 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-400/30 text-xs font-semibold">
-            🧹 清空重置进度
-          </button>
         </div>
-
-        <!-- 也可直接粘贴 JSON 备份恢复 -->
-        <div class="space-y-1.5 pt-1">
-          <textarea id="pasteJsonBackupInput" rows="2" placeholder="或者在此直接粘贴备份的 JSON 内容并点击下方恢复..." class="w-full p-2 rounded-lg theme-card border text-xs font-mono"></textarea>
-          <button id="restoreFromPasteBtn" type="button" class="px-3 py-1.5 rounded-lg theme-card border text-xs font-semibold hover:border-blue-500">
-            🔄 从粘贴文本恢复数据
+        <div class="space-y-1.5 pt-2.5">
+          <textarea id="pasteJsonBackupInput" rows="2" placeholder="或直接粘贴备份 JSON 内容后恢复..." class="w-full p-2 rounded-lg theme-card border text-xs font-mono"></textarea>
+          <button id="restoreFromPasteBtn" type="button" class="sync-btn sync-btn-ghost">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+            从粘贴文本恢复
           </button>
         </div>
       </div>
 
-      <!-- GitHub Gist 自动云同步设置 (完全兼容原版 fakao_gist_config) -->
-      <div class="p-3.5 rounded-xl theme-subtle border space-y-2.5">
-        <div class="text-xs font-bold">☁️ GitHub Gist 跨设备云同步（兼容原版配置）</div>
+      <!-- GitHub Gist 自动云同步设置 -->
+      <div class="sync-section">
+        <div class="sync-section-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.2 4 4 0 0 0 7 17"/><path d="M12 12v7"/><path d="M9 16l3-3 3 3"/></svg>
+          <span>GitHub Gist 跨设备云同步</span>
+        </div>
         <div class="space-y-2">
-          <input id="gistTokenInput" type="password" placeholder="GitHub Personal Access Token (需勾上 gist 权限)" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
-          <input id="gistIdInput" type="text" placeholder="Gist ID（留空则首次推送时自动创建新 Gist）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
+          <input id="gistTokenInput" type="password" placeholder="GitHub Personal Access Token（需 gist 权限）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
+          <input id="gistIdInput" type="text" placeholder="Gist ID（留空则首次推送自动创建）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
         </div>
-        <div class="flex flex-wrap items-center gap-2 pt-1">
-          <button id="saveGistConfigBtn" type="button" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold">保存配置</button>
-          <button id="pushToGistBtn" type="button" class="px-3 py-1.5 rounded-lg theme-card border text-xs font-semibold">⬆️ 上传进度至 Gist</button>
-          <button id="pullFromGistBtn" type="button" class="px-3 py-1.5 rounded-lg theme-card border text-xs font-semibold">⬇️ 从 Gist 拉取进度</button>
+        <div class="flex flex-wrap items-center gap-2 pt-2">
+          <button id="saveGistConfigBtn" type="button" class="sync-btn sync-btn-primary">保存配置</button>
+          <button id="pushToGistBtn" type="button" class="sync-btn sync-btn-ghost">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+            上传进度
+          </button>
+          <button id="pullFromGistBtn" type="button" class="sync-btn sync-btn-ghost">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
+            拉取进度
+          </button>
         </div>
-        <p id="gistSyncStatusText" class="text-[11px] theme-muted"></p>
+        <p id="gistSyncStatusText" class="text-[11px] theme-muted mt-1.5"></p>
+      </div>
+
+      <!-- 危险操作区：与常规操作隔离 -->
+      <div class="sync-section sync-danger">
+        <div class="sync-section-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.6L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+          <span>危险操作</span>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-[11px] theme-muted leading-relaxed">清空本机全部答题记录、错题、收藏与笔记，且无法撤销。</p>
+          <button id="clearAllProgressBtn" type="button" class="sync-btn sync-btn-danger shrink-0">清空重置</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1373,25 +1824,34 @@
   <!-- 弹窗 4：DeepSeek AI 密钥配置弹窗 -->
   <div id="aiConfigModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="theme-card w-full max-w-md rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xl">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-200/70 dark:border-slate-700/70">
-        <h3 class="font-bold text-base">🤖 DeepSeek AI 法考助教设置</h3>
-        <button id="closeAiModalBtn" type="button" class="w-8 h-8 rounded-lg theme-subtle border flex items-center justify-center text-sm font-bold">✕</button>
+      <div class="modal-head">
+        <div class="modal-head-main">
+          <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1" fill="currentColor" stroke="none"/></svg></span>
+          <div class="min-w-0">
+            <h3 class="modal-title">DeepSeek 法考助教</h3>
+            <p class="modal-sub">AI 深度拆解 · 易混选项对比 · 请求权基础</p>
+          </div>
+        </div>
+        <button id="closeAiModalBtn" type="button" class="modal-close" aria-label="关闭 AI 设置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
       </div>
-      <p class="text-xs theme-muted leading-relaxed">
-        配置 DeepSeek API Key 后，可针对任意客观/主观题一键生成法理拆解、易混选项对比及请求权基础分析。未配置时将提供本地结构化考点拆解。
-      </p>
-      <div class="space-y-2">
-        <label for="deepseekApiKeyInput" class="block text-xs font-semibold">DeepSeek API Key：</label>
-        <input id="deepseekApiKeyInput" type="password" placeholder="sk-..." class="w-full px-3 py-2 rounded-lg theme-subtle border text-xs" />
+      <div class="p-3 rounded-xl theme-subtle border text-[11px] theme-muted leading-relaxed">
+        配置 API Key 后，可对任意客观/主观题生成法理拆解与请求权基础分析；未配置时自动使用本地结构化考点拆解。
       </div>
-      <div class="flex justify-end gap-2 pt-2">
+      <div class="space-y-1.5">
+        <label for="deepseekApiKeyInput" class="block text-xs font-semibold">DeepSeek API Key</label>
+        <input id="deepseekApiKeyInput" type="password" placeholder="sk-..." autocomplete="off" class="w-full px-3 py-2 rounded-lg theme-subtle border text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <p class="text-[10px] theme-muted">密钥仅保存在本机浏览器，不会上传到任何服务器。</p>
+      </div>
+      <div class="flex justify-end gap-2 pt-1">
         <button id="saveAiConfigBtn" type="button" class="px-4 py-2 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold">保存设置</button>
       </div>
     </div>
   </div>
 
   <!-- 全局轻提示 Toast -->
-  <div id="toastContainer" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none space-y-2"></div>
+  <div id="toastContainer" class="fixed left-1/2 -translate-x-1/2 z-50 pointer-events-none space-y-2" role="status" aria-live="polite"></div>
 
   <script>
     // =========================================================================
@@ -1706,6 +2166,14 @@
     let isInstantSingleCheck = true;
     let autoRemoveWrong = true;
     let currentSelectedOptions = new Set();
+
+    // 答题卡分页 / 知识点检索状态
+    const SHEET_PAGE_SIZE = 120;
+    let sheetPage = 0;
+    const KNOWLEDGE_PAGE_SIZE = 10;
+    let knowledgePage = 0;
+    let knowledgeQuery = "";
+    let knowledgeSubject = "全部";
 
     // 持久化用户数据
     // userProgress[qid] = { answered: true, isCorrect: bool, userAnswer: [...], attempts: number, nextReviewAt: timestamp, lastAnsweredAt: timestamp }
@@ -2071,10 +2539,19 @@
 
       if (filteredQuestions.length === 0) {
         document.getElementById("qIndexBadge").textContent = "0 / 0";
-        let eIcon = "🗂️", eTitle = "当前筛选条件下暂无题目", eDesc = "试试切换科目，或点击上方“全部题目”清空筛选条件。";
-        if (currentSubject === "我的收藏") { eIcon = "⭐"; eTitle = "还没有收藏的题目"; eDesc = "点击题目右上角的 ☆ 收藏重点题，考前随时回看。"; }
-        else if (currentSubject === "错题重做") { eIcon = "📕"; eTitle = "错题本还是空的"; eDesc = "答错的题目会自动收录到这里，方便集中攻克。"; }
-        else if (currentSubject === "智能复习") { eIcon = "🧠"; eTitle = "暂无待复习题目"; eDesc = "按记忆曲线到期的题会自动出现在这里。"; }
+        const emptyIco = (paths) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+        let eIcon = emptyIco('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>');
+        let eTitle = "当前筛选条件下暂无题目", eDesc = "试试切换科目，或点击上方“全部题目”清空筛选条件。";
+        if (currentSubject === "我的收藏") {
+          eIcon = emptyIco('<path d="M12 3l2.7 6.3 6.8.6-5.2 4.5 1.6 6.6L12 17.8 6.1 21l1.6-6.6L2.5 9.9l6.8-.6z"/>');
+          eTitle = "还没有收藏的题目"; eDesc = "点击题目右上角的星标收藏重点题，考前随时回看。";
+        } else if (currentSubject === "错题重做") {
+          eIcon = emptyIco('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h6M9 11h6"/>');
+          eTitle = "错题本还是空的"; eDesc = "答错的题目会自动收录到这里，方便集中攻克。";
+        } else if (currentSubject === "智能复习") {
+          eIcon = emptyIco('<path d="M12 3a4 4 0 0 0-4 4 4 4 0 0 0-2 7 4 4 0 0 0 6 4 4 4 0 0 0 6-4 4 4 0 0 0-2-7 4 4 0 0 0-4-4z"/><path d="M12 7v10"/>');
+          eTitle = "暂无待复习题目"; eDesc = "按记忆曲线到期的题会自动出现在这里。";
+        }
         titleEl.innerHTML = `<div class="empty-illust"><div class="empty-ico">${eIcon}</div><div class="empty-title">${eTitle}</div><div class="empty-desc">${eDesc}</div></div>`;
         ["qSubjectBadge", "qTypeBadge", "qDiffBadge", "qYearBadge"].forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
         optsContainer.innerHTML = "";
@@ -2217,7 +2694,7 @@
 
     function handleOptionClick(q, optId) {
       if (studyMode === "recite") {
-        showToast("当前为📖背题模式，点击顶部“✍️刷题模式”可重新作答", "info");
+        showToast("当前为背题模式，点击顶部“刷题模式”可重新作答", "info");
         return;
       }
 
@@ -2296,7 +2773,7 @@
       } else if (autoRemoveWrong && wrongQuestions.includes(q.id)) {
         wrongQuestions = wrongQuestions.filter((id) => id !== q.id);
         safeSaveJSON(STORAGE_KEYS.WRONG, wrongQuestions);
-        showToast("🎉 恭喜答对！已自动从错题本移出", "success");
+        showToast("恭喜答对！已自动从错题本移出", "success");
       }
 
       renderOptionsList(q, true);
@@ -2317,13 +2794,13 @@
       const verdictBadge = document.getElementById("resultVerdictBadge");
       if (studyMode === "recite" && (!record || !record.answered)) {
         verdictBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/15 text-blue-600 dark:text-blue-300";
-        verdictBadge.textContent = "📖 背题模式 · 直接展示解析";
+        verdictBadge.textContent = "背题模式 · 直接展示解析";
       } else if (record && record.isCorrect) {
         verdictBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
-        verdictBadge.textContent = "✅ 回答正确";
+        verdictBadge.textContent = "回答正确";
       } else {
         verdictBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400";
-        verdictBadge.textContent = "❌ 回答错误（已加入错题本）";
+        verdictBadge.textContent = "回答错误（已加入错题本）";
       }
 
       renderExplanation(q.explanation);
@@ -2384,7 +2861,7 @@
         showToast("已取消收藏", "info");
       } else {
         favorites[q.id] = true;
-        showToast("⭐ 已加入收藏夹", "success");
+        showToast("已加入收藏夹", "success");
       }
       safeSaveJSON(STORAGE_KEYS.FAVORITES, favorites);
       renderQuestion(currentIndex);
@@ -2412,7 +2889,7 @@
       container.innerHTML = "";
 
       if (wrongQuestions.length === 0) {
-        container.innerHTML = `<div class="empty-illust"><div class="empty-ico">🎉</div><div class="empty-title">错题本空空如也</div><div class="empty-desc">答错的题目会自动收录于此，考前集中攻克薄弱点。</div></div>`;
+        container.innerHTML = `<div class="empty-illust"><div class="empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h6M9 11h6"/></svg></div><div class="empty-title">错题本空空如也</div><div class="empty-desc">答错的题目会自动收录于此，考前集中攻克薄弱点。</div></div>`;
         return;
       }
 
@@ -2427,7 +2904,7 @@
             <div class="flex items-center gap-1.5 mb-0.5">
               <span class="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold">${escapeHtml(q.subject)}</span>
               <span class="font-semibold">${escapeHtml(q.type)}</span>
-              ${reason ? `<span class="px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300">🏷️ ${escapeHtml(reason)}</span>` : ""}
+              ${reason ? `<span class="px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300">${escapeHtml(reason)}</span>` : ""}
             </div>
             <div class="truncate theme-muted">${escapeHtml(q.title)}</div>
           </div>
@@ -2457,90 +2934,246 @@
     // =========================================================================
     // 9. 答题卡弹窗、知识点/笔记中心弹窗、AI 深度追问与数据导入导出
     // =========================================================================
-    function openAnswerSheetModal() {
-      const grid = document.getElementById("answerSheetGrid");
-      grid.innerHTML = "";
-      filteredQuestions.forEach((q, idx) => {
+    // ── 答题卡：进度概览 + 每页 120 题，避免一次渲染近万个按钮 ──
+    function getSheetPageCount() {
+      return Math.max(1, Math.ceil(filteredQuestions.length / SHEET_PAGE_SIZE));
+    }
+
+    function updateSheetOverview() {
+      const total = filteredQuestions.length;
+      let correct = 0;
+      let wrong = 0;
+      filteredQuestions.forEach((q) => {
         const rec = userProgress[q.id];
-        const isFav = !!favorites[q.id];
-        const hasNote = !!(userNotes[q.id] && userNotes[q.id].trim());
-        const btn = document.createElement("button");
-        btn.type = "button";
-
-        let colorCls = "theme-subtle border";
-        let mark = "";
         if (rec && rec.answered) {
-          colorCls = rec.isCorrect ? "sheet-correct border-emerald-600" : "sheet-wrong border-rose-600";
-          mark = rec.isCorrect ? "✓" : "✕";
+          if (rec.isCorrect) correct++;
+          else wrong++;
         }
-        const activeRing = idx === currentIndex ? "ring-2 ring-blue-500 ring-offset-1" : "";
-        const favRing = isFav ? "ring-2 ring-amber-400" : "";
-
-        btn.className = `h-10 rounded-lg text-xs font-bold flex flex-col items-center justify-center relative transition ${colorCls} ${activeRing} ${favRing}`;
-        btn.innerHTML = `
-          ${mark ? `<span class="absolute top-0.5 right-1 text-[10px] leading-none font-bold opacity-90">${mark}</span>` : ""}
-          <span>${idx + 1}</span>
-          ${hasNote ? `<span class="text-[9px] leading-none">📝</span>` : ""}
-        `;
-        btn.addEventListener("click", () => {
-          jumpToQuestion(idx);
-          document.getElementById("answerSheetModal").classList.add("hidden");
-        });
-        grid.appendChild(btn);
       });
+      const answered = correct + wrong;
+      const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+      document.getElementById("sheetCorrectCount").textContent = String(correct);
+      document.getElementById("sheetWrongCount").textContent = String(wrong);
+      document.getElementById("sheetLeftCount").textContent = String(Math.max(0, total - answered));
+      document.getElementById("sheetProgressPct").textContent = `${pct}%`;
+      document.getElementById("sheetModalSub").textContent = `当前筛选 ${total} 题 · 每页 ${SHEET_PAGE_SIZE} 题 · 点击题号直接跳转`;
+    }
+
+    function renderAnswerSheetPage() {
+      const grid = document.getElementById("answerSheetGrid");
+      if (!grid) return;
+      const total = filteredQuestions.length;
+      const totalPages = getSheetPageCount();
+      sheetPage = Math.max(0, Math.min(sheetPage, totalPages - 1));
+
+      grid.innerHTML = "";
+      updateSheetOverview();
+
+      if (total === 0) {
+        grid.innerHTML = `<div class="k-empty col-span-full">
+          <div class="text-2xl mb-1.5 opacity-70">∅</div>
+          <div class="text-xs font-bold">当前筛选下没有题目</div>
+          <div class="text-[11px] theme-muted mt-1">调整科目、题型或搜索关键词后再打开答题卡。</div>
+        </div>`;
+      } else {
+        const start = sheetPage * SHEET_PAGE_SIZE;
+        const end = Math.min(start + SHEET_PAGE_SIZE, total);
+        const frag = document.createDocumentFragment();
+        for (let idx = start; idx < end; idx++) {
+          const q = filteredQuestions[idx];
+          const rec = userProgress[q.id];
+          const isFav = !!favorites[q.id];
+          const hasNote = !!(userNotes[q.id] && userNotes[q.id].trim());
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.dataset.idx = String(idx);
+
+          let colorCls = "theme-subtle border";
+          let mark = "";
+          if (rec && rec.answered) {
+            colorCls = rec.isCorrect ? "sheet-correct border-emerald-600" : "sheet-wrong border-rose-600";
+            mark = rec.isCorrect ? "✓" : "✕";
+          }
+          const activeRing = idx === currentIndex ? "ring-2 ring-blue-500 ring-offset-1" : "";
+          const favRing = isFav ? "ring-2 ring-amber-400" : "";
+
+          btn.className = `rounded-lg text-xs font-bold flex flex-col items-center justify-center relative transition ${colorCls} ${activeRing} ${favRing}`;
+          btn.setAttribute("aria-label", `第 ${idx + 1} 题${rec && rec.answered ? (rec.isCorrect ? "，已答对" : "，已答错") : "，未作答"}${isFav ? "，已收藏" : ""}`);
+          btn.innerHTML = `
+            ${mark ? `<span class="absolute top-0.5 right-1 text-[10px] leading-none font-bold opacity-90">${mark}</span>` : ""}
+            <span>${idx + 1}</span>
+            ${hasNote ? `<svg class="w-2.5 h-2.5 mt-0.5 opacity-65" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.4 2.6a2 2 0 0 1 3 3L11 16l-4 1 1-4z"/></svg>` : ""}
+          `;
+          frag.appendChild(btn);
+        }
+        grid.appendChild(frag);
+      }
+
+      document.getElementById("sheetPageInfo").textContent = `第 ${sheetPage + 1} / ${totalPages} 页`;
+      document.getElementById("sheetPrevBtn").disabled = sheetPage <= 0;
+      document.getElementById("sheetNextBtn").disabled = sheetPage >= totalPages - 1;
+      const jumpInput = document.getElementById("sheetJumpInput");
+      jumpInput.max = String(Math.max(1, total));
+      jumpInput.placeholder = total > 0 ? `${currentIndex + 1}` : "—";
+      jumpInput.value = "";
+    }
+
+    function openAnswerSheetModal() {
+      sheetPage = Math.floor(currentIndex / SHEET_PAGE_SIZE);
+      renderAnswerSheetPage();
       document.getElementById("answerSheetModal").classList.remove("hidden");
     }
 
-    function renderKnowledgeAndNotesModal() {
-      const kContainer = document.getElementById("knowledgeListContainer");
-      const nContainer = document.getElementById("myNotesListContainer");
+    function goToSheetPage(page) {
+      const totalPages = getSheetPageCount();
+      sheetPage = Math.max(0, Math.min(page, totalPages - 1));
+      renderAnswerSheetPage();
+    }
 
-      kContainer.innerHTML = "";
+    // ── 知识点中心：真实字段 point / detail，科目检索 + 折叠 + 分页 ──
+    function getKnowledgePoint(k) {
+      return k.point || k.title || k.name || "核心考点";
+    }
+    function getKnowledgeDetail(k) {
+      return k.detail || k.content || k.desc || "";
+    }
+
+    function getKnowledgeSubjectCounts() {
+      const map = new Map();
       knowledgeBase.forEach((k) => {
-        const card = document.createElement("div");
-        card.className = "p-3.5 rounded-xl theme-subtle border space-y-1.5";
-        card.innerHTML = `
-          <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 rounded bg-[#1a3a6b] text-white text-xs font-semibold">${escapeHtml(k.subject || "综合")}</span>
-            <h4 class="font-bold text-sm">${escapeHtml(k.title || k.name || "核心考点")}</h4>
-          </div>
-          <p class="text-xs sm:text-sm leading-relaxed whitespace-pre-line theme-muted">${formatLegalHighlight(k.content || k.desc || "")}</p>
-        `;
-        kContainer.appendChild(card);
+        const subject = (k.subject || "综合").trim() || "综合";
+        map.set(subject, (map.get(subject) || 0) + 1);
       });
+      return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    }
 
-      nContainer.innerHTML = "";
-      const noteIds = Object.keys(userNotes).filter((id) => userNotes[id] && userNotes[id].trim());
-      if (noteIds.length === 0) {
-        nContainer.innerHTML = `<div class="py-8 text-center text-xs theme-muted">暂未记录任何随手笔记。在每道题下方输入口诀或易错点会自动汇总到这里。</div>`;
-      } else {
-        noteIds.forEach((qid) => {
-          const q = allQuestions.find((item) => item.id === qid);
-          const card = document.createElement("div");
-          card.className = "p-3.5 rounded-xl theme-subtle border space-y-1.5";
-          card.innerHTML = `
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-blue-600 dark:text-blue-400">${escapeHtml(q ? `${q.subject} · ${q.type}` : qid)}</span>
-              <button type="button" data-qid="${escapeHtml(qid)}" class="jump-note-btn text-xs underline">跳转原题</button>
-            </div>
-            <div class="text-xs theme-muted truncate">${escapeHtml(q ? q.title : "")}</div>
-            <div class="p-2.5 rounded-lg theme-card border text-xs sm:text-sm whitespace-pre-line font-medium">${escapeHtml(userNotes[qid])}</div>
-          `;
-          nContainer.appendChild(card);
-        });
-
-        nContainer.querySelectorAll(".jump-note-btn").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const targetId = btn.getAttribute("data-qid");
-            currentSubject = "全部";
-            renderSubjectBar();
-            applyFilters(false);
-            const idx = filteredQuestions.findIndex((item) => item.id === targetId);
-            if (idx !== -1) jumpToQuestion(idx);
-            document.getElementById("knowledgeModal").classList.add("hidden");
-          });
-        });
+    function renderKnowledgeChips() {
+      const wrap = document.getElementById("kSubjectChips");
+      if (!wrap) return;
+      const counts = getKnowledgeSubjectCounts();
+      if (knowledgeSubject !== "全部" && !counts.some(([name]) => name === knowledgeSubject)) {
+        knowledgeSubject = "全部";
       }
+      const chips = [`<button type="button" class="k-chip ${knowledgeSubject === "全部" ? "is-active" : ""}" data-subject="全部">全部<b>${knowledgeBase.length}</b></button>`];
+      counts.forEach(([subject, count]) => {
+        chips.push(`<button type="button" class="k-chip ${knowledgeSubject === subject ? "is-active" : ""}" data-subject="${escapeHtml(subject)}">${escapeHtml(subject)}<b>${count}</b></button>`);
+      });
+      wrap.innerHTML = chips.join("");
+    }
+
+    function getFilteredKnowledge() {
+      const q = knowledgeQuery.trim().toLowerCase();
+      return knowledgeBase.filter((k) => {
+        const subject = (k.subject || "综合").trim() || "综合";
+        if (knowledgeSubject !== "全部" && subject !== knowledgeSubject) return false;
+        if (!q) return true;
+        return `${subject} ${getKnowledgePoint(k)} ${getKnowledgeDetail(k)}`.toLowerCase().includes(q);
+      });
+    }
+
+    function renderKnowledgeList() {
+      const container = document.getElementById("knowledgeListContainer");
+      if (!container) return;
+      const items = getFilteredKnowledge();
+      const totalPages = Math.max(1, Math.ceil(items.length / KNOWLEDGE_PAGE_SIZE));
+      knowledgePage = Math.max(0, Math.min(knowledgePage, totalPages - 1));
+      const start = knowledgePage * KNOWLEDGE_PAGE_SIZE;
+      const pageItems = items.slice(start, start + KNOWLEDGE_PAGE_SIZE);
+
+      if (pageItems.length === 0) {
+        container.innerHTML = `<div class="k-empty">
+          <div class="empty-ico mx-auto mb-2">?</div>
+          <div class="empty-title">没有匹配的考点</div>
+          <div class="empty-desc">试试更短的关键词，或切换到「全部」科目。</div>
+          <button type="button" id="kEmptyResetBtn" class="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600">重置筛选</button>
+        </div>`;
+      } else {
+        container.innerHTML = pageItems.map((k) => {
+          const detail = getKnowledgeDetail(k).trim();
+          const isLong = detail.length > 130;
+          return `<article class="k-card">
+            <div class="k-card-head">
+              <span class="k-subject">${escapeHtml(k.subject || "综合")}</span>
+              <h4 class="k-point">${escapeHtml(getKnowledgePoint(k))}</h4>
+            </div>
+            <div class="k-body ${isLong ? "is-clamped" : ""}">${detail ? formatLegalHighlight(detail) : "暂无详细展开，建议结合真题复盘。"}</div>
+            ${isLong ? `<button type="button" class="k-more" aria-expanded="false"><span>展开全文</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>` : ""}
+          </article>`;
+        }).join("");
+      }
+
+      const isFiltered = knowledgeSubject !== "全部" || knowledgeQuery.trim();
+      document.getElementById("kResultMeta").textContent = isFiltered
+        ? `筛选到 ${items.length} 条 · 共 ${knowledgeBase.length} 条考点`
+        : `共 ${knowledgeBase.length} 条考点 · 按科目分组`;
+      document.getElementById("kPageInfo").textContent = `第 ${knowledgePage + 1} / ${totalPages} 页`;
+      document.getElementById("kPrevBtn").disabled = knowledgePage <= 0;
+      document.getElementById("kNextBtn").disabled = knowledgePage >= totalPages - 1;
+      const clearBtn = document.getElementById("knowledgeSearchClear");
+      if (clearBtn) clearBtn.classList.toggle("is-visible", !!knowledgeQuery.trim());
+    }
+
+    function renderMyNotesList() {
+      const container = document.getElementById("myNotesListContainer");
+      if (!container) return;
+      const noteIds = Object.keys(userNotes).filter((id) => userNotes[id] && userNotes[id].trim());
+      document.getElementById("myNotesCount").textContent = String(noteIds.length);
+      document.getElementById("notesCountLabel").textContent = `共 ${noteIds.length} 条随手笔记`;
+
+      if (noteIds.length === 0) {
+        container.innerHTML = `<div class="k-empty">
+          <div class="empty-ico mx-auto mb-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.4 2.6a2 2 0 0 1 3 3L11 16l-4 1 1-4z"/></svg></div>
+          <div class="empty-title">还没有随手笔记</div>
+          <div class="empty-desc">在题目下方记录口诀、易错点或请求权基础，笔记会自动汇总到这里。</div>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = noteIds.map((qid) => {
+        const q = allQuestions.find((item) => item.id === qid);
+        return `<article class="k-card" style="border-left-color:#f59e0b">
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <span class="text-[11px] font-bold text-blue-600 dark:text-blue-400">${escapeHtml(q ? `${q.subject} · ${q.type}` : qid)}</span>
+            <button type="button" data-qid="${escapeHtml(qid)}" class="jump-note-btn text-[11px] font-semibold underline shrink-0">跳转原题</button>
+          </div>
+          <div class="text-[11px] theme-muted truncate mb-1.5">${escapeHtml(q ? q.title : "")}</div>
+          <div class="p-2.5 rounded-lg theme-card border text-[11.5px] whitespace-pre-line font-medium leading-relaxed">${escapeHtml(userNotes[qid])}</div>
+        </article>`;
+      }).join("");
+    }
+
+    function renderKnowledgeAndNotesModal() {
+      renderKnowledgeChips();
+      renderKnowledgeList();
+      renderMyNotesList();
+    }
+
+    function setKnowledgeTab(tab) {
+      const isKnowledge = tab !== "notes";
+      document.getElementById("tabKnowledgeCardsBtn").classList.toggle("is-active", isKnowledge);
+      document.getElementById("tabMyNotesBtn").classList.toggle("is-active", !isKnowledge);
+      document.getElementById("knowledgePane").classList.toggle("hidden", !isKnowledge);
+      document.getElementById("myNotesPane").classList.toggle("hidden", isKnowledge);
+      document.getElementById("myNotesPane").classList.toggle("flex", !isKnowledge);
+    }
+
+    function jumpToQuestionById(qid) {
+      currentSubject = "全部";
+      currentTypeFilter = "ALL";
+      currentDiffFilter = "ALL";
+      searchQuery = "";
+      const searchInput = document.getElementById("searchInput");
+      if (searchInput) searchInput.value = "";
+      const typeSel = document.getElementById("typeFilterSelect");
+      if (typeSel) typeSel.value = "ALL";
+      const diffSel = document.getElementById("diffFilterSelect");
+      if (diffSel) diffSel.value = "ALL";
+      renderSubjectBar();
+      applyFilters(false);
+      const idx = filteredQuestions.findIndex((item) => item.id === qid);
+      if (idx !== -1) jumpToQuestion(idx);
+      document.getElementById("knowledgeModal").classList.add("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     // 导出全量 JSON 备份
@@ -2563,7 +3196,7 @@
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      showToast("📥 全量 JSON 备份已导出下载", "success");
+      showToast("全量 JSON 备份已导出下载", "success");
     }
 
     // 从 JSON 对象恢复备份
@@ -2595,7 +3228,7 @@
       renderQuestion(currentIndex);
       updateStats();
       renderWrongList();
-      showToast("🎉 刷题记录、错题、收藏与笔记已成功恢复！", "success");
+      showToast("刷题记录、错题、收藏与笔记已成功恢复！", "success");
     }
 
     // 导出错题与笔记 CSV
@@ -2635,7 +3268,7 @@
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      showToast("📊 错题与笔记 CSV 已导出（Excel 可直接打开）", "success");
+      showToast("错题与笔记 CSV 已导出（Excel 可直接打开）", "success");
     }
 
     // DeepSeek AI 解析生成（支持真实 API 调用与本地结构化法理拆解兜底）
@@ -2653,7 +3286,7 @@
       } catch (e) {}
 
       const buildLocalFallback = () =>
-        `【本地结构化考点拆解（可在顶部“🤖 AI解析”配置 DeepSeek Key 开启实时追问）】\n` +
+        `【本地结构化考点拆解（可在顶部“AI解析”配置 DeepSeek Key 开启实时追问）】\n` +
         `1. 考查核心科目与题型：${q.subject} · ${q.type}\n` +
         `2. 命题人题眼提示：注意审题中的主体关系（如第三人善意/恶意、是否届期、管辖连接点）以及否定词。\n` +
         `3. 核心法条锚点：${(q.lawBasis && q.lawBasis.join("、")) || "详见上方解析条文"}\n` +
@@ -2663,7 +3296,7 @@
         ? `题目：${q.title}\n选项：${JSON.stringify(q.options)}\n标准答案：${q.answer.join("")}`
         : `题目：${q.title}\n选项：${JSON.stringify(q.options)}\n标准答案：${q.answer.join("")}`;
 
-      textEl.textContent = "🤖 法考助教正在为你推演法理与要件...";
+      textEl.textContent = "法考助教正在为你推演法理与要件...";
 
       // 优先走同源边缘函数 /api/ai（密钥保存在服务端，用户无需自备 Key）
       let served = false;
@@ -2744,6 +3377,7 @@
 
     function setStudyMode(mode) {
       studyMode = mode;
+      document.body.classList.toggle("focus-mode", mode !== "practice");
       const pBtn = document.getElementById("modePracticeBtn");
       const rBtn = document.getElementById("modeReciteBtn");
       const eBtn = document.getElementById("modeExamBtn");
@@ -2764,14 +3398,14 @@
         dockReciteText.textContent = "退背题";
         timerBox.classList.add("hidden");
         timerBox.classList.remove("flex");
-        showToast("📖 已开启背题模式：直接展开答案与法条解析", "info");
+        showToast("已开启背题模式：直接展开答案与法条解析", "info");
       } else if (mode === "exam") {
         eBtn.className = "px-3 py-1 rounded-md text-xs font-semibold transition bg-rose-500 text-white";
         dockReciteText.textContent = "背题";
         timerBox.classList.remove("hidden");
         timerBox.classList.add("flex");
         startExamTimer();
-        showToast("⏱️ 模拟计时已启动，加油！", "info");
+        showToast("模拟计时已启动，加油！", "info");
       }
       renderQuestion(currentIndex);
     }
@@ -2784,6 +3418,42 @@
         const secs = String(examSeconds % 60).padStart(2, "0");
         document.getElementById("examTimerText").textContent = `${mins}:${secs}`;
       }, 1000);
+    }
+
+    // 主题切换：从按钮位置扩散的圆形揭示（支持降级与减弱动效）
+    function switchThemeWithReveal(nextTheme, event) {
+      const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!document.startViewTransition || reduceMotion) {
+        applyTheme(nextTheme.key);
+        return;
+      }
+      const rect = event && event.currentTarget ? event.currentTarget.getBoundingClientRect() : null;
+      const x = event && Number.isFinite(event.clientX) && event.clientX > 0 ? event.clientX : rect ? rect.left + rect.width / 2 : window.innerWidth - 40;
+      const y = event && Number.isFinite(event.clientY) && event.clientY > 0 ? event.clientY : rect ? rect.top + rect.height / 2 : 40;
+      const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+      const transition = document.startViewTransition(() => applyTheme(nextTheme.key));
+      transition.ready
+        .then(() => {
+          document.documentElement.animate(
+            { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+            { duration: 520, easing: "cubic-bezier(.22,1,.36,1)", pseudoElement: "::view-transition-new(root)" }
+          );
+        })
+        .catch(() => {});
+    }
+
+    // Hero 桌面倒计时环：距 2028 年法考客观题开考
+    function renderHeroCountdown() {
+      const daysEl = document.getElementById("heroCdDays");
+      const ringEl = document.getElementById("heroCdRing");
+      if (!daysEl || !ringEl) return;
+      const target = new Date(2028, 8, 16, 9, 0, 0).getTime();
+      const cycleStart = new Date(2025, 8, 16, 9, 0, 0).getTime();
+      const now = Date.now();
+      const days = Math.max(0, Math.ceil((target - now) / 86400000));
+      const pct = Math.max(0, Math.min(100, ((now - cycleStart) / (target - cycleStart)) * 100));
+      daysEl.textContent = String(days);
+      ringEl.style.setProperty("--cd-p", pct.toFixed(2));
     }
 
     // 绑定所有事件与初始化
@@ -2836,12 +3506,15 @@
       tryLoadExternalRepoData();
 
       // 5. 绑定顶部与模式切换按钮
-      document.getElementById("themeToggleBtn").addEventListener("click", () => {
+      document.getElementById("themeToggleBtn").addEventListener("click", (event) => {
         const idx = THEME_CYCLE.findIndex((t) => t.key === currentThemeKey);
         const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
-        applyTheme(next.key);
-        showToast(`已切换至 ${next.icon} ${next.label}模式`, "info");
+        switchThemeWithReveal(next, event);
+        showToast(`已切换至${next.label}模式`, "info");
       });
+
+      renderHeroCountdown();
+      setInterval(renderHeroCountdown, 60000);
 
       document.getElementById("modePracticeBtn").addEventListener("click", () => setStudyMode("practice"));
       document.getElementById("modeReciteBtn").addEventListener("click", () => setStudyMode("recite"));
@@ -2901,7 +3574,7 @@
         filteredQuestions.sort(() => Math.random() - 0.5);
         currentIndex = 0;
         renderQuestion(0);
-        showToast("🔀 已随机打乱当前题库顺序", "info");
+        showToast("已随机打乱当前题库顺序", "info");
       });
 
       const searchInput = document.getElementById("searchInput");
@@ -2951,7 +3624,7 @@
         wrongReasons[q.id] = e.target.value;
         safeSaveJSON(STORAGE_KEYS.WRONG_REASONS, wrongReasons);
         renderWrongList();
-        showToast("🏷️ 错因标签已保存", "success");
+        showToast("错因标签已保存", "success");
       });
 
       document.getElementById("autoRemoveWrongCheckbox").addEventListener("change", (e) => {
@@ -2987,9 +3660,34 @@
         setStudyMode(studyMode === "recite" ? "practice" : "recite");
       });
 
-      // 答题卡弹窗控制
+      // 答题卡弹窗控制（分页 + 题号跳转）
       document.getElementById("closeSheetModalBtn").addEventListener("click", () => {
         document.getElementById("answerSheetModal").classList.add("hidden");
+      });
+      document.getElementById("answerSheetGrid").addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-idx]");
+        if (!btn) return;
+        jumpToQuestion(Number(btn.dataset.idx));
+        document.getElementById("answerSheetModal").classList.add("hidden");
+      });
+      document.getElementById("sheetPrevBtn").addEventListener("click", () => goToSheetPage(sheetPage - 1));
+      document.getElementById("sheetNextBtn").addEventListener("click", () => goToSheetPage(sheetPage + 1));
+      const submitSheetJump = () => {
+        const input = document.getElementById("sheetJumpInput");
+        const n = Number.parseInt(input.value, 10);
+        if (!Number.isFinite(n) || n < 1 || n > filteredQuestions.length) {
+          showToast(`请输入 1 - ${filteredQuestions.length} 之间的题号`, "warn");
+          return;
+        }
+        jumpToQuestion(n - 1);
+        document.getElementById("answerSheetModal").classList.add("hidden");
+      };
+      document.getElementById("sheetJumpBtn").addEventListener("click", submitSheetJump);
+      document.getElementById("sheetJumpInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          submitSheetJump();
+        }
       });
       document.getElementById("jumpFirstUnansweredBtn").addEventListener("click", () => {
         const idx = filteredQuestions.findIndex((q) => !userProgress[q.id] || !userProgress[q.id].answered);
@@ -3003,24 +3701,82 @@
 
       // 知识点与笔记中心弹窗
       document.getElementById("openKnowledgeBtn").addEventListener("click", () => {
+        knowledgePage = 0;
+        setKnowledgeTab("knowledge");
         renderKnowledgeAndNotesModal();
         document.getElementById("knowledgeModal").classList.remove("hidden");
       });
       document.getElementById("closeKnowledgeModalBtn").addEventListener("click", () => {
         document.getElementById("knowledgeModal").classList.add("hidden");
       });
-      document.getElementById("tabKnowledgeCardsBtn").addEventListener("click", () => {
-        document.getElementById("knowledgeListContainer").classList.remove("hidden");
-        document.getElementById("myNotesListContainer").classList.add("hidden");
-        document.getElementById("tabKnowledgeCardsBtn").className = "px-3 py-1.5 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold";
-        document.getElementById("tabMyNotesBtn").className = "px-3 py-1.5 rounded-lg theme-subtle border text-xs font-semibold";
-      });
+      document.getElementById("tabKnowledgeCardsBtn").addEventListener("click", () => setKnowledgeTab("knowledge"));
       document.getElementById("tabMyNotesBtn").addEventListener("click", () => {
-        renderKnowledgeAndNotesModal();
-        document.getElementById("knowledgeListContainer").classList.add("hidden");
-        document.getElementById("myNotesListContainer").classList.remove("hidden");
-        document.getElementById("tabMyNotesBtn").className = "px-3 py-1.5 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold";
-        document.getElementById("tabKnowledgeCardsBtn").className = "px-3 py-1.5 rounded-lg theme-subtle border text-xs font-semibold";
+        renderMyNotesList();
+        setKnowledgeTab("notes");
+      });
+
+      // 知识点：科目筛选 / 搜索 / 折叠 / 分页 / 笔记跳转
+      document.getElementById("kSubjectChips").addEventListener("click", (e) => {
+        const chip = e.target.closest(".k-chip");
+        if (!chip) return;
+        knowledgeSubject = chip.dataset.subject || "全部";
+        knowledgePage = 0;
+        renderKnowledgeChips();
+        renderKnowledgeList();
+      });
+      const knowledgeSearch = document.getElementById("knowledgeSearchInput");
+      knowledgeSearch.addEventListener("input", () => {
+        knowledgeQuery = knowledgeSearch.value;
+        knowledgePage = 0;
+        renderKnowledgeList();
+      });
+      document.getElementById("knowledgeSearchClear").addEventListener("click", () => {
+        knowledgeSearch.value = "";
+        knowledgeQuery = "";
+        knowledgePage = 0;
+        renderKnowledgeList();
+        knowledgeSearch.focus();
+      });
+      document.getElementById("kResetFilterBtn").addEventListener("click", () => {
+        knowledgeSubject = "全部";
+        knowledgeQuery = "";
+        knowledgeSearch.value = "";
+        knowledgePage = 0;
+        renderKnowledgeChips();
+        renderKnowledgeList();
+      });
+      document.getElementById("knowledgeListContainer").addEventListener("click", (e) => {
+        const more = e.target.closest(".k-more");
+        if (more) {
+          const card = more.closest(".k-card");
+          const body = card.querySelector(".k-body");
+          const open = card.classList.toggle("is-open");
+          body.classList.toggle("is-clamped", !open);
+          more.setAttribute("aria-expanded", String(open));
+          more.querySelector("span").textContent = open ? "收起" : "展开全文";
+          return;
+        }
+        if (e.target.closest("#kEmptyResetBtn")) {
+          knowledgeSubject = "全部";
+          knowledgeQuery = "";
+          knowledgeSearch.value = "";
+          knowledgePage = 0;
+          renderKnowledgeChips();
+          renderKnowledgeList();
+        }
+      });
+      document.getElementById("kPrevBtn").addEventListener("click", () => {
+        knowledgePage = Math.max(0, knowledgePage - 1);
+        renderKnowledgeList();
+      });
+      document.getElementById("kNextBtn").addEventListener("click", () => {
+        knowledgePage++;
+        renderKnowledgeList();
+      });
+      document.getElementById("myNotesListContainer").addEventListener("click", (e) => {
+        const btn = e.target.closest(".jump-note-btn");
+        if (!btn) return;
+        jumpToQuestionById(btn.dataset.qid);
       });
 
       // AI 追问与配置
@@ -3048,7 +3804,7 @@
           localStorage.setItem(STORAGE_KEYS.DEEPSEEK_KEY, key);
         } catch (e) {}
         document.getElementById("aiConfigModal").classList.add("hidden");
-        showToast("🤖 DeepSeek API 设置已保存", "success");
+        showToast("DeepSeek API 设置已保存", "success");
       });
 
       // 备份与同步中心弹窗
@@ -3106,7 +3862,7 @@
         renderQuestion(currentIndex);
         updateStats();
         renderWrongList();
-        showToast("🧹 已清空并重置本地做题记录", "info");
+        showToast("已清空并重置本地做题记录", "info");
       });
 
       // GitHub Gist 云同步操作
@@ -3128,7 +3884,7 @@
           showToast("请先填写 GitHub Personal Access Token", "warn");
           return;
         }
-        statusEl.textContent = "⏳ 正在上传同步至 GitHub Gist...";
+        statusEl.textContent = "正在上传同步至 GitHub Gist...";
         const contentStr = JSON.stringify({
           fakao_progress: userProgress,
           fakao_wrong_questions: wrongQuestions,
@@ -3157,13 +3913,13 @@
             gistId = data.id;
             document.getElementById("gistIdInput").value = gistId;
             safeSaveJSON(STORAGE_KEYS.GIST, { token, gistId });
-            statusEl.textContent = `✅ 同步成功！Gist ID: ${gistId}`;
-            showToast("☁️ 已成功上传备份至 GitHub Gist", "success");
+            statusEl.textContent = `同步成功！Gist ID: ${gistId}`;
+            showToast("已成功上传备份至 GitHub Gist", "success");
           } else {
-            statusEl.textContent = "❌ 上传失败：" + (data.message || res.status);
+            statusEl.textContent = "上传失败：" + (data.message || res.status);
           }
         } catch (err) {
-          statusEl.textContent = "❌ 网络请求失败，请检查 Token 权限与网络连接";
+          statusEl.textContent = "网络请求失败，请检查 Token 权限与网络连接";
         }
       });
 
@@ -3175,7 +3931,7 @@
           showToast("拉取进度需要同时填写 Token 和 Gist ID", "warn");
           return;
         }
-        statusEl.textContent = "⏳ 正在从 Gist 拉取进度...";
+        statusEl.textContent = "正在从 Gist 拉取进度...";
         try {
           const res = await fetch(`https://api.github.com/gists/${gistId}`, {
             headers: { Authorization: `token ${token}`, Accept: "application/vnd.github.v3+json" }
@@ -3184,12 +3940,12 @@
           const fileObj = data.files && (data.files["fakao_sync_data.json"] || Object.values(data.files)[0]);
           if (fileObj && fileObj.content) {
             restoreBackupPayload(JSON.parse(fileObj.content));
-            statusEl.textContent = "✅ 已成功从 Gist 恢复最新刷题进度！";
+            statusEl.textContent = "已成功从 Gist 恢复最新刷题进度！";
           } else {
-            statusEl.textContent = "❌ 未在目标 Gist 中找到备份数据";
+            statusEl.textContent = "未在目标 Gist 中找到备份数据";
           }
         } catch (err) {
-          statusEl.textContent = "❌ 拉取失败，请检查 Gist ID 是否正确";
+          statusEl.textContent = "拉取失败，请检查 Gist ID 是否正确";
         }
       });
 
@@ -3228,12 +3984,23 @@
 
       // 8. 注册 Service Worker 与版本更新提示 (仅在同源 HTTP/HTTPS 部署环境下启用)
       let waitingWorker = null;
+      const revealSwBanner = async () => {
+        document.getElementById("swUpdateBanner").classList.remove("hidden");
+        try {
+          const res = await fetch([".", "sw.js"].join("/"), { cache: "no-store" });
+          const txt = await res.text();
+          const matched = txt.match(/CACHE_VERSION\s*=\s*["']([^"']+)["']/);
+          if (matched && matched[1]) {
+            document.getElementById("swUpdateVersion").textContent = `离线缓存 ${matched[1]} 已就绪`;
+          }
+        } catch (e) {}
+      };
       if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
         const swPath = [".", "sw.js"].join("/");
         navigator.serviceWorker.register(swPath).then((reg) => {
           if (reg.waiting) {
             waitingWorker = reg.waiting;
-            document.getElementById("swUpdateBanner").classList.remove("hidden");
+            revealSwBanner();
           }
           reg.addEventListener("updatefound", () => {
             const newWorker = reg.installing;
@@ -3241,7 +4008,7 @@
             newWorker.addEventListener("statechange", () => {
               if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
                 waitingWorker = newWorker;
-                document.getElementById("swUpdateBanner").classList.remove("hidden");
+                revealSwBanner();
               }
             });
           });
@@ -3352,8 +4119,8 @@
     })();
   </script>
 <style id="aiqa-style">
-#aiqa-btn{position:fixed;right:18px;bottom:18px;z-index:2147483000;padding:10px 14px;border-radius:999px;background:#1a3a6b;color:#fff;border:0;font:600 14px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25)}
-#aiqa-panel{position:fixed;right:18px;bottom:70px;width:min(360px,calc(100vw - 36px));max-height:70vh;background:#fff;color:#111;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:none;flex-direction:column;z-index:2147483001;overflow:hidden;font:14px/1.5 system-ui,sans-serif}
+#aiqa-btn{position:fixed;right:18px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:60;padding:10px 14px;border-radius:999px;background:#1a3a6b;color:#fff;border:0;font:600 14px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+#aiqa-panel{position:fixed;right:18px;bottom:calc(126px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 36px));max-height:70vh;background:#fff;color:#111;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:none;flex-direction:column;z-index:61;overflow:hidden;font:14px/1.5 system-ui,sans-serif}
 #aiqa-panel.open{display:flex}
 #aiqa-head{padding:10px 12px;background:#1a3a6b;color:#fff;font-weight:600;display:flex;justify-content:space-between;align-items:center}
 #aiqa-msgs{padding:10px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px;background:#f6f8fb}
@@ -3371,7 +4138,7 @@
 .aiqa-save:hover{background:#1a3a6b;color:#fff}
 </style>
 <style>
-#verBadge{position:fixed;left:10px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:9000;font:600 11px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;color:#5a1524;background:rgba(255,255,255,.72);border:1px solid rgba(90,21,36,.22);padding:3px 8px;border-radius:999px;opacity:.75;pointer-events:none;user-select:none;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#verBadge{position:fixed;left:10px;bottom:calc(88px + env(safe-area-inset-bottom));z-index:60;font:600 11px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;color:#5a1524;background:rgba(255,255,255,.72);border:1px solid rgba(90,21,36,.22);padding:3px 8px;border-radius:999px;opacity:.75;pointer-events:none;user-select:none;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 </style>
 <div id="verBadge" title="当前前端缓存版本（用于确认是否已更新到最新）">v…</div>
 <script>
@@ -3404,7 +4171,7 @@
   // 快捷提问
   var quickTexts=['讲一下当前这道题','总结一个法考知识点','给我出一道练习题','我的错题怎么做','还剩多久考试'];
   quickTexts.forEach(function(t){ var b=document.createElement('button'); b.type='button'; b.className='aiqa-chip'; b.textContent=t; b.addEventListener('click',function(){ inp.value=''; askWith(t); }); chips.appendChild(b); });
-  function add(role,text,btnFn){ var d=document.createElement('div'); d.className='aiqa-m '+(role==='user'?'aiqa-u':'aiqa-a'); d.textContent=text; if(btnFn){ var b=document.createElement('button'); b.className='aiqa-save'; b.textContent='📌 存成笔记'; b.type='button'; b.addEventListener('click',btnFn); d.appendChild(document.createElement('br')); d.appendChild(b); } msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
+  function add(role,text,btnFn){ var d=document.createElement('div'); d.className='aiqa-m '+(role==='user'?'aiqa-u':'aiqa-a'); d.textContent=text; if(btnFn){ var b=document.createElement('button'); b.className='aiqa-save'; b.textContent='存成笔记'; b.type='button'; b.addEventListener('click',btnFn); d.appendChild(document.createElement('br')); d.appendChild(b); } msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
   function saveToNote(ansText){
     try{
       var text=ansText||'';
