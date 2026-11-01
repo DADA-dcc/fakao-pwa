@@ -13,10 +13,11 @@
 
 ## 当前进度（2026-11-01）
 
-- `main` @ `93fe801` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v33`。
+- `main` @ `3827559` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v34`。
 - 现状功能：单文件 SPA；开屏为**内联 3D 天平+法槌**（Three.js r128 + `vendor/GLTFLoader.js`，模型 `assets/models/legal.glb`）+ 酒红金渐变，倒计时目标 2028-09-16；左下角有**动态版本角标**（读 sw `CACHE_VERSION`，用于确认是否已更新到最新）。
 - SEO：`robots.txt` / `sitemap.xml` / `index.html` `<head>`（canonical、og、twitter）均已统一为 `https://xs06.de5.net/`；全仓库已无已废弃的旧域名引用。
 - 最近提交：
+  - `3827559` feat(ui): 顶部新增流动液态七彩玻璃流体（SW v33→v34）
   - `93fe801` feat(ui): 主流程图标线性化（科目筛选/题卡操作/掌握状态/笔记与错题标题/CSV 导出）+ Hero 窄屏收缩（SW v32→v33）
   - `51447f7` feat(ui): 统计卡图标线性化分色 + 题眼高亮/单选即判改状态药丸开关（SW v31→v32）
   - `150553a` fix(pages): 新增 404 兜底跳转首页，兼容误带 /fakao-pwa/ 旧路径
