@@ -1548,6 +1548,310 @@
       }
     }
   </style>
+
+  <!-- ===== v13 精修层：解析判决书 / 答题卡统计条 / 知识点卡脊 / 操作按钮胶囊 ===== -->
+  <style id="ui-v13">
+    /* ───────── 1. 解析面板：从灰盒子升级为「判决书」 ───────── */
+    #explanationBox{
+      position:relative; overflow:hidden;
+      border-radius:16px !important;
+      padding:13px 14px 15px !important;
+      background:linear-gradient(180deg,rgba(255,255,255,.5),transparent 150px),var(--bg-subtle) !important;
+      border:1px solid color-mix(in srgb,var(--border-color) 86%,transparent) !important;
+      box-shadow:0 22px 46px -36px rgba(15,35,70,.6), inset 0 1px 0 rgba(255,255,255,.5);
+    }
+    html[data-theme="dark"] #explanationBox{
+      background:linear-gradient(180deg,rgba(255,255,255,.04),transparent 150px),var(--bg-subtle) !important;
+      box-shadow:0 22px 46px -34px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    #explanationBox::before{
+      content:""; position:absolute; left:0; right:0; top:0; height:3px;
+      background:linear-gradient(90deg,#1a3a6b,#2563eb 46%,#f3c969);
+    }
+    html[data-theme="sepia"] #explanationBox::before{
+      background:linear-gradient(90deg,#5c3a21,#8b5a2b 46%,#c79a3b);
+    }
+
+    /* 判定横幅：随结果变色的判决条（正确绿 / 错误红 / 背题蓝） */
+    #explanationBox > div:first-child{
+      border-bottom:0 !important;
+      border-radius:12px;
+      padding:10px 12px !important;
+      background:rgba(37,99,235,.055);
+      border:1px solid rgba(37,99,235,.15);
+      box-shadow:inset 3px 0 0 #2563eb;
+    }
+    #explanationBox > div:first-child:has(#resultVerdictBadge[class*="emerald"]){
+      background:linear-gradient(100deg,rgba(16,185,129,.14),rgba(16,185,129,.03));
+      border-color:rgba(16,185,129,.28);
+      box-shadow:inset 3px 0 0 #10b981;
+    }
+    #explanationBox > div:first-child:has(#resultVerdictBadge[class*="rose"]){
+      background:linear-gradient(100deg,rgba(244,63,94,.14),rgba(244,63,94,.03));
+      border-color:rgba(244,63,94,.28);
+      box-shadow:inset 3px 0 0 #f43f5e;
+    }
+    #explanationBox > div:first-child > div > span{
+      font-size:11px !important; font-weight:700 !important;
+      color:var(--text-muted); letter-spacing:.02em; gap:6px;
+    }
+    #explanationBox .correct-answer-chip{
+      min-width:2.2em; padding:.18rem .7rem; border-radius:9px; font-size:1.05rem;
+      box-shadow:0 8px 18px -10px rgba(5,150,105,.95), inset 0 1px 0 rgba(255,255,255,.3);
+    }
+    #explanationBox .answer-chip-user{
+      min-width:2.2em; padding:.18rem .7rem; border-radius:9px; font-size:.95rem;
+    }
+    #resultVerdictBadge{
+      border-radius:8px !important;
+      padding:3px 10px !important;
+      font-size:11.5px !important;
+      letter-spacing:.02em;
+      border:1px solid transparent;
+    }
+    #resultVerdictBadge[class*="emerald"]{ border-color:rgba(16,185,129,.4); }
+    #resultVerdictBadge[class*="rose"]{ border-color:rgba(244,63,94,.4); }
+    #resultVerdictBadge[class*="blue"]{ border-color:rgba(59,130,246,.4); }
+
+    /* 解析小标题：书眉式标签 */
+    .exp-kicker{
+      font-size:11px !important; font-weight:800 !important;
+      letter-spacing:.06em; color:#1d4ed8 !important; opacity:.94;
+    }
+    .exp-kicker svg{ width:13px !important; height:13px !important; }
+    html[data-theme="dark"] .exp-kicker{ color:#93c5fd !important; }
+    html[data-theme="sepia"] .exp-kicker{ color:#8b5a2b !important; }
+
+    /* 解析正文：文档左边距书脊 */
+    #explanationContent{
+      margin-top:2px;
+      padding-left:13px;
+      border-left:2px solid rgba(37,99,235,.2);
+      font-size:13px;
+      line-height:1.95;
+      color:var(--text-main);
+    }
+    html[data-theme="dark"] #explanationContent{ border-left-color:rgba(147,197,253,.24); }
+    html[data-theme="sepia"] #explanationContent{ border-left-color:rgba(139,90,43,.26); }
+
+    /* 法条依据：金色书签条 */
+    #lawBasisBadge{ gap:6px !important; padding-top:4px !important; }
+    #lawBasisBadge:empty{ display:none !important; }
+    #lawBasisBadge > span{
+      border-radius:7px !important;
+      padding:3px 8px !important;
+      font-size:10.5px !important;
+      letter-spacing:.01em;
+      background:rgba(26,58,107,.09) !important;
+      color:#1e40af !important;
+      border:1px solid rgba(26,58,107,.18) !important;
+      box-shadow:inset 2px 0 0 #f3c969;
+      font-variant-numeric:tabular-nums;
+    }
+    html[data-theme="dark"] #lawBasisBadge > span{
+      background:rgba(96,165,250,.14) !important; color:#bfdbfe !important;
+      border-color:rgba(147,197,253,.24) !important;
+    }
+    html[data-theme="sepia"] #lawBasisBadge > span{
+      background:rgba(139,90,43,.12) !important; color:#8b5a2b !important;
+      border-color:rgba(139,90,43,.26) !important;
+      box-shadow:inset 2px 0 0 #c79a3b;
+    }
+
+    /* AI 追问区 */
+    #aiResponseBox{ border-radius:12px !important; }
+    #sendAiFollowupBtn{ border-radius:9px !important; box-shadow:0 7px 16px -10px rgba(79,70,229,.9); }
+
+    /* ───────── 2. 题卡操作行：胶囊按钮 ───────── */
+    #submitAnswerBtn{
+      border-radius:999px !important;
+      padding:8px 17px !important;
+      background:linear-gradient(135deg,#1a3a6b,#24497f) !important;
+      box-shadow:0 10px 24px -14px rgba(26,58,107,.92), inset 0 1px 0 rgba(255,255,255,.16) !important;
+    }
+    #submitAnswerBtn:hover{ filter:brightness(1.08); }
+    #toggleAnalysisBtn, #askAiExplainBtn, #removeWrongBtn{ border-radius:999px !important; }
+    #askAiExplainBtn{ background:rgba(99,102,241,.1) !important; }
+    #toggleAnalysisBtn:hover{ background:var(--bg-card) !important; }
+
+    /* 随手笔记 */
+    #questionNoteInput{
+      border-radius:12px !important;
+      line-height:1.85;
+      transition:border-color .16s ease, box-shadow .16s ease, background .16s ease;
+    }
+    #questionNoteInput:focus{
+      background:var(--bg-card) !important;
+      border-color:#f3c969 !important;
+      box-shadow:0 0 0 3px rgba(243,201,105,.18) !important;
+      outline:none;
+    }
+    html[data-theme="sepia"] #questionNoteInput:focus{ border-color:#c79a3b !important; }
+    #insertNoteTemplateBtn{
+      padding:2px 8px; border-radius:999px;
+      background:rgba(37,99,235,.08); border:1px solid rgba(37,99,235,.16);
+      font-weight:700; text-decoration:none !important;
+    }
+    #insertNoteTemplateBtn:hover{ background:rgba(37,99,235,.16); }
+    #noteSavedStatus{ font-variant-numeric:tabular-nums; }
+
+    /* ───────── 3. 错题本：计数胶囊 + 去重做按钮 ───────── */
+    #wrongListCountBadge{
+      font-variant-numeric:tabular-nums;
+      font-size:10.5px !important;
+      padding:2px 8px !important;
+      border:1px solid rgba(244,63,94,.3);
+      letter-spacing:.01em;
+    }
+    #wrongQuestionsList > div.wrong-card{
+      border-radius:12px !important;
+      padding:9px 11px !important;
+      border-color:color-mix(in srgb,var(--border-color) 80%,#fda4af 20%) !important;
+    }
+    #wrongQuestionsList > div.wrong-card > button{
+      border-radius:999px !important;
+      padding:4px 11px !important;
+      font-size:11px !important;
+      background:linear-gradient(135deg,#1a3a6b,#24497f) !important;
+      box-shadow:0 7px 16px -10px rgba(26,58,107,.95) !important;
+    }
+    #exportWrongCsvBtn{
+      border-radius:999px !important;
+      padding:4px 11px !important;
+      font-size:11px !important;
+    }
+
+    /* ───────── 4. 答题卡弹窗：无间隙统计条 + 圆角格子 + 胶囊分页 ───────── */
+    .sheet-overview{
+      flex:0 0 auto !important;          /* 关键：窄屏下不被弹窗 flex 布局压缩裁切 */
+      gap:0 !important;
+      padding:0 !important;
+      margin-top:10px;
+      background:var(--bg-subtle);
+      border:1px solid var(--border-color);
+      border-radius:11px;
+      overflow:hidden;
+    }
+    .sheet-stat{
+      background:transparent !important;
+      border:0 !important;
+      border-right:1px solid var(--border-color) !important;
+      border-radius:0 !important;
+      padding:9px 6px 8px !important;
+      position:relative;
+    }
+    .sheet-stat:last-child{ border-right:0 !important; }
+    .sheet-stat::after{ content:""; position:absolute; left:0; right:0; top:0; height:2px; }
+    .sheet-stat.ok::after{ background:#10b981; }
+    .sheet-stat.bad::after{ background:#f43f5e; }
+    .sheet-stat.left::after{ background:#2563eb; }
+    .sheet-stat:last-child::after{ background:#f3c969; }
+    .sheet-stat b{
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:15px !important; letter-spacing:-.01em;
+    }
+    .sheet-stat span{ font-size:9.5px !important; letter-spacing:.02em; }
+    #answerSheetGrid{ gap:6px !important; }
+    #answerSheetGrid button{
+      border-radius:9px !important;
+      min-height:36px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-variant-numeric:tabular-nums;
+    }
+    #jumpFirstUnansweredBtn{
+      padding:3px 9px; border-radius:999px;
+      background:rgba(37,99,235,.08); border:1px solid rgba(37,99,235,.16);
+      text-decoration:none !important;
+    }
+    #jumpFirstUnansweredBtn:hover{ background:rgba(37,99,235,.16); }
+    .pager-btn{
+      border-radius:999px !important;
+      height:31px !important;
+      padding:0 12px !important;
+    }
+    .pager-btn:hover:not(:disabled){ background:rgba(37,99,235,.08) !important; border-color:#3b82f6 !important; }
+    .pager-info{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.01em; }
+    .pager-jump input{ border-radius:999px !important; }
+
+    /* ───────── 5. 知识点中心：分段标签 + 卡片书脊 ───────── */
+    .modal-tabs{
+      gap:4px !important;
+      margin-top:10px;
+      padding:4px !important;
+      background:var(--bg-subtle);
+      border:1px solid var(--border-color);
+      border-radius:11px;
+    }
+    .modal-tabs .m-tab{
+      flex:1; justify-content:center;
+      border:0 !important;
+      background:transparent !important;
+      border-radius:8px !important;
+      padding:6px 12px !important;
+      box-shadow:none !important;
+    }
+    .modal-tabs .m-tab.is-active{
+      color:#fff !important;
+      background:linear-gradient(135deg,#1a3a6b,#24497f) !important;
+      box-shadow:0 8px 18px -10px rgba(26,58,107,.9) !important;
+    }
+    html[data-theme="sepia"] .modal-tabs .m-tab.is-active{
+      background:linear-gradient(135deg,#8b5a2b,#6d4522) !important;
+    }
+    #myNotesCount{
+      border:1px solid rgba(100,116,139,.3);
+      font-variant-numeric:tabular-nums;
+      font-weight:700;
+    }
+    .k-search input{ border-radius:999px !important; }
+    .k-card{
+      position:relative; overflow:hidden;
+      flex:0 0 auto;                      /* 关键：禁止在 flex 列表里被压缩，改为正常滚动 */
+      border-radius:13px !important;
+      border-left-width:0 !important;
+      padding:12px 13px 12px 15px !important;
+    }
+    .k-card::before{
+      content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
+      background:linear-gradient(180deg,#2563eb,#1a3a6b);
+    }
+    html[data-theme="sepia"] .k-card::before{ background:linear-gradient(180deg,#b45309,#6d4522); }
+    .k-card:hover{ transform:translateY(-1px); }
+    .k-subject{ border-radius:5px !important; letter-spacing:.02em; }
+    .k-point{ font-size:13.5px !important; letter-spacing:-.005em; }
+    .k-body{ font-size:12px !important; line-height:1.8 !important; }
+    .k-chip{ padding:5px 10px !important; }
+    #kResetFilterBtn{ text-decoration:none !important; }
+    #kResetFilterBtn:hover{ text-decoration:underline !important; }
+
+    /* ───────── 6. 窄屏密度 ───────── */
+    @media (max-width:640px){
+      #explanationBox{ padding:11px 11px 13px !important; border-radius:14px !important; }
+      #explanationBox > div:first-child{ padding:9px 10px !important; gap:6px !important; }
+      #explanationBox > div:first-child > div{ gap:8px !important; flex-wrap:wrap; }
+      #explanationBox > div:first-child > div > span{ font-size:10.5px !important; }
+      #explanationContent{ padding-left:11px; font-size:12.5px; line-height:1.9; }
+      #lawBasisBadge > span{ font-size:10px !important; padding:2px 7px !important; }
+      #submitAnswerBtn{ padding:8px 15px !important; font-size:12px !important; }
+      #toggleAnalysisBtn, #askAiExplainBtn{ padding:7px 11px !important; font-size:11.5px !important; }
+      #submitAnswerBtn, #toggleAnalysisBtn, #removeWrongBtn, #askAiExplainBtn{
+        white-space:nowrap !important;     /* 关键：窄屏不允许按钮文案折成两行 */
+        flex-shrink:0;
+      }
+      #removeWrongBtn{ padding:7px 10px !important; font-size:11px !important; }
+      .sheet-stat b{ font-size:14px !important; }
+      .sheet-stat span{ font-size:9px !important; }
+      #answerSheetGrid button{ min-height:34px; }
+      .pager-btn{ height:30px !important; padding:0 10px !important; font-size:10.5px !important; }
+      .modal-tabs .m-tab{ padding:6px 8px !important; font-size:11px !important; }
+      .k-card{ padding:11px 11px 11px 13px !important; }
+    }
+    @media (max-width:360px){
+      .pager-jump{ display:none; }
+      #jumpFirstUnansweredBtn span{ display:none; }
+      #removeWrongBtn{ display:none; }   /* 360 极窄：移除错题改由错题本页操作，避免挤压主 CTA */
+    }
+  </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -1966,9 +2270,9 @@
 
         <!-- 核心考点与法条依据 -->
         <div class="text-xs sm:text-sm leading-relaxed space-y-2">
-          <div class="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+          <div class="exp-kicker font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
             <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2.5 6h5z"/><path d="M19 7l-2.5 6h5z"/></svg>
-            <span>命题人解析与法条依据：</span>
+            <span>命题人解析与法条依据</span>
           </div>
           <div id="explanationContent" class="leading-relaxed whitespace-pre-line"></div>
           <div id="lawBasisBadge" class="pt-1 flex flex-wrap gap-1.5"></div>
