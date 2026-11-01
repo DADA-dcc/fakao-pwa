@@ -703,6 +703,35 @@
     html[data-theme="sepia"] .mode-toggle.is-on.mode-toggle-amber{ background:rgba(180,120,20,.16); border-color:rgba(150,100,20,.45); color:#8a5a12; }
     html[data-theme="sepia"] .mode-toggle.is-on.mode-toggle-blue{ background:rgba(37,99,235,.16); border-color:rgba(37,99,235,.4); color:#1d4ed8; }
 
+    /* ───────── v9：题卡操作/掌握状态/科目筛选 图标线性化 ───────── */
+    .btn-ico{ width:15px; height:15px; flex-shrink:0; }
+    .subj-ico{ width:13px; height:13px; flex-shrink:0; opacity:.92; }
+    #subjectFilterBar button svg{ vertical-align:middle; }
+
+    /* 移动端 Hero 防溢出：面板按容器收缩，长文可断行 */
+    #heroGlow{ width:100%; max-width:100%; box-sizing:border-box; }
+    .hero-glow-inner{ width:100%; min-width:0; box-sizing:border-box; }
+    .hero-glow-panel{ width:100%; max-width:600px; min-width:0; flex-shrink:1; box-sizing:border-box; }
+    .hero-glow-sub{ overflow-wrap:anywhere; }
+
+    .mastery-chip{
+      display:inline-flex; align-items:center; gap:.4rem;
+      padding:.1rem .55rem; border-radius:9999px;
+      font-size:11px; font-weight:600; line-height:1.55;
+      border:1px solid transparent; letter-spacing:.01em;
+    }
+    .mastery-dot{ width:6px; height:6px; border-radius:9999px; background:currentColor; box-shadow:0 0 0 3px rgba(148,163,184,.18); }
+    .mastery-ok{ color:#059669; background:rgba(16,185,129,.12); border-color:rgba(16,185,129,.3); }
+    .mastery-ok .mastery-dot{ box-shadow:0 0 0 3px rgba(16,185,129,.2); }
+    .mastery-bad{ color:#e11d48; background:rgba(244,63,94,.12); border-color:rgba(244,63,94,.3); }
+    .mastery-bad .mastery-dot{ box-shadow:0 0 0 3px rgba(244,63,94,.2); }
+    .mastery-idle{ color:#64748b; background:rgba(148,163,184,.1); border-color:rgba(148,163,184,.25); }
+    html[data-theme="dark"] .mastery-idle{ color:#94a3b8; background:rgba(148,163,184,.14); border-color:rgba(148,163,184,.28); }
+    html[data-theme="dark"] .mastery-ok{ color:#34d399; background:rgba(16,185,129,.16); border-color:rgba(52,211,153,.3); }
+    html[data-theme="dark"] .mastery-bad{ color:#fb7185; background:rgba(244,63,94,.16); border-color:rgba(251,113,133,.3); }
+    html[data-theme="sepia"] .mastery-ok{ color:#0f766e; background:rgba(15,118,110,.12); border-color:rgba(15,118,110,.28); }
+    html[data-theme="sepia"] .mastery-bad{ color:#9f1239; background:rgba(159,18,57,.12); border-color:rgba(159,18,57,.28); }
+
     @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
   </style>
 </head>
@@ -1010,7 +1039,7 @@
         <div class="flex items-center gap-1.5 shrink-0">
           <!-- 错因标签下拉（当本题在错题本中时显示） -->
           <select id="wrongReasonSelect" aria-label="错题原因标记" class="hidden px-2 py-1 rounded-md text-xs bg-rose-500/10 text-rose-600 dark:text-rose-300 border border-rose-400/30 font-medium">
-            <option value="">🏷️ 标记错因...</option>
+            <option value="">标记错因...</option>
             <option value="概念混淆">概念混淆</option>
             <option value="法条遗忘">法条遗忘</option>
             <option value="审题失误">审题失误</option>
@@ -1027,7 +1056,7 @@
 
       <!-- 手机滑动提示条 -->
       <div class="flex items-center justify-between text-[11px] theme-muted mb-2">
-        <span id="qMasteryStatus">⚪ 尚未作答</span>
+        <span id="qMasteryStatus"><span class="mastery-chip mastery-idle"><span class="mastery-dot"></span>尚未作答</span></span>
         <span class="opacity-75">👈 左右滑动卡片可快速切题 👉</span>
       </div>
 
@@ -1041,7 +1070,7 @@
 
       <!-- 主观题作答输入框容器 -->
       <div id="subjectiveContainer" class="hidden space-y-2.5 mt-3">
-        <label for="subjectiveInput" class="block text-xs font-semibold theme-muted">✍️ 主观分析作答区（支持对照采分点自评）：</label>
+        <label for="subjectiveInput" class="block text-xs font-semibold theme-muted inline-flex items-center gap-1.5"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>主观分析作答区（支持对照采分点自评）：</label>
         <textarea id="subjectiveInput" rows="5" placeholder="在此输入你的法理分析结论、请求权基础或构成要件分析..." class="w-full p-3 rounded-xl theme-subtle border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
       </div>
 
@@ -1049,18 +1078,18 @@
       <div class="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <button id="submitAnswerBtn" type="button" class="px-4 py-2 rounded-xl bg-[#1a3a6b] hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold shadow-sm transition">
-            ✅ 确认提交答案
+            <span class="inline-flex items-center gap-1.5"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.4l2.4 2.4 4.6-5"/></svg><span>确认提交答案</span></span>
           </button>
           <button id="toggleAnalysisBtn" type="button" class="px-3 py-2 rounded-xl theme-subtle border text-xs sm:text-sm font-medium hover:border-blue-400 transition">
-            💡 查看/折叠解析
+            <span class="inline-flex items-center gap-1.5"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg><span>查看/折叠解析</span></span>
           </button>
           <button id="removeWrongBtn" type="button" class="hidden px-3 py-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-300 border border-rose-400/30 text-xs font-medium hover:bg-rose-500/20 transition">
-            🗑️ 移出错题本
+            <span class="inline-flex items-center gap-1.5"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg><span>移出错题本</span></span>
           </button>
         </div>
 
-        <button id="askAiExplainBtn" type="button" class="px-3 py-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-400/30 text-xs font-semibold hover:bg-indigo-500/20 transition flex items-center gap-1">
-          <span>🤖</span>
+        <button id="askAiExplainBtn" type="button" class="px-3 py-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-400/30 text-xs font-semibold hover:bg-indigo-500/20 transition flex items-center gap-1.5">
+          <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="2.5"/><path d="M12 8V4.5"/><circle cx="12" cy="3.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="9" cy="13" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.1" fill="currentColor" stroke="none"/><path d="M9.5 16.5h5"/></svg>
           <span>AI 深度追问</span>
         </button>
       </div>
@@ -1077,8 +1106,8 @@
 
         <!-- 核心考点与法条依据 -->
         <div class="text-xs sm:text-sm leading-relaxed space-y-2">
-          <div class="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-            <span>⚖️</span>
+          <div class="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+            <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2.5 6h5z"/><path d="M19 7l-2.5 6h5z"/></svg>
             <span>命题人解析与法条依据：</span>
           </div>
           <div id="explanationContent" class="leading-relaxed whitespace-pre-line"></div>
@@ -1103,7 +1132,8 @@
       <div class="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
         <div class="flex items-center justify-between mb-1.5">
           <label for="questionNoteInput" class="text-xs font-semibold flex items-center gap-1.5">
-            <span>📝 本题随手笔记 / 记忆口诀</span>
+            <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.4 2.6a2 2 0 0 1 3 3L11 16l-4 1 1-4z"/></svg>
+            <span>本题随手笔记 / 记忆口诀</span>
             <span id="noteSavedStatus" class="text-[11px] text-emerald-600 dark:text-emerald-400 font-normal"></span>
           </label>
           <button id="insertNoteTemplateBtn" type="button" class="text-[11px] text-blue-600 dark:text-blue-400 hover:underline">
@@ -1119,7 +1149,8 @@
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <h2 class="text-sm font-bold flex items-center gap-1.5">
-            <span>📕 错题本与薄弱点追踪</span>
+            <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="color:#e11d48"><path d="M4 5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 2v20"/><path d="M12 8h5M12 12h5"/></svg>
+            <span>错题本与薄弱点追踪</span>
             <span id="wrongListCountBadge" class="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 text-xs">0 题</span>
           </h2>
         </div>
@@ -1128,8 +1159,9 @@
             <input id="autoRemoveWrongCheckbox" type="checkbox" class="rounded text-blue-600" checked />
             <span>答对自动移出错题</span>
           </label>
-          <button id="exportWrongCsvBtn" type="button" class="px-2.5 py-1 rounded-lg theme-subtle border font-medium hover:border-blue-400 transition">
-            📊 导出错题/笔记 CSV
+          <button id="exportWrongCsvBtn" type="button" class="px-2.5 py-1 rounded-lg theme-subtle border font-medium hover:border-blue-400 transition inline-flex items-center gap-1.5">
+            <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            <span>导出错题/笔记 CSV</span>
           </button>
         </div>
       </div>
@@ -1474,11 +1506,11 @@
     ];
 
     const SUBJECT_LIST = [
-      { key: "全部", label: "📚 全部题目" },
-      { key: "智能复习", label: "🧠 智能复习" },
-      { key: "错题重做", label: "🔴 错题重做" },
-      { key: "我的收藏", label: "⭐ 我的收藏" },
-      { key: "有笔记", label: "📝 笔记题库" },
+      { key: "全部", label: "全部题目" },
+      { key: "智能复习", label: "智能复习" },
+      { key: "错题重做", label: "错题重做" },
+      { key: "我的收藏", label: "我的收藏" },
+      { key: "有笔记", label: "笔记题库" },
       { key: "民法", label: "民法" },
       { key: "刑法", label: "刑法" },
       { key: "行政法", label: "行政法" },
@@ -1491,6 +1523,14 @@
       { key: "国际法", label: "国际法" },{ key: "法制史", label: "法制史" },{ key: "司法制度与职业道德", label: "司法制度与职业道德" },
       { key: "主观题", label: "主观案例" }
     ];
+
+    const SUBJECT_ICONS = {
+      "全部": '<svg class="subj-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>',
+      "智能复习": '<svg class="subj-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>',
+      "错题重做": '<svg class="subj-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>',
+      "我的收藏": '<svg class="subj-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.7 6.3 6.8.6-5.2 4.5 1.6 6.6L12 17.8 6.1 21l1.6-6.6L2.5 9.9l6.8-.6z"/></svg>',
+      "有笔记": '<svg class="subj-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 2v20"/><path d="M12 7h5M12 11h5"/></svg>'
+    };
 
     // =========================================================================
     // 2. IndexedDB + LocalStorage 双写守护引擎 (完美兼容原版 fakao_* 键名)
@@ -1883,9 +1923,9 @@
         btn.type = "button";
         const isActive = currentSubject === item.key;
         btn.className = isActive
-          ? "px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1a3a6b] text-white shrink-0 shadow-xs transition"
-          : "px-3 py-1.5 rounded-lg text-xs font-medium theme-subtle border hover:border-blue-400 shrink-0 transition";
-        btn.textContent = item.label;
+          ? "px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1a3a6b] text-white shrink-0 shadow-xs transition inline-flex items-center gap-1"
+          : "px-3 py-1.5 rounded-lg text-xs font-medium theme-subtle border hover:border-blue-400 shrink-0 transition inline-flex items-center gap-1";
+        btn.innerHTML = (SUBJECT_ICONS[item.key] || "") + `<span>${item.label}</span>`;
         btn.addEventListener("click", () => {
           currentSubject = item.key;
           renderSubjectBar();
@@ -1965,7 +2005,7 @@
 
       if (filteredQuestions.length === 0) {
         document.getElementById("qIndexBadge").textContent = "0 / 0";
-        let eIcon = "🗂️", eTitle = "当前筛选条件下暂无题目", eDesc = "试试切换科目，或点击上方“📚 全部题目”清空筛选条件。";
+        let eIcon = "🗂️", eTitle = "当前筛选条件下暂无题目", eDesc = "试试切换科目，或点击上方“全部题目”清空筛选条件。";
         if (currentSubject === "我的收藏") { eIcon = "⭐"; eTitle = "还没有收藏的题目"; eDesc = "点击题目右上角的 ☆ 收藏重点题，考前随时回看。"; }
         else if (currentSubject === "错题重做") { eIcon = "📕"; eTitle = "错题本还是空的"; eDesc = "答错的题目会自动收录到这里，方便集中攻克。"; }
         else if (currentSubject === "智能复习") { eIcon = "🧠"; eTitle = "暂无待复习题目"; eDesc = "按记忆曲线到期的题会自动出现在这里。"; }
@@ -2008,10 +2048,10 @@
       const masteryEl = document.getElementById("qMasteryStatus");
       if (record && record.answered) {
         masteryEl.innerHTML = record.isCorrect
-          ? `<span class="text-emerald-600 dark:text-emerald-400 font-semibold">🟢 已掌握（累计作答 ${record.attempts || 1} 次）</span>`
-          : `<span class="text-rose-600 dark:text-rose-400 font-semibold">🔴 曾答错（建议重点复盘法条依据）</span>`;
+          ? `<span class="mastery-chip mastery-ok"><span class="mastery-dot"></span>已掌握 · 作答 ${record.attempts || 1} 次</span>`
+          : `<span class="mastery-chip mastery-bad"><span class="mastery-dot"></span>曾答错 · 建议复盘法条</span>`;
       } else {
-        masteryEl.textContent = "⚪ 尚未作答";
+        masteryEl.innerHTML = `<span class="mastery-chip mastery-idle"><span class="mastery-dot"></span>尚未作答</span>`;
       }
 
       // 收藏按钮状态
