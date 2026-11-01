@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a3a6b" />
+  <title>页面跳转中 · 法考刷题助手</title>
+  <meta http-equiv="refresh" content="0; url=/" />
+  <script>
+    (function () {
+      var target = "/" + window.location.search + window.location.hash;
+      try { window.location.replace(target); } catch (e) { window.location.href = target; }
+    })();
+  </script>
+  <style>
+    html,body{height:100%;margin:0}
+    body{display:flex;align-items:center;justify-content:center;
+      font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+      background:linear-gradient(135deg,#0f2547,#1a3a6b 55%,#254a86);color:#e8eefc}
+    .box{text-align:center;padding:28px 24px}
+    .ico{font-size:42px;margin-bottom:10px}
+    a{color:#fbbf24;text-decoration:none;font-weight:700}
+    p{margin:6px 0;font-size:14px;opacity:.85}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="ico">⚖️</div>
+    <p>正在返回法考刷题助手首页…</p>
+    <p>若未自动跳转，请点 <a href="/">这里进入</a></p>
+  </div>
+</body>
+</html>
