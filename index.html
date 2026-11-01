@@ -2022,6 +2022,12 @@
           <span class="hidden sm:inline">知识点/笔记</span>
         </button>
 
+        <!-- 学习报告 -->
+        <button id="openReportModalBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium flex items-center gap-1 transition">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="7"/><rect x="13" y="7" width="3" height="11"/></svg>
+          <span class="hidden sm:inline">学习报告</span>
+        </button>
+
         <!-- AI 设置 -->
         <button id="openAiModalBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium flex items-center gap-1 transition">
           <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1" fill="currentColor" stroke="none"/></svg>
@@ -2259,6 +2265,10 @@
         <button id="gradeSubjectiveBtn" type="button" class="hidden px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-400/30 text-xs font-semibold hover:bg-emerald-500/20 transition flex items-center gap-1.5">
           <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           <span>AI 批改主观作答</span>
+        </button>
+        <button id="speakBtn" type="button" class="px-3 py-2 rounded-xl theme-subtle border text-xs sm:text-sm font-medium hover:border-blue-400 transition flex items-center gap-1.5">
+          <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+          <span>朗读</span>
         </button>
       </div>
 
@@ -2620,6 +2630,35 @@
       <div class="flex justify-end gap-2 pt-1">
         <button id="saveAiConfigBtn" type="button" class="px-4 py-2 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold">保存设置</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 弹窗 5：学习报告看板 -->
+  <div id="reportModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="theme-card w-full max-w-xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[88vh] overflow-y-auto shadow-2xl space-y-4">
+      <div class="modal-head">
+        <div class="modal-head-main">
+          <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="7"/><rect x="13" y="7" width="3" height="11"/></svg></span>
+          <div class="min-w-0"><h3 class="modal-title">学习报告</h3><p class="modal-sub">正确率 · 科目强弱 · 近 7 天学习节奏</p></div>
+        </div>
+        <button id="closeReportModalBtn" type="button" class="modal-close" aria-label="关闭学习报告">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="reportOverview" class="grid grid-cols-3 sm:grid-cols-5 gap-2"></div>
+      <div>
+        <div class="text-xs font-bold mb-2 flex items-center gap-1.5">📚 各科目正确率 <span class="text-[10px] theme-muted font-normal">（按已答数）</span></div>
+        <div id="reportSubjects" class="space-y-2"></div>
+      </div>
+      <div>
+        <div class="text-xs font-bold mb-2">🔥 近 7 天学习节奏</div>
+        <div id="reportTrend" class="flex items-end gap-1.5 h-24"></div>
+      </div>
+      <div>
+        <div class="text-xs font-bold mb-2">⚠️ 薄弱科目（正确率最低，已答≥3）</div>
+        <div id="reportWeak" class="space-y-1.5"></div>
+      </div>
+      <p class="text-[11px] theme-muted leading-relaxed">数据来自本机答题记录（当前设备）。多设备请在「备份/同步」里同步后再看。</p>
     </div>
   </div>
 
@@ -3652,6 +3691,120 @@
       safeSaveJSON(STORAGE_KEYS.FAVORITES, favorites);
       renderQuestion(currentIndex);
       updateStats();
+    }
+
+    // ===== 学习报告看板 =====
+    function openStudyReport() {
+      try { renderStudyReport(); } catch (e) { console.warn(e); }
+      document.getElementById("reportModal").classList.remove("hidden");
+    }
+    function renderStudyReport() {
+      const answeredIds = Object.keys(userProgress).filter((id) => userProgress[id] && userProgress[id].answered);
+      const correctCount = answeredIds.filter((id) => userProgress[id].isCorrect).length;
+      const accuracy = answeredIds.length ? Math.round((correctCount / answeredIds.length) * 100) : 0;
+      const favCount = Object.keys(favorites).filter((id) => favorites[id]).length;
+      const dueCount = allQuestions.filter((q) => isDueForReview(q.id)).length;
+
+      const ov = [
+        ["已答", answeredIds.length, "text-blue-600 dark:text-blue-400"],
+        ["正确率", accuracy + "%", "text-emerald-600 dark:text-emerald-400"],
+        ["错题", wrongQuestions.length, "text-rose-500"],
+        ["收藏", favCount, "text-amber-500"],
+        ["待复习", dueCount, "text-indigo-500"]
+      ];
+      const ovBox = document.getElementById("reportOverview");
+      ovBox.innerHTML = "";
+      ov.forEach(([k, v, c]) => {
+        const d = document.createElement("div");
+        d.className = "theme-subtle border rounded-xl p-2 text-center";
+        d.innerHTML = '<div class="text-lg font-bold ' + c + '">' + v + '</div><div class="text-[10px] theme-muted">' + k + "</div>";
+        ovBox.appendChild(d);
+      });
+
+      const subj = {};
+      allQuestions.forEach((q) => {
+        const s = q.subject || "其他";
+        if (!subj[s]) subj[s] = { total: 0, answered: 0, correct: 0 };
+        subj[s].total++;
+        const r = userProgress[q.id];
+        if (r && r.answered) { subj[s].answered++; if (r.isCorrect) subj[s].correct++; }
+      });
+      const rows = Object.entries(subj).filter(([, v]) => v.answered > 0).sort((a, b) => b[1].answered - a[1].answered);
+      const sBox = document.getElementById("reportSubjects");
+      sBox.innerHTML = "";
+      if (rows.length === 0) {
+        sBox.innerHTML = '<div class="text-xs theme-muted">还没有答题记录，先刷几题吧。</div>';
+      } else {
+        rows.forEach(([name, v]) => {
+          const acc = Math.round((v.correct / v.answered) * 100);
+          const w = Math.max(2, acc);
+          const d = document.createElement("div");
+          d.innerHTML =
+            '<div class="flex justify-between text-[11px] mb-0.5"><span>' + escapeHtml(name) + "</span>" +
+            '<span class="theme-muted">' + v.correct + "/" + v.answered + " · " + acc + "%</span></div>" +
+            '<div class="h-2 rounded-full bg-slate-200/70 dark:bg-slate-700/60 overflow-hidden">' +
+            '<div class="h-full rounded-full" style="width:' + w + "%;background:linear-gradient(90deg,#34d399,#059669)\"></div></div>";
+          sBox.appendChild(d);
+        });
+      }
+
+      const tr = document.getElementById("reportTrend");
+      tr.innerHTML = "";
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      const dayCounts = [];
+      for (let i = 6; i >= 0; i--) {
+        const d0 = new Date(now.getTime() - i * 86400000);
+        const start = d0.getTime(), end = start + 86400000;
+        const cnt = answeredIds.filter((id) => { const t = userProgress[id].lastAnsweredAt || 0; return t >= start && t < end; }).length;
+        dayCounts.push({ label: (d0.getMonth() + 1) + "/" + d0.getDate(), cnt: cnt });
+      }
+      const maxC = Math.max(1, ...dayCounts.map((d) => d.cnt));
+      dayCounts.forEach((d) => {
+        const bar = document.createElement("div");
+        bar.className = "flex-1 flex flex-col items-center justify-end gap-1";
+        bar.innerHTML =
+          '<div class="text-[10px] theme-muted">' + (d.cnt || "") + "</div>" +
+          '<div class="w-full rounded-t-md" style="height:' + (Math.round((d.cnt / maxC) * 72) + 4) + 'px;background:linear-gradient(180deg,#60a5fa,#2563eb)"></div>' +
+          '<div class="text-[10px] theme-muted">' + d.label + "</div>";
+        tr.appendChild(bar);
+      });
+
+      const weak = Object.entries(subj)
+        .filter(([, v]) => v.answered >= 3)
+        .map(([name, v]) => ({ name: name, acc: Math.round((v.correct / v.answered) * 100), answered: v.answered }))
+        .sort((a, b) => a.acc - b.acc)
+        .slice(0, 3);
+      const wBox = document.getElementById("reportWeak");
+      wBox.innerHTML = "";
+      if (weak.length === 0) {
+        wBox.innerHTML = '<div class="text-xs theme-muted">答够 3 题以上的科目才会在此提示。</div>';
+      } else {
+        weak.forEach((x) => {
+          const d = document.createElement("div");
+          d.className = "flex justify-between items-center text-xs theme-subtle border rounded-lg px-2.5 py-1.5";
+          d.innerHTML = '<span>' + escapeHtml(x.name) + ' <span class="theme-muted text-[10px]">已答' + x.answered + "</span></span>" +
+            '<span class="font-bold ' + (x.acc < 60 ? "text-rose-500" : "text-amber-500") + '">' + x.acc + "%</span>";
+          wBox.appendChild(d);
+        });
+      }
+    }
+
+    // ===== 语音朗读（浏览器 TTS，通勤听题） =====
+    function speakCurrentQuestion() {
+      try {
+        if (!("speechSynthesis" in window)) { showToast("当前浏览器不支持语音朗读", "warn"); return; }
+        if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); showToast("已停止朗读", "info"); return; }
+        if (filteredQuestions.length === 0) return;
+        const q = filteredQuestions[currentIndex];
+        const parts = [q.title || q.question || ""];
+        const expShown = !document.getElementById("explanationBox").classList.contains("hidden");
+        const expEl = document.getElementById("explanationContent");
+        if (expShown && expEl && expEl.innerText.trim()) parts.push("解析：" + expEl.innerText.trim());
+        const u = new SpeechSynthesisUtterance(parts.join("。"));
+        u.lang = "zh-CN"; u.rate = 1;
+        window.speechSynthesis.speak(u);
+        showToast("开始朗读（再次点击可停止）", "info");
+      } catch (e) { showToast("朗读失败", "error"); }
     }
 
     function updateStats() {
@@ -4693,6 +4846,16 @@
       document.getElementById("closeSyncModalBtn").addEventListener("click", () => {
         document.getElementById("syncModal").classList.add("hidden");
       });
+      // 学习报告看板
+      const openReportEl = document.getElementById("openReportModalBtn");
+      if (openReportEl) openReportEl.addEventListener("click", openStudyReport);
+      const closeReportEl = document.getElementById("closeReportModalBtn");
+      if (closeReportEl) closeReportEl.addEventListener("click", () => {
+        document.getElementById("reportModal").classList.add("hidden");
+      });
+      // 语音朗读
+      const speakEl = document.getElementById("speakBtn");
+      if (speakEl) speakEl.addEventListener("click", speakCurrentQuestion);
       document.getElementById("exportFullJsonBtn").addEventListener("click", exportFullBackupJSON);
       document.getElementById("exportWrongCsvBtn").addEventListener("click", exportWrongAndNotesCSV);
 
