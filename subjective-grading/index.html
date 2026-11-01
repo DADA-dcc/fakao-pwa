@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>主观题 AI 批改 · 原型</title>
+<style>
+  :root{
+    --navy:#12294d; --navy2:#1a3a6b; --gold:#f3c969; --paper:#f7f3ea;
+    --ink:#1c2333; --muted:#6b7280; --ok:#059669; --bad:#e11d48; --line:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#eef1f6;color:var(--ink);line-height:1.7}
+  .wrap{max-width:820px;margin:0 auto;padding:22px 16px 60px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--navy),var(--navy2));color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;box-shadow:0 6px 16px rgba(18,41,77,.25)}
+  .brand h1{font-size:17px;margin:0}
+  .brand p{margin:0;font-size:12px;color:var(--muted)}
+  .badge{font-size:11px;padding:3px 9px;border-radius:999px;background:#fff3d6;color:#8a6d1a;border:1px solid #f0d99b;font-weight:700}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 28px rgba(18,41,77,.06);padding:18px 18px}
+  .card + .card{margin-top:16px}
+  .kicker{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--navy2);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .q-title{font-size:15px;font-weight:700;margin:0 0 10px}
+  .stem{background:var(--paper);border:1px solid #efe7d6;border-radius:12px;padding:12px 14px;font-size:14px;white-space:pre-line}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .tag{font-size:11px;padding:2px 9px;border-radius:999px;background:#eef3fb;color:#31517e;border:1px solid #dbe6f7}
+  textarea{width:100%;min-height:132px;margin-top:12px;padding:12px 14px;border:1px solid #d8dee8;border-radius:12px;font-size:14px;line-height:1.8;resize:vertical;font-family:inherit;outline:none}
+  textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(243,201,105,.35)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
+  button{font-family:inherit;cursor:pointer;border-radius:12px;font-size:13.5px;font-weight:700;padding:10px 16px;transition:.15s;border:1px solid transparent}
+  .btn-primary{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;box-shadow:0 6px 16px rgba(18,41,77,.22)}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .btn-primary:disabled{opacity:.55;cursor:not-allowed}
+  .btn-ghost{background:#fff;border-color:#d8dee8;color:var(--navy2)}
+  .btn-ghost:hover{border-color:var(--gold)}
+  .spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .hint{font-size:12px;color:var(--muted)}
+  .result{display:none}
+  .score-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .ring{--p:0;width:96px;height:96px;border-radius:50%;background:conic-gradient(var(--navy2) calc(var(--p)*1%), #e7ecf4 0);display:flex;align-items:center;justify-content:center;position:relative;flex:0 0 auto}
+  .ring::before{content:"";position:absolute;inset:9px;background:#fff;border-radius:50%}
+  .ring b{position:relative;font-size:22px}
+  .ring b small{font-size:12px;color:var(--muted);font-weight:600}
+  .level{font-size:13px;font-weight:800;padding:3px 12px;border-radius:999px;display:inline-block}
+  .lv-优秀{background:#e7f7ef;color:#067a52} .lv-良好{background:#eaf1ff;color:#2649a8}
+  .lv-及格{background:#fff5e6;color:#9a6a12} .lv-不及格{background:#fde8ee;color:#b3123f}
+  .summary{font-size:13.5px;color:#334}
+  .ph{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
+  .ph-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f1f4f9}
+  .ph-item:last-child{border-bottom:0}
+  .dot{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;margin-top:2px}
+  .dot.ok{background:var(--ok)} .dot.no{background:var(--bad)}
+  .ph-body{flex:1;min-width:0}
+  .ph-point{font-size:13.5px;font-weight:700}
+  .ph-comment{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .ph-score{font-size:12px;font-weight:800;color:var(--navy2);white-space:nowrap}
+  .sec{margin-top:14px}
+  .sec h4{font-size:12px;font-weight:800;color:var(--navy2);margin:0 0 6px;letter-spacing:.04em}
+  .sec ul{margin:0;padding-left:18px;font-size:13px}
+  .sec li{margin:3px 0}
+  .lawchips{display:flex;gap:6px;flex-wrap:wrap}
+  .lawchip{font-size:11.5px;padding:2px 9px;border-radius:8px;background:#fff8e6;color:#8a6d1a;border:1px solid #f0d99b}
+  .err{color:var(--bad);font-size:13px;background:#fdeef2;border:1px solid #f6c9d6;padding:10px 12px;border-radius:10px;margin-top:12px;display:none}
+  footer{text-align:center;font-size:11.5px;color:#9aa4b2;margin-top:26px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="logo">法</div>
+      <div><h1>主观题 AI 批改</h1><p>法考刷题助手 · 功能原型（draft）</p></div>
+    </div>
+    <span class="badge">PROTOTYPE</span>
+  </div>
+
+  <div class="card">
+    <div class="kicker">📝 主观题（卷四）作答</div>
+    <h3 class="q-title" id="qTitle">【民法·综合案例】保证期间与混合担保</h3>
+    <div class="stem" id="qStem">2024年3月，甲公司向乙银行借款2000万元，丙公司提供连带责任保证（董事会决议通过，但未在保证合同中约定保证期间），丁以其名下市值2500万元的商铺设定抵押并办理了抵押登记。借款到期后甲公司无力偿还。乙银行于借款到期后第8个月向丙公司发出书面催收通知。
+
+请分析：
+（1）丙公司的保证期间如何确定？乙银行请求丙公司承担保证责任是否能够得到支持？
+（2）乙银行是否必须先实现丁的商铺抵押权，然后才能向保证人丙主张权利？为什么？</div>
+    <div class="meta">
+      <span class="tag">民法</span><span class="tag">主观题</span><span class="tag">满分 10 分</span><span class="tag">2024 真题改编</span>
+    </div>
+
+    <textarea id="answer" placeholder="在此输入你的法理分析结论、请求权基础或构成要件分析……">（1）丙公司的保证期间为主债务履行期届满之日起六个月。依据《民法典》第692条第2款，当事人对保证期间没有约定或约定不明确的，保证期间为主债务履行期限届满之日起六个月。本案乙银行在主债务到期后第8个月才向丙公司主张，已超过6个月保证期间，且保证期间不发生中止、中断，故丙公司不再承担保证责任，乙银行的请求不能得到支持。
+（2）无需先实现丁的抵押权。依据《民法典》第392条混合担保规则，被担保的债权既有物保又有人保的，第三人提供物保的，债权人可以选择就物的担保实现债权，也可以请求保证人承担保证责任。本案抵押物由第三人丁提供，乙银行享有选择权，可直接要求丙承担保证责任。</textarea>
+
+    <div class="row">
+      <button class="btn-primary" id="gradeBtn">🪄 AI 批改</button>
+      <button class="btn-ghost" id="demoBtn">看演示结果（本地假数据）</button>
+      <button class="btn-ghost" id="clearBtn">清空</button>
+      <span class="hint">首次部署后需在 Cloudflare 配置 <code>DEEPSEEK_API_KEY</code></span>
+    </div>
+    <div class="err" id="errBox"></div>
+  </div>
+
+  <div class="card result" id="resultCard">
+    <div class="kicker">🎯 批改结果</div>
+    <div class="score-head">
+      <div class="ring" id="ring"><b><span id="scoreNum">0</span><small>/<span id="scoreMax">10</span></small></b></div>
+      <div>
+        <span class="level" id="levelChip">—</span>
+        <p class="summary" id="summary" style="margin:8px 0 0"></p>
+      </div>
+    </div>
+    <div class="ph" id="pointHits"></div>
+    <div class="sec" id="problemsSec"><h4>❌ 失分点</h4><ul id="problems"></ul></div>
+    <div class="sec" id="suggSec"><h4>✅ 改进建议</h4><ul id="suggestions"></ul></div>
+    <div class="sec" id="lawSec"><h4>📖 涉及法条</h4><div class="lawchips" id="lawBasis"></div></div>
+  </div>
+
+  <footer>
+    以上为 AI 生成内容，仅供学习参考，非官方答案，请以现行法条与教材为准。<br/>
+    案例如标注「AI模拟」则为虚构练习素材，不构成真实判例。
+  </footer>
+</div>
+
+<script>
+const SAMPLE = {
+  question: document.getElementById('qStem').innerText,
+  reference: "（1）保证期间6个月（民法典692条2款），超期不承担（693条2款）；（2）混合担保第三人物保，债权人可选择（民法典392条）。",
+  maxScore: 10
+};
+
+function showError(msg){
+  const e = document.getElementById('errBox');
+  e.textContent = msg; e.style.display = 'block';
+}
+function hideError(){ document.getElementById('errBox').style.display='none'; }
+
+function render(result){
+  document.getElementById('resultCard').style.display='block';
+  const pct = Math.round((result.score / result.maxScore) * 100);
+  document.getElementById('ring').style.setProperty('--p', pct);
+  document.getElementById('scoreNum').textContent = result.score;
+  document.getElementById('scoreMax').textContent = result.maxScore;
+  const lv = document.getElementById('levelChip');
+  lv.textContent = result.level || '';
+  lv.className = 'level lv-' + (result.level || '及格');
+  document.getElementById('summary').textContent = result.summary || '';
+
+  const ph = document.getElementById('pointHits');
+  ph.innerHTML = '';
+  (result.pointHits || []).forEach((p)=>{
+    const item = document.createElement('div');
+    item.className = 'ph-item';
+    item.innerHTML = `
+      <div class="dot ${p.hit?'ok':'no'}">${p.hit?'✓':'✕'}</div>
+      <div class="ph-body">
+        <div class="ph-point">${escapeHtml(p.point)}</div>
+        <div class="ph-comment">${escapeHtml(p.comment||'')}</div>
+      </div>
+      <div class="ph-score">${p.score}分</div>`;
+    ph.appendChild(item);
+  });
+
+  fillList('problems', result.problems, 'problemsSec');
+  fillList('suggestions', result.suggestions, 'suggSec');
+  const lawBox = document.getElementById('lawBasis');
+  lawBox.innerHTML = '';
+  (result.lawBasis||[]).forEach(l=>{
+    const s=document.createElement('span'); s.className='lawchip'; s.textContent=l; lawBox.appendChild(s);
+  });
+  document.getElementById('lawSec').style.display = (result.lawBasis&&result.lawBasis.length)?'block':'none';
+  document.getElementById('resultCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function fillList(id, arr, secId){
+  const ul = document.getElementById(id); ul.innerHTML='';
+  (arr||[]).forEach(x=>{ const li=document.createElement('li'); li.textContent=x; ul.appendChild(li); });
+  document.getElementById(secId).style.display = (arr&&arr.length)?'block':'none';
+}
+function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function doGrade(){
+  hideError();
+  const answer = document.getElementById('answer').value.trim();
+  if(!answer){ showError('请先输入你的作答，再进行批改。'); return; }
+  const btn = document.getElementById('gradeBtn');
+  btn.disabled = true; const old = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span>批改中…';
+  try{
+    const resp = await fetch('/api/grade', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body: JSON.stringify({ ...SAMPLE, answer })
+    });
+    const data = await resp.json().catch(()=>({error:'返回非 JSON'}));
+    if(!resp.ok || data.error){ showError('批改失败：' + (data.error||('HTTP '+resp.status))); }
+    else { render(data); }
+  }catch(e){
+    showError('网络错误：' + e.message + '（请确认 /api/grade 已部署）');
+  }finally{
+    btn.disabled = false; btn.innerHTML = old;
+  }
+}
+
+// 本地假数据，用于无后端时预览结果 UI
+function demo(){
+  hideError();
+  render({
+    score: 7.5, maxScore: 10, level: '良好',
+    summary: '结论方向正确、援引法条到位；第(1)问采分点完整，第(2)问对“选择权”的表述可更精确，另可补充第三人物保与债务人自物保的区别。',
+    pointHits: [
+      { point: '指出保证期间为6个月（民法典692条2款）', hit: true, score: 2, comment: '援引准确。' },
+      { point: '指出超6个月主张→保证人免责（693条2款）', hit: true, score: 2, comment: '结论正确。' },
+      { point: '说明保证期间不中止/中断', hit: true, score: 1, comment: '加分点，答到了。' },
+      { point: '混合担保：第三人物保，债权人享有选择权（392条）', hit: true, score: 2, comment: '结论对，可再点明“不同于债务人自己提供物保需先就物保受偿”。' },
+      { point: '区分债务人自物保与第三人物保的清偿顺序', hit: false, score: 0.5, comment: '未展开，本题易丢分处。' }
+    ],
+    problems: ['第(2)问未区分“债务人自己提供物保”与“第三人提供物保”的顺序差异，属易混点。'],
+    suggestions: ['背诵 392 条三种情形的清偿顺序口诀；', '主观题按“结论—依据—本案适用”三段式书写更稳。'],
+    lawBasis: ['《民法典》第692条','《民法典》第693条','《民法典》第392条']
+  });
+}
+
+document.getElementById('gradeBtn').addEventListener('click', doGrade);
+document.getElementById('demoBtn').addEventListener('click', demo);
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  document.getElementById('answer').value='';
+  document.getElementById('resultCard').style.display='none';
+  hideError();
+});
+</script>
+</body>
+</html>
