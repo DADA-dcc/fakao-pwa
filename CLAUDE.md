@@ -13,11 +13,14 @@
 
 ## 当前进度（2026-11-01）
 
-- `main` @ `0dea20f` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v34`（本轮未改版本号）。
-- 现状功能：单文件 SPA；开屏为**内联 3D 天平+法槌**（Three.js r128 + `vendor/GLTFLoader.js`，模型 `assets/models/legal.glb`）+ 酒红金渐变，倒计时目标 2028-09-16；左下角有**动态版本角标**（读 sw `CACHE_VERSION`，用于确认是否已更新到最新）。
+- `main` @ `01ca621` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v34`（本轮未改版本号）。
+- 现状功能：单文件 SPA；开屏为**内联 3D 天平+法槌**（Three.js r128 + `vendor/GLTFLoader.js`，模型 `assets/models/legal.glb`）+ 酒红金渐变，倒计时目标 2028-09-16；左下角有**动态版本角标**（优先读线上 `sw.js` 的 `CACHE_VERSION`，离线时回退本地缓存，用于确认是否已更新到最新）。
+- v12 UI 精修：Hero 改为深色法务封面（`#071426` + 金色 `#f3c969` 强调、蓝图网格、巨型「法」字、金色倒计时环、金色胶囊 CTA + 题库 meta）；统计改为无间隙 bento 条（每格顶部 2px 分色、tabular 数字、移动端图标降级）；科目 chip 改 999px 胶囊 + 边缘渐隐；题卡改 18px 纸张卡（navy→blue→gold 顶规、等宽 `Q` 序号、题干 17–19px、方形选项徽章）；底栏改 80% 玻璃 + 20px 模糊 + 顶部答题进度发丝线，移动端 5 项横排、触控高度 ≥40px；Hero 副标题窄屏显式两行，360 筛选三控件同排。
 - v11 UI 精修：知识点中心改为 605 条考点分页 + 科目筛选 + 搜索 + 折叠展开 + 随手笔记跳转；答题卡 120 题/页并支持题号跳转；SW 更新提示改为底栏上方固定卡片；桌面 Hero 增加 685 天倒计时环；主题切换改为圆形 View Transition 揭示；背诵/模拟模式启用专注布局；移动端顶栏、统计、底栏、Toast 密度统一。
 - SEO：`robots.txt` / `sitemap.xml` / `index.html` `<head>`（canonical、og、twitter）均已统一为 `https://xs06.de5.net/`；全仓库已无已废弃的旧域名引用。
 - 最近提交：
+  - `01ca621` fix(ui): 版本角标优先读取当前 sw.js，避免旧缓存误报
+  - `587b413` feat(ui): v12 视觉精修（深色法务 Hero / 数据 bento / 纸张题卡 / 玻璃底栏）
   - `0dea20f` fix(ui): 专注模式计时器保留重置按钮并图标化
   - `e488620` feat(ui): v11 全量精修（知识点检索/答题卡分页/更新卡/移动端密度/主题揭示/倒计时/专注模式）
   - `3827559` feat(ui): 顶部新增流动液态七彩玻璃流体（SW v33→v34）
