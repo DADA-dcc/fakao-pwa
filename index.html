@@ -17,7 +17,7 @@
   <meta name="twitter:title" content="法考刷题助手 Pro" />
   <meta name="twitter:description" content="民法·刑法·行政法……近万道真题，陪你稳过法考。" />
   <meta name="twitter:image" content="https://xs06.de5.net/preview/cover.jpg" />
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="./vendor/tailwind-3.4.17.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -2256,6 +2256,27 @@
           <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="2.5"/><path d="M12 8V4.5"/><circle cx="12" cy="3.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="9" cy="13" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.1" fill="currentColor" stroke="none"/><path d="M9.5 16.5h5"/></svg>
           <span>AI 深度追问</span>
         </button>
+        <button id="gradeSubjectiveBtn" type="button" class="hidden px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-400/30 text-xs font-semibold hover:bg-emerald-500/20 transition flex items-center gap-1.5">
+          <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>AI 批改主观作答</span>
+        </button>
+      </div>
+
+      <!-- 主观题 AI 批改结果面板 -->
+      <div id="gradeResultBox" class="hidden mt-4 p-4 rounded-xl bg-emerald-500/5 border border-emerald-400/30 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-bold">AI 批改：<span id="gradeScore" class="text-emerald-600 dark:text-emerald-300">--</span></span>
+            <span id="gradeLevel" class="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"></span>
+          </div>
+          <button id="closeGradeBtn" type="button" class="text-xs opacity-70 hover:opacity-100">收起</button>
+        </div>
+        <div id="gradeSummary" class="text-xs sm:text-sm leading-relaxed whitespace-pre-line"></div>
+        <div id="gradePoints" class="space-y-2 text-xs sm:text-sm"></div>
+        <div id="gradeProblemsWrap" class="hidden"><div class="font-semibold text-rose-500 text-xs mb-1">失分点</div><ul id="gradeProblems" class="list-disc pl-5 text-xs sm:text-sm space-y-0.5"></ul></div>
+        <div id="gradeSuggWrap" class="hidden"><div class="font-semibold text-emerald-600 text-xs mb-1">改进建议</div><ul id="gradeSuggestions" class="list-disc pl-5 text-xs sm:text-sm space-y-0.5"></ul></div>
+        <div id="gradeLawWrap" class="hidden"><div class="font-semibold text-blue-600 text-xs mb-1">涉及法条</div><div id="gradeLaw" class="flex flex-wrap gap-1.5"></div></div>
+        <div class="text-[11px] leading-relaxed text-amber-600/90 dark:text-amber-400/80 border-t border-amber-400/20 pt-2">⚠️ AI 批改仅供参考，采分点与给分以官方标准为准。</div>
       </div>
 
       <!-- 答案与详细法理解析面板 -->
@@ -2288,6 +2309,7 @@
             <button id="closeAiResponseBtn" type="button" class="text-xs opacity-70 hover:opacity-100">收起</button>
           </div>
           <div id="aiResponseText" class="leading-relaxed whitespace-pre-line"></div>
+          <div class="text-[11px] leading-relaxed text-amber-600/90 dark:text-amber-400/80 border-t border-amber-400/20 pt-2">⚠️ 以上为 AI 生成内容，仅供学习参考，非官方答案，请以现行法条与教材为准；凡标注「AI模拟」的案例为虚构练习素材，不构成真实判例。</div>
           <div class="flex gap-2 pt-1">
             <input id="aiFollowupInput" type="text" placeholder="针对本题继续追问（如：如果丙不知情构成善意取得吗？）..." class="flex-1 px-2.5 py-1.5 rounded-lg theme-card text-xs focus:outline-none" />
             <button id="sendAiFollowupBtn" type="button" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold">发送</button>
@@ -3387,8 +3409,16 @@
         subjContainer.classList.remove("hidden");
         const subjInput = document.getElementById("subjectiveInput");
         subjInput.value = (record && record.subjectiveText) || "";
+        const gBtn = document.getElementById("gradeSubjectiveBtn");
+        if (gBtn) gBtn.classList.remove("hidden");
+        const gBox = document.getElementById("gradeResultBox");
+        if (gBox) gBox.classList.add("hidden");
       } else {
         subjContainer.classList.add("hidden");
+        const gBtn2 = document.getElementById("gradeSubjectiveBtn");
+        if (gBtn2) gBtn2.classList.add("hidden");
+        const gBox2 = document.getElementById("gradeResultBox");
+        if (gBox2) gBox2.classList.add("hidden");
         renderOptionsList(q, showAnswerDirectly);
       }
 
@@ -4024,6 +4054,89 @@
       showToast("错题与笔记 CSV 已导出（Excel 可直接打开）", "success");
     }
 
+    // 主观题 AI 批改（调用同源 /api/grade，采分点结构化返回）
+    function escapeHtmlLocal(s) {
+      return String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    }
+    function fillGradeList(ulId, wrapId, arr) {
+      const ul = document.getElementById(ulId);
+      const wrap = document.getElementById(wrapId);
+      if (!ul || !wrap) return;
+      ul.innerHTML = "";
+      (arr || []).forEach((x) => { const li = document.createElement("li"); li.textContent = x; ul.appendChild(li); });
+      wrap.style.display = (arr && arr.length) ? "block" : "none";
+    }
+    function renderGradeResult(r) {
+      const maxScore = r.maxScore || 10;
+      document.getElementById("gradeScore").textContent = r.score + " / " + maxScore + " 分";
+      const lvEl = document.getElementById("gradeLevel");
+      if (lvEl) lvEl.textContent = r.level || "";
+      document.getElementById("gradeSummary").textContent = r.summary || "";
+      const pts = document.getElementById("gradePoints");
+      pts.innerHTML = "";
+      (r.pointHits || []).forEach((p) => {
+        const row = document.createElement("div");
+        row.className = "flex items-start gap-2 p-2 rounded-lg " + (p.hit ? "bg-emerald-500/5" : "bg-rose-500/5");
+        row.innerHTML =
+          '<span class="font-bold ' + (p.hit ? "text-emerald-600" : "text-rose-500") + '">' + (p.hit ? "✓" : "✕") + "</span>" +
+          '<div class="flex-1 min-w-0"><div class="font-medium">' + escapeHtmlLocal(p.point) + '</div>' +
+          '<div class="text-xs opacity-70">' + escapeHtmlLocal(p.comment || "") + "</div></div>" +
+          '<span class="text-xs font-bold text-blue-600 whitespace-nowrap">' + (p.score || 0) + "分</span>";
+        pts.appendChild(row);
+      });
+      fillGradeList("gradeProblems", "gradeProblemsWrap", r.problems);
+      fillGradeList("gradeSuggestions", "gradeSuggWrap", r.suggestions);
+      const law = document.getElementById("gradeLaw");
+      law.innerHTML = "";
+      (r.lawBasis || []).forEach((l) => {
+        const s = document.createElement("span");
+        s.className = "px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-300 text-xs border border-amber-400/30";
+        s.textContent = l;
+        law.appendChild(s);
+      });
+      document.getElementById("gradeLawWrap").style.display = (r.lawBasis && r.lawBasis.length) ? "block" : "none";
+    }
+    async function gradeSubjectiveAnswer() {
+      if (filteredQuestions.length === 0) return;
+      const q = filteredQuestions[currentIndex];
+      const answer = (document.getElementById("subjectiveInput")?.value || "").trim();
+      if (!answer) { showToast("请先输入你的主观分析作答", "warn"); return; }
+      // 记录作答
+      const rec = userProgress[q.id] || {};
+      rec.subjectiveText = answer;
+      userProgress[q.id] = rec;
+      safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress);
+
+      const box = document.getElementById("gradeResultBox");
+      const btn = document.getElementById("gradeSubjectiveBtn");
+      box.classList.remove("hidden");
+      document.getElementById("gradeScore").textContent = "批改中…";
+      document.getElementById("gradeSummary").textContent = "";
+      document.getElementById("gradePoints").innerHTML = "";
+      if (btn) btn.disabled = true;
+      const question = q.title || q.question || q.stem || "";
+      const reference = q.explanation || q.analysis || "";
+      try {
+        const res = await fetch([".", "api", "grade"].join("/"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, reference, answer, maxScore: 10 })
+        });
+        const data = await res.json().catch(() => ({ error: "返回非 JSON" }));
+        if (!res.ok || data.error) {
+          document.getElementById("gradeScore").textContent = "失败";
+          document.getElementById("gradeSummary").textContent = "批改失败：" + (data.error || ("HTTP " + res.status));
+          return;
+        }
+        renderGradeResult(data);
+      } catch (e) {
+        document.getElementById("gradeScore").textContent = "失败";
+        document.getElementById("gradeSummary").textContent = "无法连接 /api/grade（请确认已部署 Functions 并配置 DEEPSEEK_API_KEY）";
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
     // DeepSeek AI 解析生成（支持真实 API 调用与本地结构化法理拆解兜底）
     async function triggerAiExplain(customFollowup = "") {
       if (filteredQuestions.length === 0) return;
@@ -4540,6 +4653,13 @@
       });
       document.getElementById("closeAiResponseBtn").addEventListener("click", () => {
         document.getElementById("aiResponseBox").classList.add("hidden");
+      });
+      // 主观题 AI 批改
+      const gradeBtnEl = document.getElementById("gradeSubjectiveBtn");
+      if (gradeBtnEl) gradeBtnEl.addEventListener("click", gradeSubjectiveAnswer);
+      const closeGradeEl = document.getElementById("closeGradeBtn");
+      if (closeGradeEl) closeGradeEl.addEventListener("click", () => {
+        document.getElementById("gradeResultBox").classList.add("hidden");
       });
 
       document.getElementById("openAiModalBtn").addEventListener("click", () => {
