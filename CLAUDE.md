@@ -13,10 +13,12 @@
 
 ## 当前进度（2026-10-31 交接）
 
-- `main` @ `c271311` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v31`。
+- `main` @ `51447f7` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v32`。
 - 现状功能：单文件 SPA；开屏为**内联 3D 天平+法槌**（Three.js r128 + `vendor/GLTFLoader.js`，模型 `assets/models/legal.glb`）+ 酒红金渐变，倒计时目标 2028-09-16；左下角有**动态版本角标**（读 sw `CACHE_VERSION`，用于确认是否已更新到最新）。
 - SEO：`robots.txt` / `sitemap.xml` / `index.html` `<head>`（canonical、og、twitter）均已统一为 `https://xs06.de5.net/`；全仓库已无已废弃的旧域名引用。
 - 最近提交：
+  - `51447f7` feat(ui): 统计卡图标线性化分色 + 题眼高亮/单选即判改状态药丸开关（SW v31→v32）
+  - `150553a` fix(pages): 新增 404 兜底跳转首页，兼容误带 /fakao-pwa/ 旧路径
   - `c271311` feat(ui): 顶栏/底栏图标统一为线性描边 SVG + 错题卡片玫红渐变分色强化（SW v30→v31）
   - `49ac92f` feat(ui): 解析/背题「正确答案」渐变 chip 强调（作答中性 chip）+ 难度筛选下拉带 ★ 星级（SW v29→v30）
   - `a8dc06c` feat(ui): 答题卡图例圆点改同款渐变 + 选项判定态右上角 ✓(对)/✕(错)/!(漏选) 角标（SW v28→v29）
