@@ -13,10 +13,12 @@
 
 ## 当前进度（2026-11-01）
 
-- `main` @ `3827559` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v34`。
+- `main` @ `e488620` 已与 origin 同步。线上官方地址：**https://xs06.de5.net/**（已启用自定义域名；旧 github.io 地址现 301 跳转到新域，旧 github.io 安装的 PWA 需卸载后从新域重装）。SW 缓存 `fakao-v34`（本轮未改版本号）。
 - 现状功能：单文件 SPA；开屏为**内联 3D 天平+法槌**（Three.js r128 + `vendor/GLTFLoader.js`，模型 `assets/models/legal.glb`）+ 酒红金渐变，倒计时目标 2028-09-16；左下角有**动态版本角标**（读 sw `CACHE_VERSION`，用于确认是否已更新到最新）。
+- v11 UI 精修：知识点中心改为 605 条考点分页 + 科目筛选 + 搜索 + 折叠展开 + 随手笔记跳转；答题卡 120 题/页并支持题号跳转；SW 更新提示改为底栏上方固定卡片；桌面 Hero 增加 685 天倒计时环；主题切换改为圆形 View Transition 揭示；背诵/模拟模式启用专注布局；移动端顶栏、统计、底栏、Toast 密度统一。
 - SEO：`robots.txt` / `sitemap.xml` / `index.html` `<head>`（canonical、og、twitter）均已统一为 `https://xs06.de5.net/`；全仓库已无已废弃的旧域名引用。
 - 最近提交：
+  - `e488620` feat(ui): v11 全量精修（知识点检索/答题卡分页/更新卡/移动端密度/主题揭示/倒计时/专注模式）
   - `3827559` feat(ui): 顶部新增流动液态七彩玻璃流体（SW v33→v34）
   - `93fe801` feat(ui): 主流程图标线性化（科目筛选/题卡操作/掌握状态/笔记与错题标题/CSV 导出）+ Hero 窄屏收缩（SW v32→v33）
   - `51447f7` feat(ui): 统计卡图标线性化分色 + 题眼高亮/单选即判改状态药丸开关（SW v31→v32）
