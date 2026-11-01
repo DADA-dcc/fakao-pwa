@@ -2845,6 +2845,9 @@
       DEEPSEEK_KEY: "fakao_deepseek_key"
     };
 
+    // AI 后端地址（Cloudflare Worker）。留空则回退为同源相对路径 /api/*。
+    const AI_API_BASE = "https://round-unit-93bd.xsb13258256719.workers.dev";
+
     const IDBEngine = {
       dbName: "FakaoGuardDB",
       storeName: "state_mirror",
@@ -4117,7 +4120,7 @@
       const question = q.title || q.question || q.stem || "";
       const reference = q.explanation || q.analysis || "";
       try {
-        const res = await fetch([".", "api", "grade"].join("/"), {
+        const res = await fetch((AI_API_BASE || "") + "/api/grade", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question, reference, answer, maxScore: 10 })
@@ -4167,7 +4170,7 @@
       // 优先走同源边缘函数 /api/ai（密钥保存在服务端，用户无需自备 Key）
       let served = false;
       try {
-        const proxyRes = await fetch([".", "api", "ai"].join("/"), {
+        const proxyRes = await fetch((AI_API_BASE || "") + "/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt, followup: customFollowup || "" })
