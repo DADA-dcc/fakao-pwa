@@ -37,5 +37,6 @@ audit/rescue/民法.before.json
 /live_splash_preview.png
 /hero_preview.png
 /*.bak-*
+/index.html.bak_*
 /cover-legacy-120bpm.html
 /assets/models/*_preview.png

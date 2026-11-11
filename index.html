@@ -8,6 +8,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>法考刷题助手 Pro — 刷题·背诵·错题·离线守护</title>
   <link rel="canonical" href="https://xs06.de5.net/" />
+  <meta name="description" content="法考备考刷题练习助手，覆盖民法、刑法、行政法等 12 个科目近万道真题；支持错题本、模拟考试、智能复习与离线使用。" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://xs06.de5.net/" />
   <meta property="og:title" content="法考刷题助手 Pro — 刷题·背诵·错题·离线守护" />
@@ -4210,7 +4214,7 @@
       showToast("错题与笔记 CSV 已导出（Excel 可直接打开）", "success");
     }
 
-    // 主观题 AI 批改（调用同源 /api/grade，采分点结构化返回）
+    // 主观题 AI 批改（调用 AI Worker 的 /api/grade，采分点结构化返回）
     function escapeHtmlLocal(s) {
       return String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     }
