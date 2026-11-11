@@ -2,14 +2,17 @@
  * 法考刷题助手 (fakao-pwa) 升级版 Service Worker (v34)
  * 优化点：
  * 1. 拆分核心外壳 (CORE_SHELL) 与 大体积题库资源 (DATA_ASSETS)，避免 caches.addAll 因单个文件超时导致整个 SW 安装失败
- * 2. 对题库 JSON (./questions/index.json, ./knowledge.json, ./case_library.json) 采用 Stale-While-Revalidate 策略：秒开离线缓存，后台静默更新
- * 3. 对外部 AI 接口 (api.deepseek.com) 与 GitHub Gist 同步接口 (api.github.com) 严格走 Network Only，防止缓存污染
- * 4. 支持客户端发送 SKIP_WAITING 消息实现一键热更新
+ * 2. 安装时预缓存 12 个分科题库（分批、跳过已缓存项），保证添加到主屏幕后离线也能刷全部科目
+ * 3. 对题库 JSON 采用 Cache First + 24 小时新鲜期：新鲜期内直接返回缓存，不发后台请求，
+ *    避免每次冷启动在移动网络下重新拉取约 20MB 题库；过期后仍按 Stale-While-Revalidate 更新
+ * 4. 对外部 AI 接口 (api.deepseek.com) 与 GitHub Gist 同步接口 (api.github.com) 严格走 Network Only
+ * 5. 支持客户端发送 SKIP_WAITING 消息实现一键热更新
  */
 
 const CACHE_VERSION = 'fakao-v34';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
+const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
 
 const CORE_SHELL = [
   './',
@@ -30,6 +33,32 @@ const OPTIONAL_ASSETS = [
   './case_library.json'
 ];
 
+// 分科题库：离线刷题的关键数据（合计约 20MB），安装时分批预缓存
+const QUESTION_ASSETS = [
+  './questions/民法.json',
+  './questions/刑法.json',
+  './questions/行政法.json',
+  './questions/民诉法.json',
+  './questions/刑诉法.json',
+  './questions/商经法.json',
+  './questions/宪法.json',
+  './questions/知识产权法.json',
+  './questions/国际法.json',
+  './questions/法理学.json',
+  './questions/法制史.json',
+  './questions/司法制度与职业道德.json'
+];
+
+// 只缓存缺失项：SW 自身更新时不会重复下载已有的 20MB 题库
+async function ensureCached(cache, url) {
+  try {
+    if (await cache.match(url)) return;
+    await cache.add(url);
+  } catch (err) {
+    console.warn('[SW] Asset cache skipped:', url, err);
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
@@ -42,11 +71,14 @@ self.addEventListener('install', (event) => {
       );
 
       const dataCache = await caches.open(DATA_CACHE);
-      await Promise.allSettled(
-        OPTIONAL_ASSETS.map((url) =>
-          dataCache.add(url).catch((err) => console.warn('[SW] Optional asset skipped:', url, err))
-        )
-      );
+      // 小体积资源并发缓存
+      await Promise.all(OPTIONAL_ASSETS.map((url) => ensureCached(dataCache, url)));
+      // 大体积题库每批 2 个，避免移动端并发下载拖慢首次安装或被系统中断
+      for (let i = 0; i < QUESTION_ASSETS.length; i += 2) {
+        await Promise.all(
+          QUESTION_ASSETS.slice(i, i + 2).map((url) => ensureCached(dataCache, url))
+        );
+      }
     })()
   );
 });
@@ -87,12 +119,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 针对 JSON 题库与知识点数据：Stale-While-Revalidate（优先读缓存秒开，同时后台拉取最新题库更新缓存）
+  // 针对 JSON 题库与知识点数据：Cache First（24h 新鲜期）+ 过期 Stale-While-Revalidate
   if (url.pathname.endsWith('.json') && !url.pathname.endsWith('manifest.json')) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(DATA_CACHE);
         const cached = await cache.match(request);
+        if (cached) {
+          const dateStr = cached.headers.get('date');
+          const ageMs = dateStr ? Date.now() - Date.parse(dateStr) : NaN;
+          if (Number.isFinite(ageMs) && ageMs >= 0 && ageMs < JSON_REVALIDATE_MS) {
+            return cached;
+          }
+        }
         const networkPromise = fetch(request)
           .then((response) => {
             if (response && response.status === 200) {
