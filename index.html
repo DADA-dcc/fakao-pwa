@@ -3164,13 +3164,18 @@
           const expectedTotal = Number(data && data.total) || 0;
           const rawList = await extractQuestionsFromData(data);
           if (rawList.length > 0) {
-            allQuestions = rawList.map((q, idx) => normalizeQuestion(q, idx));
+            // 案例题组子题在题库录入时丢失共享案情，无法独立作答：
+            // 数据保留（incomplete: true）但不进入练习池，避免刷到无解题。
+            const skipped = rawList.filter((q) => q.incomplete).length;
+            const playable = rawList.filter((q) => !q.incomplete);
+            allQuestions = playable.map((q, idx) => normalizeQuestion(q, idx));
             const subtitle = document.getElementById("dataSourceSubtitle");
+            const suffix = skipped ? `（已排除 ${skipped} 道缺共享案情的题）` : "";
             if (expectedTotal && rawList.length < expectedTotal * 0.9) {
               // 离线且部分分科题库尚未缓存时，明确告知用户，避免误以为题目变少
-              subtitle.textContent = `已加载 ${allQuestions.length} / ${expectedTotal} 题：部分科目尚未缓存，请联网打开一次以补全离线题库`;
+              subtitle.textContent = `已加载 ${rawList.length} / ${expectedTotal} 题：部分科目尚未缓存，请联网打开一次以补全离线题库${suffix}`;
             } else {
-              subtitle.textContent = `已加载仓库完整题库：共 ${allQuestions.length} 题`;
+              subtitle.textContent = `已加载仓库完整题库：共 ${allQuestions.length} 题${suffix}`;
             }
             applyFilters(false);
           }

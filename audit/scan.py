@@ -129,6 +129,10 @@ def scan(qs):
         elif len(ana) < 20:
             issues['A_too_short'].append(dict(rec, note=ana))
 
+        # B0 已标记为缺共享案情的题（前端已从练习池排除，数据仍保留）
+        if q.get('incomplete'):
+            issues['B_incomplete'].append(dict(rec, note='缺少共享案情，已排除出练习池'))
+
         # B 缺共享材料（分案题）
         if re.search(r'事实[一二三四五六七八九十]', stem):
             issues['B_missing_material'].append(dict(rec, note='引用分案事实: ' + stem[:44]))
@@ -137,7 +141,8 @@ def scan(qs):
         elif CASE_REF_PAT.match(stem) and len(stem) < 50:
             issues['B_missing_material'].append(dict(rec, note=stem[:44]))
         elif len(stem) <= 40 and re.search(r'[甲乙丙丁]', stem) and not re.search(r'[年月日]', stem):
-            issues['B_short_stem_person'].append(dict(rec, note=stem[:44]))
+            # 短题干多数可独立作答（如「乙盗窃甲的手机后…」），仅作提示，不计硬缺陷
+            issues['B_short_stem_hint'].append(dict(rec, note=stem[:44]))
 
         # C 答案格式（主观题无选项无标准答案，跳过）
         is_subjective = '主观' in qtype

@@ -7325,7 +7325,9 @@
    "date": "",
    "summary": "暂无匹配的真实裁判文书案例"
   },
-  "difficulty": "基础"
+  "difficulty": "基础",
+  "incomplete": true,
+  "missing_reason": "shared_case_material"
  },
  {
   "id": 2572,
@@ -9481,7 +9483,9 @@
    "date": "",
    "summary": "暂无匹配的真实裁判文书案例"
   },
-  "difficulty": "基础"
+  "difficulty": "基础",
+  "incomplete": true,
+  "missing_reason": "shared_case_material"
  },
  {
   "id": 2670,
@@ -10889,7 +10893,9 @@
    "date": "",
    "summary": "暂无匹配的真实裁判文书案例"
   },
-  "difficulty": "基础"
+  "difficulty": "基础",
+  "incomplete": true,
+  "missing_reason": "shared_case_material"
  },
  {
   "id": 2734,
@@ -11989,7 +11995,9 @@
    "date": "",
    "summary": "暂无匹配的真实裁判文书案例"
   },
-  "difficulty": "基础"
+  "difficulty": "基础",
+  "incomplete": true,
+  "missing_reason": "shared_case_material"
  },
  {
   "id": 2784,
