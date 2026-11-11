@@ -14,17 +14,24 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 QDIR = os.path.join(ROOT, 'questions')
 
 # 各部法律现行条文总数（用于识别明显越界的条号引用）
+# 2026-11-11 核准（依据全国人大网现行全文 / 修改决定）：
+#   立法法       105 -> 120：2023 年第二次修正，全文末条为第一百二十条
+#   民事诉讼法   284 -> 306：2023 年第五次修正（2024-01-01 施行），涉外编扩充，
+#                修改决定明载「将第二百八十八条改为第二百九十八条」
+#                「增加一条，作为第三百零五条」，故取 306 留余量
+#   法官法        66 ->  69：2019 年修订，全文末条为第六十九条
+# 未核准项保持原值，不据推测修改。
 LAW_MAX = {
-    '刑法': 452, '刑事诉讼法': 308, '民事诉讼法': 284, '行政诉讼法': 103,
+    '刑法': 452, '刑事诉讼法': 308, '民事诉讼法': 306, '行政诉讼法': 103,
     '民法典': 1260, '宪法': 143, '行政处罚法': 86, '行政许可法': 83,
     '行政强制法': 71, '公司法': 266, '合伙企业法': 109, '个人独资企业法': 48,
     '企业破产法': 136, '票据法': 111, '证券法': 226, '保险法': 187,
     '著作权法': 67, '专利法': 82, '商标法': 73, '反不正当竞争法': 33,
     '反垄断法': 70, '消费者权益保护法': 63, '产品质量法': 74,
     '劳动法': 107, '劳动合同法': 98, '土地管理法': 87, '城市房地产管理法': 73,
-    '环境保护法': 70, '税收征收管理法': 94, '法官法': 66, '检察官法': 68,
+    '环境保护法': 70, '税收征收管理法': 94, '法官法': 69, '检察官法': 68,
     '律师法': 60, '公证法': 47, '仲裁法': 80, '国家赔偿法': 42,
-    '监察法': 69, '立法法': 105, '全国人民代表大会组织法': 47,
+    '监察法': 69, '立法法': 120, '全国人民代表大会组织法': 47,
     '刑法修正案（十一）': 48, '刑法修正案（十二）': 8,
 }
 
@@ -32,6 +39,13 @@ PLACEHOLDER_PAT = re.compile(
     r'请参考相关法条与教材解析|legal knowledge|请参考官方公布|参考官方公布|'
     r'详细解析请参考|详见官方解析|请见解析|详见解析|暂无解析|无解析|待补充|待完善|TODO'
 )
+
+# 解析中自称的正确答案。刻意不匹配单独的「答案为X」，避免把
+# 「司法部原答案为ABD」「（原答案为CD）」等历史答案说明误判为冲突
+# （2026-11-11 复核：旧规则报 62 条，收紧后真冲突 0 条）。
+ANS_CLAIM_PAT = re.compile(
+    "(?:正确答案(?:为|是|：|:)?|本题正确答案(?:为|是|：|:)?|故选|应选|故本题?选)\\s*"
+    "[「『“\"'‘’]?([A-D][、,，\\s和及A-D]*)")
 
 CASE_REF_PAT = re.compile(r'^(根据|依据|结合|针对|就)?(上述|以上|前述|该|此)(案情|材料|事实|案例|案例材料|描述)')
 SHARED_PAT = re.compile(r'上述案情|上述材料|以上材料|前述材料|根据上述|结合上述|据此回答|基于上述')
@@ -81,6 +95,18 @@ def norm_text(s):
     return re.sub(r'[\s，。、；：（）()《》「」“”"\'’‘·—\-0-9A-D]', '', s or '')
 
 
+CN_DIGIT = {'零': '0', '〇': '0', '一': '1', '二': '2', '三': '3', '四': '4',
+            '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '两': '2'}
+
+
+def norm_quote(s):
+    """法条引文专用归一化：先把中文数字折成阿拉伯数字再抹掉全部数字，
+    消除「处五年以上」与「处5年以上」这类写法差异造成的假冲突。"""
+    s = re.sub(r'[\s，。、；：（）()《》「」“”"\'’‘·—\-]', '', s or '')
+    s = ''.join(CN_DIGIT.get(ch, ch) for ch in s)
+    return re.sub(r'[0-9A-D]', '', s)
+
+
 def scan(qs):
     issues = defaultdict(list)
     seen = {}
@@ -128,8 +154,22 @@ def scan(qs):
                     issues['C_type_mismatch'].append(dict(rec, note='单选多答 %s' % ans))
                 if ('多选' in qtype or '不定项' in qtype) and len(letters) == 1:
                     issues['C_type_mismatch'].append(dict(rec, note='%s单答 %s' % (qtype, ans)))
+                # 题干含「哪些」不等于多选：旧版多选真题常因法律修订后按现行法只剩一个
+                # 正确答案，题库已同步把 type/answer 改为单选，但保留原题干措辞（如 2006
+                # 卷二第 57 题，现行《刑法》第 358 条数罪并罚后答案由 AD 变 A）。
+                # 此类仅作人工复核提示，不计入 C 类硬错误。
                 if '哪些' in stem and '单选' in qtype:
-                    issues['C_type_mismatch'].append(dict(rec, note='题干"哪些"但标为单选'))
+                    issues['C_wording_hint'].append(dict(rec, note='题干"哪些"但标为单选（旧题新法，需人工复核）'))
+
+        # H 解析自称答案与 answer 字段冲突
+        claim = ANS_CLAIM_PAT.search(ana)
+        if claim:
+            claimed = set(re.findall(r'[A-D]', claim.group(1)))
+            ans_letters = set(re.findall(r'[A-D]', ans.upper()))
+            if claimed and ans_letters and claimed != ans_letters:
+                issues['H_answer_analysis_conflict'].append(
+                    dict(rec, note='answer=%s 解析自称=%s' % (
+                        ''.join(sorted(ans_letters)), ''.join(sorted(claimed)))))
 
         # D 选项异常（主观题跳过）
         if not is_subjective:
@@ -156,8 +196,11 @@ def scan(qs):
             elif base == '刑法' and n > 452:
                 issues['E_article_out_of_range'].append(dict(rec, note='刑法第%d条' % n))
 
-        # F 重复题
-        key = hashlib.md5(norm_text(stem).encode('utf-8')).hexdigest()
+        # F 重复题：仅凭题干会把「下列哪一选项是正确的？」等模板化题干误判为重复，
+        # 需联合选项内容判重（2026-11-11 复核：76 组虚高 -> 23 组真实重复）
+        opts_blob = ('|'.join(norm_text(str(v)) for k, v in sorted(opts.items()))
+                     if isinstance(opts, dict) else norm_text(str(opts)))
+        key = hashlib.md5((norm_text(stem) + opts_blob).encode('utf-8')).hexdigest()
         if key in seen:
             issues['F_duplicate'].append(dict(rec, note='与 id %s 题干相同' % seen[key]))
         else:
@@ -176,7 +219,7 @@ def scan(qs):
             p = cn2int(para) if para else 0
             base = re.sub(r'（.*?）', '', law)
             k = (base, n, p)
-            quoted[k].add(norm_text(txt)[:12])
+            quoted[k].add(norm_quote(txt)[:12])
             where[k].append(str(q.get('id')))
     for (law, n, p), variants in quoted.items():
         if len(variants) > 1:
