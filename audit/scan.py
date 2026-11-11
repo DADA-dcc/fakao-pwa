@@ -211,12 +211,15 @@ def scan(qs):
         else:
             seen[key] = qid
 
-    # G 同一法条「同款」被引述为不同内容（排除不同款，避免把多款法条误判为冲突）
+    # G 同一法条「同款」引文变体（低置信提示，非错误）：中文/阿拉伯数字写法差异、
+    # 同一条不同款被简写为同一条号、引文截断等都会产生变体，改题前须逐条人工核实
     quoted = defaultdict(set)
     where = defaultdict(list)
     QUOTE_PAT = re.compile(
         r'《([^》]{2,24})》\s*第\s*([一二三四五六七八九十百千零〇\d]+)\s*条'
-        r'(?:\s*第\s*([一二三四五六七八九十\d]+)\s*款)?[^“"「]{0,12}[“"「]([^”"」]{8,40})')
+        # 收紧：法条与引文之间不得跨句、跨行或跨【】注释，避免把下一句
+        # 「B选项：\"煽动颠覆国家政权\"」误配给上一条法条（题 510 即此类）
+        r'(?:\s*第\s*([一二三四五六七八九十\d]+)\s*款)?[^“"「。；！？\n【】]{0,6}[“"「]([^”"」]{8,40})')
     for q in qs:
         blob = (q.get('analysis') or '') + (q.get('question') or '')
         for law, num, para, txt in QUOTE_PAT.findall(blob):
@@ -228,7 +231,7 @@ def scan(qs):
             where[k].append(str(q.get('id')))
     for (law, n, p), variants in quoted.items():
         if len(variants) > 1:
-            issues['G_article_quote_conflict'].append({
+            issues['G_quote_variant_hint'].append({
                 'id': ','.join(where[(law, n, p)][:4]),
                 'subject': '',
                 'type': '', 'year': '',
