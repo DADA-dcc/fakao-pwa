@@ -49,6 +49,9 @@ ANS_CLAIM_PAT = re.compile(
 
 CASE_REF_PAT = re.compile(r'^(根据|依据|结合|针对|就)?(上述|以上|前述|该|此)(案情|材料|事实|案例|案例材料|描述)')
 SHARED_PAT = re.compile(r'上述案情|上述材料|以上材料|前述材料|根据上述|结合上述|据此回答|基于上述')
+FACT_REF_PAT = re.compile(r'事实([一二三四五六七八九十])')
+# 已恢复题的题干结构：【共享案情】\n<案情正文>\n\n<原设问>
+CASE_PREFIX = '【共享案情】'
 
 ARTICLE_PAT = re.compile(r'《([^》]{2,24})》\s*第\s*([一二三四五六七八九十百千零〇\d]+)\s*条')
 CN_NUM = {'零': 0, '〇': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
@@ -134,13 +137,31 @@ def scan(qs):
             issues['B_incomplete'].append(dict(rec, note='缺少共享案情，已排除出练习池'))
 
         # B 缺共享材料（分案题）
-        if re.search(r'事实[一二三四五六七八九十]', stem):
-            issues['B_missing_material'].append(dict(rec, note='引用分案事实: ' + stem[:44]))
-        elif SHARED_PAT.search(stem) and len(stem) < 60:
+        # 2026-11-13 修正：判据必须区分「案情正文」与「设问」。补回案情的题，
+        # 其 question = 【共享案情】案情\n\n设问，若对整串 stem 直接找「事实X」，
+        # 会把案情正文里正常的「（事实一）」标注误判为缺材料（曾产生 34 条假阳性）。
+        # 另外，题干本身自带完整案情的题（如 id 7845，263 字）也不算缺材料。
+        if stem.startswith(CASE_PREFIX):
+            head, sep, ask = stem.partition('\n\n')
+            material = head[len(CASE_PREFIX):] if sep else ''
+        else:
+            material, ask = '', stem
+        has_material = bool(material) or bool(q.get('case_material_source'))
+        # 补录完整性：设问引用的「事实N」必须能在案情正文找到对应标注
+        if has_material:
+            missing = set(FACT_REF_PAT.findall(ask)) - set(FACT_REF_PAT.findall(material))
+            # 案情采用「材料①」「协议二」等其他编号体系时不适用此校验
+            if missing and FACT_REF_PAT.findall(material):
+                issues['B_case_fact_mismatch'].append(dict(rec, note='设问引用事实%s，案情未标注' % ''.join(sorted(missing))))
+        # 仅有「短设问且无案情」才算缺材料；长题干视为自带案情
+        ask_short = len(ask) < 60
+        if not has_material and ask_short and FACT_REF_PAT.search(ask):
+            issues['B_missing_material'].append(dict(rec, note='引用分案事实: ' + ask[:44]))
+        elif not has_material and SHARED_PAT.search(stem) and len(stem) < 60:
             issues['B_missing_material'].append(dict(rec, note=stem[:44]))
-        elif CASE_REF_PAT.match(stem) and len(stem) < 50:
+        elif not has_material and CASE_REF_PAT.match(stem) and len(stem) < 50:
             issues['B_missing_material'].append(dict(rec, note=stem[:44]))
-        elif len(stem) <= 40 and re.search(r'[甲乙丙丁]', stem) and not re.search(r'[年月日]', stem):
+        elif not has_material and len(stem) <= 40 and re.search(r'[甲乙丙丁]', stem) and not re.search(r'[年月日]', stem):
             # 短题干多数可独立作答（如「乙盗窃甲的手机后…」），仅作提示，不计硬缺陷
             issues['B_short_stem_hint'].append(dict(rec, note=stem[:44]))
 
