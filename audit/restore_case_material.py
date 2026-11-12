@@ -53,8 +53,37 @@ for f in sorted(glob.glob('questions/*.json')):
     if changed:
         json.dump(data, io.open(f, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
+# 同步已恢复题的案情前缀：案情库条目后续被修订时，题干前缀随之更新。
+# 这样更正原文后无需手工回滚题库。
+synced = 0
+for f in sorted(glob.glob('questions/*.json')):
+    if f.endswith('index.json'):
+        continue
+    data = json.load(io.open(f, encoding='utf-8'))
+    changed = False
+    for q in data:
+        if not q.get('case_material_source'):
+            continue
+        s = q.get('question') or ''
+        if not s.startswith(PREFIX):
+            continue
+        mat = find_material(q.get('analysis'))
+        if not mat:
+            continue
+        body = s[len(PREFIX):]
+        sep = body.find('\n\n')
+        stem = body[sep + 2:] if sep >= 0 else body
+        target = PREFIX + mat['material'] + '\n\n' + stem
+        if target != s:
+            q['question'] = target
+            q['case_material_source'] = mat['source']
+            synced += 1
+            changed = True
+    if changed:
+        json.dump(data, io.open(f, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+
 print('案情库条目:', len(MATS))
-print('本轮恢复:', len(restored), '题')
+print('本轮恢复:', len(restored), '题 | 前缀同步修订:', synced, '题')
 print('按卷次:', dict(collections.Counter(r['range'] for r in restored)))
 print('仍缺案情:', len(no_material), '题')
 # 清单累积：从题库重建全部已恢复条目，避免多次运行只留最后一批
