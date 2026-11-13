@@ -7,7 +7,7 @@
 
 用法：python audit/scan.py [--json out.json] [--subject 刑法]
 """
-import json, io, os, re, sys, argparse, hashlib
+import json, io, os, re, sys, argparse, hashlib, difflib
 from collections import defaultdict, Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -98,8 +98,12 @@ def norm_text(s):
     return re.sub(r'[\s，。、；：（）()《》「」“”"\'’‘·—\-0-9A-D]', '', s or '')
 
 
+# 2026-11-13 补「十/百/千」：原表缺这三项，导致「五年以上十年以下」与
+# 「5年以上10年以下」归一化后仍不同，产生纯数字写法造成的假变体（全量核查 16 组）。
+# 折成任意数字字符即可，因为下一步会抹掉全部数字。
 CN_DIGIT = {'零': '0', '〇': '0', '一': '1', '二': '2', '三': '3', '四': '4',
-            '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '两': '2'}
+            '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '两': '2',
+            '十': '0', '百': '0', '千': '0'}
 
 
 def norm_quote(s):
@@ -252,12 +256,22 @@ def scan(qs):
             where[k].append(str(q.get('id')))
     for (law, n, p), variants in quoted.items():
         if len(variants) > 1:
+            # 分流（2026-11-13）：同一法条被不同题从不同片段摘引属正常；
+            # 存在「高度相似却不完全相同」的引文对才值得优先人工核查。
+            # 不能只看起始字是否相同——「投保人故意/意外」这类开头笔误
+            # 起始字就不同，按起点判定会被误标为正常摘引而漏掉真错误。
+            vs = sorted(variants)
+            similar = any(
+                difflib.SequenceMatcher(None, vs[i], vs[j]).ratio() >= 0.85
+                for i in range(len(vs)) for j in range(i + 1, len(vs)))
+            kind = 'same_segment' if similar else 'different_excerpts'
             issues['G_quote_variant_hint'].append({
                 'id': ','.join(where[(law, n, p)][:4]),
                 'subject': '',
                 'type': '', 'year': '',
-                'note': '%s第%d条%s 被引作 %d 种不同内容: %s' % (
-                    law, n, ('第%d款' % p) if p else '', len(variants),
+                'kind': kind,
+                'note': '[%s] %s第%d条%s 被引作 %d 种不同内容: %s' % (
+                    kind, law, n, ('第%d款' % p) if p else '', len(variants),
                     ' / '.join(sorted(variants))[:60])
             })
 
@@ -279,6 +293,10 @@ def main():
     print('-' * 62)
     for k in sorted(issues):
         print('%-28s %5d' % (k, len(issues[k])))
+    gkinds = Counter(r.get('kind') for r in issues.get('G_quote_variant_hint', []))
+    if gkinds:
+        print('  G 类分流: 同片段内容歧异(优先核查) %d / 不同片段正常摘引 %d' % (
+            gkinds.get('same_segment', 0), gkinds.get('different_excerpts', 0)))
     print('-' * 62)
 
     by_subj = defaultdict(Counter)
