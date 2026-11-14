@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#1a3a6b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="法考刷题" />
@@ -22,7 +22,36 @@
   <meta name="twitter:title" content="法考刷题助手 Pro" />
   <meta name="twitter:description" content="民法·刑法·行政法……近万道真题，陪你稳过法考。" />
   <meta name="twitter:image" content="https://xs06.de5.net/preview/cover.jpg" />
-  <script src="./vendor/tailwind-3.4.17.js"></script>
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+<link rel="preconnect" href="https://ai.xs06.de5.net" crossorigin />
+<link rel="preload" as="script" href="./vendor/tailwind-3.4.17.js" />
+<script src="./vendor/tailwind-3.4.17.js"></script>
+<script>
+/* 统一 AI 网关：绑定自定义域名，国内可达；静态站点无法藏密钥，网关侧必须做 Origin 白名单 + 限流 */
+window.XS_AI = (function(){
+  var ENDPOINT = "https://ai.xs06.de5.net/v1/chat/completions";
+  var TOKEN = "fakao-ai-2026";
+  function chat(messages, opts){
+    opts = opts || {};
+    var ctrl = new AbortController();
+    var timer = setTimeout(function(){ ctrl.abort(); }, opts.timeoutMs || 40000);
+    return fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + TOKEN },
+      body: JSON.stringify({ messages: messages, max_tokens: opts.maxTokens || 900, temperature: opts.temperature || 0.3 }),
+      signal: ctrl.signal
+    }).then(function(r){
+      if (!r.ok) throw new Error("AI 网关 HTTP " + r.status);
+      return r.json();
+    }).then(function(j){
+      var text = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+      if (!text) throw new Error("AI 返回为空");
+      return text;
+    }).finally(function(){ clearTimeout(timer); });
+  }
+  return { chat: chat, ENDPOINT: ENDPOINT };
+})();
+</script>
   <style>
     :root {
       --bg-page: #f1f5f9;
@@ -2987,7 +3016,7 @@
     };
 
     // AI 后端地址（Cloudflare Worker）。留空则回退为同源相对路径 /api/*。
-    const AI_API_BASE = "https://round-unit-93bd.xsb13258256719.workers.dev";
+    // AI 统一走 window.XS_AI.chat()（自建可达网关），不再依赖不可达的 workers.dev
 
     const IDBEngine = {
       dbName: "FakaoGuardDB",
@@ -4552,7 +4581,7 @@
       showToast("错题与笔记 CSV 已导出（Excel 可直接打开）", "success");
     }
 
-    // 主观题 AI 批改（调用 AI Worker 的 /api/grade，采分点结构化返回）
+    // 主观题 AI 批改（统一走自建网关，采分点结构化返回）
     function escapeHtmlLocal(s) {
       return String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     }
@@ -4617,24 +4646,31 @@
       const question = q.title || q.question || q.stem || "";
       const reference = q.explanation || q.analysis || "";
       try {
-        const res = await fetch((AI_API_BASE || "") + "/api/grade", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, reference, answer, maxScore: 10 })
-        });
-        const data = await res.json().catch(() => ({ error: "返回非 JSON" }));
-        if (!res.ok || data.error) {
-          document.getElementById("gradeScore").textContent = "失败";
-          document.getElementById("gradeSummary").textContent = "批改失败：" + (data.error || ("HTTP " + res.status));
+        const gradeSys = "你是法考主观题阅卷老师。不要输出思考过程、不要 markdown 代码块、不要任何额外文字，直接输出唯一一个完整 JSON 对象。字段：score(0-10数字)、level(字符串)、summary(字符串)、pointHits(数组，每项 {point,hit:布尔,comment,score:数字})、problems(字符串数组)、suggestions(字符串数组)、lawBasis(字符串数组)。";
+        const gradeUser = "题目：" + question + "\n参考要点：" + reference + "\n考生作答：" + answer + "\n满分 10 分，请按采分点逐项批改。";
+        const raw = await window.XS_AI.chat(
+          [{ role: "system", content: gradeSys }, { role: "user", content: gradeUser }],
+          { maxTokens: 900, timeoutMs: 45000 }
+        );
+        let data;
+        try {
+          const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+          // 推理型上游偶尔会把分析过程写在正文前，截取首尾花括号之间的完整对象
+          const first = cleaned.indexOf("{"), last = cleaned.lastIndexOf("}");
+          data = JSON.parse(first >= 0 && last > first ? cleaned.slice(first, last + 1) : cleaned);
+        } catch (parseErr) {
+          document.getElementById("gradeScore").textContent = "—";
+          document.getElementById("gradeSummary").textContent = raw;
           return;
         }
+        data.maxScore = 10;
         renderGradeResult(data);
         // 缓存批改结果：切题回来直接展示，不必重复消耗 AI 接口
         rec.gradeResult = data;
         safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress);
       } catch (e) {
         document.getElementById("gradeScore").textContent = "失败";
-        document.getElementById("gradeSummary").textContent = "无法连接 /api/grade（请确认已部署 Functions 并配置 DEEPSEEK_API_KEY）";
+        document.getElementById("gradeSummary").textContent = "AI 网关暂时不可用：" + (e.name === "AbortError" ? "请求超时" : e.message) + "，请稍后重试";
       } finally {
         gradeBtns.forEach((b) => { b.disabled = false; });
       }
@@ -4667,29 +4703,20 @@
 
       textEl.textContent = "法考助教正在为你推演法理与要件...";
 
-      // 优先走同源边缘函数 /api/ai（密钥保存在服务端，用户无需自备 Key）
-      let served = false;
+      // 优先走自建可达网关（密钥保存在网关侧，用户无需自备 Key）
       try {
-        const proxyRes = await fetch((AI_API_BASE || "") + "/api/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt, followup: customFollowup || "" })
-        });
-        if (proxyRes.ok) {
-          const proxyData = await proxyRes.json();
-          if (proxyData && proxyData.content) {
-            textEl.textContent = proxyData.content;
-            served = true;
-          }
-        } else if (proxyRes.status === 429) {
-          textEl.textContent = "请求过于频繁，请稍后再试。";
-          served = true;
-        }
+        const explainSys = "你是一位资深的国家统一法律职业资格考试（法考）辅导名师，擅长提炼题眼、拆解请求权基础与犯罪构成要件。直接给出结论与解析，不要输出思考过程。";
+        const explainUser = customFollowup
+          ? prompt + "\n考生追问：" + customFollowup + "\n请用简明扼要的法考应试语言解答考生的追问。"
+          : prompt + "\n请从【命题陷阱】【请求权基础/构成要件】【同类题秒杀口诀】三个维度进行精炼拆解。";
+        textEl.textContent = await window.XS_AI.chat(
+          [{ role: "system", content: explainSys }, { role: "user", content: explainUser }],
+          { maxTokens: 900 }
+        );
+        return;
       } catch (e) {
-        // 代理不可用（本地 file:// 预览、静态托管无 Functions 等），走下面的回退
+        // 网关不可用时继续走下面的回退（自备 Key / 本地结构化拆解）
       }
-
-      if (served) return;
 
       // 回退一：用户自备 DeepSeek Key，浏览器直连
       if (apiKey) {
@@ -5595,8 +5622,6 @@
 </div>
 <script id="aiqa-script">
 (function(){
-  var API='https://ai.xs06.de5.net/v1/chat/completions';
-  var APIKEY='fakao-ai-2026';
   var btn=document.getElementById('aiqa-btn'), panel=document.getElementById('aiqa-panel'), msgs=document.getElementById('aiqa-msgs'), inp=document.getElementById('aiqa-in'), send=document.getElementById('aiqa-send'), close=document.getElementById('aiqa-close'), chips=document.getElementById('aiqa-chips');
   if(!btn||!panel) return;
   var history=[{role:'system',content:'你是「法考答疑助手」，专门服务国家统一法律职业资格考试（客观题与主观题）。要求：1) 先给结论，再给依据；2) 引用法条必须写明法律名称与条文号（如《民法典》第577条），不确定就直说，严禁编造；3) 讲题按「考点→法条→逐项分析→结论」；4) 用简洁中文，适合手机阅读；5) 只回答法考与法律学习相关问题，无关话题礼貌拒绝。'}];
@@ -5656,10 +5681,9 @@
     inp.value=''; add('user',realQ); history.push({role:'user',content:realQ});
     send.disabled=true;
     var thinking=document.createElement('div'); thinking.className='aiqa-m aiqa-a'; thinking.textContent='思考中…'; msgs.appendChild(thinking); msgs.scrollTop=msgs.scrollHeight;
-    fetch(API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+APIKEY},body:JSON.stringify({messages:history,max_tokens:900})})
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-      .then(function(j){ var ans=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||JSON.stringify(j); thinking.remove(); var saved=ans; add('assistant',ans,function(){ saveToNote(saved); }); history.push({role:'assistant',content:ans}); })
-      .catch(function(e){ thinking.remove(); add('assistant','请求失败：'+e.message); })
+    window.XS_AI.chat(history,{maxTokens:900})
+      .then(function(ans){ thinking.remove(); var saved=ans; add('assistant',ans,function(){ saveToNote(saved); }); history.push({role:'assistant',content:ans}); })
+      .catch(function(e){ thinking.remove(); add('assistant','请求失败：'+(e.name==='AbortError'?'超时':e.message)); })
       .finally(function(){ send.disabled=false; inp.focus(); });
   }
   send.addEventListener('click',function(){ askWith(inp.value); });

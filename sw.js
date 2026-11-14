@@ -25,9 +25,10 @@
  *    CACHE_VERSION 保持 v34，避免重下约 20MB 题库。
  */
 
-const CACHE_VERSION = 'fakao-v34';
+const CACHE_VERSION = 'fakao-v35';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
-const DATA_CACHE = `${CACHE_VERSION}-data`;
+// 题库缓存名固定，不随外壳版本变化：activate 只清旧外壳，避免用户重下约 20MB 题库
+const DATA_CACHE = 'fakao-v34-data';
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
 
 const CORE_SHELL = [
@@ -132,7 +133,8 @@ self.addEventListener('fetch', (event) => {
   // 排除 AI 接口与 GitHub Gist 同步 API
   if (
     url.hostname.includes('deepseek.com') ||
-    url.hostname.includes('api.github.com')
+    url.hostname.includes('api.github.com') ||
+    url.hostname.includes('ai.xs06.de5.net')
   ) {
     return;
   }
