@@ -12,6 +12,9 @@
  *    CACHE_VERSION 故意保持不变，activate 不会删除同名缓存，
  *    QUESTION_ASSETS 经 ensureCached 跳过已缓存项，避免重复下载约 20MB 题库。
  *    install 会重新 add CORE_SHELL，因此新的 index.html 仍会被写入外壳缓存。
+ * 7. 2026-11-14 第二批 UI 改动：错题本按科目/错因筛选、主观题作答草稿自动保存
+ *    与 AI 批改结果缓存、长解析折叠阈值按视口宽高自适应。同样只改注释触发
+ *    updatefound，CACHE_VERSION 仍保持 v34，避免重下约 20MB 题库。
  */
 
 const CACHE_VERSION = 'fakao-v34';
