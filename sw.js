@@ -18,6 +18,11 @@
  * 8. 2026-11-14 第三批：修复草稿自动保存在「清空重置 / 导入备份」时的回写
  *    回归，并把窄屏主要交互控件放大到 44px 触摸目标。仍只改注释触发更新，
  *    CACHE_VERSION 保持 v34。
+ * 9. 2026-11-14 第四批：iOS Safari 软键盘适配——作答框限高改用
+ *    visualViewport 实时高度（--app-vv-height）+ 200px 绝对上限；AI 答疑
+ *    浮层按 --app-kb-inset 上移，避免输入框被键盘遮挡；新增 #iosdiag
+ *    真机读数面板（仅 URL 带该 hash 时启用）。仍只改注释触发 updatefound，
+ *    CACHE_VERSION 保持 v34，避免重下约 20MB 题库。
  */
 
 const CACHE_VERSION = 'fakao-v34';

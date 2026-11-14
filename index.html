@@ -1889,8 +1889,13 @@
       /* 窄屏批改入口移到作答区正下方：免收键盘/滚动，且不与按钮栏重复 */
       #gradeSubjectiveBtn{ display:none !important; }
       #gradeSubjectiveInlineBtn{ display:inline-block; }
-      /* 手机键盘弹出后限制作答框高度，避免占满可视区 */
-      #subjectiveInput{ max-height:35vh; }
+      /* 手机键盘弹出后限制作答框高度。
+         iOS Safari 的 vh 按「最大视口」计算，软键盘弹出时 layout viewport
+         不收缩，单用 35vh 仍会占去大半剩余可视区。改用 visualViewport 实时
+         高度（--app-vv-height）并保留 200px 绝对上限做双保险。 */
+      #subjectiveInput{
+        max-height:min(35vh, calc(var(--app-vv-height, 100vh) * .35), 200px);
+      }
       /* 手机单手刷题：主要交互控件放大到 >=44px 触摸目标（Apple HIG）。
          实测修复前：提交 35px / 解析 36px / AI 追问 32px / 批改入口 30px /
          底部 dock 40px / 错题筛选 26-28px，单手点按偏小。
@@ -3234,6 +3239,33 @@
         }
       }, 180);
     });
+
+    // iOS Safari 软键盘：window.innerHeight / vh 都按最大视口计算，键盘弹出时
+    // 不会收缩；VisualViewport.height 才反映被键盘遮挡后的真实可视高度。
+    // 同步两个量给 CSS 用：
+    //   --app-vv-height  真实可视高度，供 35vh / 70vh 一类限高改用；
+    //   --app-kb-inset   被键盘盖住的高度，供底部固定浮层上移。
+    // 桌面 / Android 上 vv.height≈innerHeight、offsetTop≈0，两个量退化为
+    // 「不变 / 0px」，不会引入位移；只有差异 >100px（键盘量级）才生效，
+    // 避免缩放、地址栏收放带来的像素抖动。
+    (function () {
+      const root = document.documentElement;
+      const sync = () => {
+        const vv = window.visualViewport;
+        const h = vv ? vv.height : window.innerHeight;
+        root.style.setProperty('--app-vv-height', (h | 0) + 'px');
+        const covered = vv ? window.innerHeight - (h + (vv.offsetTop || 0)) : 0;
+        const inset = covered > 100 ? covered : 0;
+        root.style.setProperty('--app-kb-inset', (inset | 0) + 'px');
+      };
+      sync();
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', sync);
+        window.visualViewport.addEventListener('scroll', sync);
+      }
+      window.addEventListener('resize', sync);
+      window.addEventListener('orientationchange', sync);
+    })();
 
     // 题干渲染：普通题保留高亮；【共享案情】题拆成「案情卡片 + 设问」。
     // 案情是作答必需信息，默认展开；用户可手动收起以便手机端查看选项。
@@ -5514,8 +5546,8 @@
     })();
   </script>
 <style id="aiqa-style">
-#aiqa-btn{position:fixed;right:18px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:60;padding:10px 14px;border-radius:999px;background:#1a3a6b;color:#fff;border:0;font:600 14px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25)}
-#aiqa-panel{position:fixed;right:18px;bottom:calc(126px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 36px));max-height:70vh;background:#fff;color:#111;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:none;flex-direction:column;z-index:61;overflow:hidden;font:14px/1.5 system-ui,sans-serif}
+#aiqa-btn{position:fixed;right:18px;bottom:calc(76px + env(safe-area-inset-bottom) + var(--app-kb-inset, 0px));z-index:60;padding:10px 14px;border-radius:999px;background:#1a3a6b;color:#fff;border:0;font:600 14px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+#aiqa-panel{position:fixed;right:18px;bottom:calc(126px + env(safe-area-inset-bottom) + var(--app-kb-inset, 0px));width:min(360px,calc(100vw - 36px));max-height:min(70vh, calc(var(--app-vv-height, 100vh) - 150px));background:#fff;color:#111;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:none;flex-direction:column;z-index:61;overflow:hidden;font:14px/1.5 system-ui,sans-serif}
 #aiqa-panel.open{display:flex}
 #aiqa-head{padding:10px 12px;background:#1a3a6b;color:#fff;font-weight:600;display:flex;justify-content:space-between;align-items:center}
 #aiqa-msgs{padding:10px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px;background:#f6f8fb}
@@ -5632,6 +5664,101 @@
   }
   send.addEventListener('click',function(){ askWith(inp.value); });
   inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); askWith(inp.value); } });
+})();
+</script>
+
+<!-- 真机诊断：仅当 URL 带 #iosdiag 时启用。用于 iOS Safari 实测软键盘弹出后的
+     visualViewport 与刘海屏 env() 实值；正常刷题流程完全不加载此面板。
+     用法：在 iPhone Safari 打开 <站点>/#iosdiag → 点进主观题作答框唤起键盘 →
+     读面板数值或点「复制读数」发回，用于校准 --app-vv-height / --app-kb-inset。 -->
+<script id="ios-diag">
+(function () {
+  var box = null, timer = null, pb = null, pt = null;
+  function n(v) { return Math.round(v * 10) / 10; }
+  function rect(el) { return el ? el.getBoundingClientRect() : null; }
+  function snapshot() {
+    var vv = window.visualViewport, ta = document.getElementById('subjectiveInput');
+    var nav = document.querySelector('nav.fixed.bottom-0');
+    var rs = getComputedStyle(document.documentElement);
+    var tr = rect(ta), nr = rect(nav);
+    return {
+      time: new Date().toISOString(),
+      ua: navigator.userAgent,
+      dpr: window.devicePixelRatio,
+      innerWidth: innerWidth, innerHeight: innerHeight,
+      screen: screen.width + 'x' + screen.height,
+      vvHeight: vv ? n(vv.height) : null,
+      vvOffsetTop: vv ? n(vv.offsetTop || 0) : null,
+      vvScale: vv ? n(vv.scale || 1) : null,
+      keyboardInsetReal: vv ? n(innerHeight - (vv.height + (vv.offsetTop || 0))) : null,
+      safeAreaBottom: pb ? getComputedStyle(pb).paddingBottom : null,
+      safeAreaTop: pt ? getComputedStyle(pt).paddingTop : null,
+      cssVVHeight: rs.getPropertyValue('--app-vv-height').trim(),
+      cssKBInset: rs.getPropertyValue('--app-kb-inset').trim(),
+      textareaMaxHeight: ta ? getComputedStyle(ta).maxHeight : null,
+      textareaHeight: tr ? n(tr.height) : null,
+      textareaBottom: tr ? n(tr.bottom) : null,
+      navHeight: nr ? n(nr.height) : null,
+      navTop: nr ? n(nr.top) : null,
+      activeElement: document.activeElement ? (document.activeElement.id || document.activeElement.tagName) : null,
+      orientation: (screen.orientation && screen.orientation.type) || String(window.orientation || '')
+    };
+  }
+  function paint() {
+    if (!box) return;
+    box.querySelector('pre').textContent = JSON.stringify(snapshot(), null, 2);
+  }
+  function copyText(t, btn) {
+    function fallback() {
+      var a = document.createElement('textarea');
+      a.value = t; a.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(a); a.focus(); a.select();
+      try { document.execCommand('copy'); btn.textContent = '已复制读数'; }
+      catch (e) { btn.textContent = '复制失败，请长按上方文本'; }
+      a.remove();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () { btn.textContent = '已复制读数'; }, fallback);
+    } else fallback();
+  }
+  function show() {
+    if (box) return;
+    pb = document.createElement('div');
+    pb.style.cssText = 'position:fixed;left:-9999px;top:0;padding-bottom:env(safe-area-inset-bottom)';
+    pt = document.createElement('div');
+    pt.style.cssText = 'position:fixed;left:-9999px;top:0;padding-top:env(safe-area-inset-top)';
+    document.body.appendChild(pb); document.body.appendChild(pt);
+    box = document.createElement('div');
+    box.id = 'iosDiagBox';
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483000;'
+      + 'background:rgba(8,16,30,.94);color:#d8f3ff;padding:8px 10px 10px;'
+      + 'font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;'
+      + 'border-bottom:2px solid #38bdf8;max-height:46vh;overflow:auto';
+    box.innerHTML = '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'
+      + '<b style="color:#7dd3fc;font-size:12px">iOS 真机读数 #iosdiag</b>'
+      + '<button id="iosDiagCopy" style="padding:5px 10px;min-height:32px;border:0;border-radius:6px;background:#0ea5e9;color:#fff;font:600 11px system-ui">复制读数</button>'
+      + '<button id="iosDiagClose" style="padding:5px 10px;min-height:32px;border:0;border-radius:6px;background:#334155;color:#fff;font:600 11px system-ui">关闭</button>'
+      + '</div><pre style="margin:0;white-space:pre-wrap;word-break:break-all"></pre>';
+    document.body.appendChild(box);
+    box.querySelector('#iosDiagCopy').addEventListener('click', function () {
+      copyText(JSON.stringify(snapshot(), null, 2), this);
+    });
+    box.querySelector('#iosDiagClose').addEventListener('click', function () {
+      location.hash = '';
+    });
+    paint();
+    timer = setInterval(paint, 300);
+  }
+  function hide() {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (box) { box.remove(); box = null; }
+    if (pb) { pb.remove(); pb = null; }
+    if (pt) { pt.remove(); pt = null; }
+  }
+  function sync() { if (location.hash === '#iosdiag') show(); else hide(); }
+  window.addEventListener('hashchange', sync);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync);
+  else sync();
 })();
 </script>
 </body>
