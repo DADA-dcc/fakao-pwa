@@ -1891,6 +1891,22 @@
       #gradeSubjectiveInlineBtn{ display:inline-block; }
       /* 手机键盘弹出后限制作答框高度，避免占满可视区 */
       #subjectiveInput{ max-height:35vh; }
+      /* 手机单手刷题：主要交互控件放大到 >=44px 触摸目标（Apple HIG）。
+         实测修复前：提交 35px / 解析 36px / AI 追问 32px / 批改入口 30px /
+         底部 dock 40px / 错题筛选 26-28px，单手点按偏小。
+         桌面端鼠标操作保持原有密度（WCAG 2.5.8 AA 要求 24x24，现有最小
+         26px 已达标），故只在窄屏放大。 */
+      #submitAnswerBtn, #toggleAnalysisBtn, #askAiExplainBtn,
+      #speakBtn, #gradeSubjectiveInlineBtn{
+        min-height:44px !important;
+        display:inline-flex !important; align-items:center; justify-content:center;
+      }
+      #removeWrongBtn{ min-height:44px !important; }  /* ≤360px 仍由下方规则隐藏 */
+      /* 需用同等作用域的更高特异性，压过上方 body > nav.fixed .grid > button
+         的 min-height:40px !important，否则 dock 仍是 40px */
+      body > nav.fixed.bottom-0 .grid > button{ min-height:44px !important; }
+      #wrongFilterSubject, #wrongFilterReason,
+      #wrongFilterResetBtn, #wrongFilterPracticeBtn{ min-height:40px; }
       .sheet-stat b{ font-size:14px !important; }
       .sheet-stat span{ font-size:9px !important; }
       #answerSheetGrid button{ min-height:34px; }
@@ -3567,6 +3583,21 @@
       if (el && cnt) cnt.textContent = el.value.trim().length + " 字";
     }
 
+    // 外部重置/恢复进度前必须调用：否则 renderQuestion 开头的草稿落盘会把
+    // textarea 里的旧内容写回新数据（清空不彻底 / 覆盖导入的备份），
+    // 且尚未触发的 600ms 防抖回调也会在重置之后写回。
+    function resetSubjectiveDraftState() {
+      clearTimeout(subjectiveDraftTimer);
+      subjectiveDraftTimer = null;
+      subjectiveDraftQid = null;
+      const el = document.getElementById("subjectiveInput");
+      if (el) el.value = "";
+      const st = document.getElementById("subjectiveDraftStatus");
+      if (st) st.textContent = "";
+      const cnt = document.getElementById("subjectiveCharCount");
+      if (cnt) cnt.textContent = "0 字";
+    }
+
     function renderQuestion(index) {
       saveSubjectiveDraft(true);   // 切题前立即落盘上一题草稿
       const card = document.getElementById("questionCard");
@@ -4422,6 +4453,7 @@
         showToast("备份格式无效，请检查 JSON 内容", "error");
         return;
       }
+      resetSubjectiveDraftState();   // 防止旧草稿覆盖即将恢复的备份数据
       if (data.fakao_progress) {
         userProgress = { ...userProgress, ...data.fakao_progress };
         safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress);
@@ -5211,6 +5243,7 @@
       });
 
       document.getElementById("clearAllProgressBtn").addEventListener("click", () => {
+        resetSubjectiveDraftState();   // 先断掉草稿写回，否则清空后旧文本会被写回
         userProgress = {};
         wrongQuestions = [];
         favorites = {};
