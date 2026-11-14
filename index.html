@@ -1436,6 +1436,47 @@
       line-height:1.9 !important;
       letter-spacing:.005em;
       text-wrap:pretty;
+      /* 题干含语义换行（①②③编号罗列、情形一二、主观题案情分段、
+         补回的【共享案情】段落）。innerHTML 默认折叠换行，必须保留。 */
+      white-space:pre-line;
+    }
+    #questionTitle .empty-illust{ white-space:normal; }
+    /* 选项文本同样可能含换行编号罗列 */
+    #optionsContainer .option-row > span.flex-1{ white-space:pre-line; }
+
+    /* 共享案情卡片：与设问视觉分区，长案情可折叠（默认展开） */
+    .case-mat{
+      border:1px solid var(--border-color);
+      border-radius:12px;
+      background:var(--bg-subtle);
+      margin:0 0 14px;
+      overflow:hidden;
+    }
+    .case-mat-head{
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      width:100%; padding:9px 12px;
+      background:transparent; border:0; cursor:pointer;
+      color:var(--brand-accent); font-size:12.5px; font-weight:700;
+      letter-spacing:.02em; text-align:left; white-space:normal;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .case-mat-head:hover{ background:color-mix(in srgb,var(--brand-accent) 7%,transparent); }
+    .case-mat-head:focus-visible{ outline:2px solid var(--brand-accent); outline-offset:-2px; }
+    .case-mat-head .case-mat-label{ display:inline-flex; align-items:center; gap:6px; }
+    .case-mat-head .case-mat-hint{ font-weight:500; opacity:.75; font-size:11px; }
+    .case-mat-chevron{ transition:transform .18s ease; flex:none; }
+    .case-mat.is-collapsed .case-mat-chevron{ transform:rotate(-90deg); }
+    .case-mat-body{
+      padding:0 12px 12px;
+      font-size:14px; line-height:1.85;
+      color:var(--text-main);
+      white-space:pre-line;
+      overflow-wrap:anywhere;
+    }
+    .case-mat.is-collapsed .case-mat-body{ display:none; }
+    .case-ask{ font-weight:600; }
+    @media (max-width:640px){
+      .case-mat-body{ font-size:13.5px; line-height:1.8; }
     }
     #optionsContainer .option-row{
       padding:12px 14px !important;
@@ -2233,10 +2274,8 @@
         </span>
       </div>
 
-      <!-- 题干展示 -->
-      <div id="questionTitle" class="text-base sm:text-lg font-medium leading-relaxed mb-4">
-        加载题目中...
-      </div>
+      <!-- 题干展示（保持单行：容器为 white-space:pre-line，缩进换行会被渲染出来） -->
+      <div id="questionTitle" class="text-base sm:text-lg font-medium leading-relaxed mb-4">加载题目中...</div>
 
       <!-- 客观题选项列表容器 -->
       <div id="optionsContainer" class="space-y-2.5"></div>
@@ -3080,6 +3119,43 @@
       document.getElementById("expFoldBtn").onclick = () => drawExplanation(true);
     }
 
+    // 题干渲染：普通题保留高亮；【共享案情】题拆成「案情卡片 + 设问」。
+    // 案情是作答必需信息，默认展开；用户可手动收起以便手机端查看选项。
+    // 每次渲染都重置为展开，避免切到下一题时案情仍处于收起状态。
+    const CASE_PREFIX = "【共享案情】";
+    function renderQuestionTitle(el, raw) {
+      const s = String(raw || "");
+      if (!s.startsWith(CASE_PREFIX)) {
+        el.innerHTML = formatLegalHighlight(s);
+        return;
+      }
+      const body = s.slice(CASE_PREFIX.length).replace(/^[\r\n]+/, "");
+      const sep = body.indexOf("\n\n");
+      const material = (sep >= 0 ? body.slice(0, sep) : body).trim();
+      const ask = (sep >= 0 ? body.slice(sep + 2) : "").trim();
+      const chars = material.replace(/\s/g, "").length;
+      el.innerHTML =
+        '<div class="case-mat" id="caseMat">' +
+          '<button type="button" class="case-mat-head" id="caseMatToggle" aria-expanded="true" aria-controls="caseMatBody">' +
+            '<span class="case-mat-label">' +
+              '<svg class="case-mat-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>' +
+              '共享案情' +
+              '<span class="case-mat-hint">约 ' + chars + ' 字 · 点击收起</span>' +
+            '</span>' +
+          '</button>' +
+          '<div class="case-mat-body" id="caseMatBody">' + formatLegalHighlight(material) + '</div>' +
+        '</div>' +
+        (ask ? '<div class="case-ask">' + formatLegalHighlight(ask) + '</div>' : '');
+      const card = el.querySelector("#caseMat");
+      const toggle = el.querySelector("#caseMatToggle");
+      const hint = toggle.querySelector(".case-mat-hint");
+      toggle.addEventListener("click", () => {
+        const collapsed = card.classList.toggle("is-collapsed");
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+        hint.textContent = collapsed ? '点击展开' : '点击收起';
+      });
+    }
+
     // =========================================================================
     // 5. 外部题库自动探测（全面兼容单文件数组、分科清单、字典映射等所有 JSON 格式）
     // =========================================================================
@@ -3450,8 +3526,8 @@
         wrongReasonSelect.classList.add("hidden");
       }
 
-      // 题干渲染（带题眼高亮）
-      titleEl.innerHTML = formatLegalHighlight(q.title);
+      // 题干渲染（带题眼高亮；案情题额外做卡片分区与折叠）
+      renderQuestionTitle(titleEl, q.title);
 
       // 随手笔记回填
       const noteInput = document.getElementById("questionNoteInput");

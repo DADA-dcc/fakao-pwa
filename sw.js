@@ -7,6 +7,11 @@
  *    避免每次冷启动在移动网络下重新拉取约 20MB 题库；过期后仍按 Stale-While-Revalidate 更新
  * 4. 对外部 AI 接口 (api.deepseek.com) 与 GitHub Gist 同步接口 (api.github.com) 严格走 Network Only
  * 5. 支持客户端发送 SKIP_WAITING 消息实现一键热更新
+ * 6. 2026-11-14：index.html 增加题干 pre-line 换行保留与【共享案情】折叠卡片。
+ *    仅变更本文件内容即可让浏览器触发 updatefound 并弹出更新提示；
+ *    CACHE_VERSION 故意保持不变，activate 不会删除同名缓存，
+ *    QUESTION_ASSETS 经 ensureCached 跳过已缓存项，避免重复下载约 20MB 题库。
+ *    install 会重新 add CORE_SHELL，因此新的 index.html 仍会被写入外壳缓存。
  */
 
 const CACHE_VERSION = 'fakao-v34';
