@@ -26,8 +26,9 @@
  * 10. 2026-11-15 第五批：修复 5 个弹窗的可达性——恢复被 overflow:hidden
  *     覆盖的卡片滚动（syncModal 矮视口下底部按钮原本不可达）、统一按
  *     --app-vv-height 收缩 max-height 并用 --app-kb-inset 抬升贴底弹窗、
- *     补齐 reportModal 的 z-index。仍只改注释触发 updatefound，
- *     CACHE_VERSION 保持 v34，避免重下约 20MB 题库。
+ *     补齐 reportModal 的 z-index。本批不改动 CACHE_VERSION（同期审计提交
+ *     统一升外壳版本）；DATA_CACHE 固定为 fakao-v34-data，activate 不会删除，
+ *     故仅换外壳缓存、不会重下约 20MB 离线题库。
  */
 
 // 第三轮审计：仅升外壳版本，让老用户拿到新 index.html / 新 CSS；
