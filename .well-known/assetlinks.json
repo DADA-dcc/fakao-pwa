@@ -1,0 +1,8 @@
+[{
+  \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+  \"target\": {
+    \"namespace\": \"android_app\",
+    \"package_name\": \"net.xs06.fakao\",
+    \"sha256_cert_fingerprints\": [\"D5:82:25:5C:F5:90:4B:92:39:68:4A:9E:E5:4D:E7:8C:D0:DC:27:F5:45:31:26:30:99:AD:69:C5:50:C4:A4:BB\"]
+  }
+}]
