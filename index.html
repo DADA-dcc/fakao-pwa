@@ -545,7 +545,11 @@ window.XS_AI = (function(){
       background:rgba(2,6,23,.66);
     }
     #answerSheetModal > .theme-card, #knowledgeModal > .theme-card, #syncModal > .theme-card{
-      position:relative; overflow:hidden;
+      /* 必须用 overflow-y:auto：原先的 overflow:hidden 会凭借 ID 选择器特异性
+         覆盖卡片自带的 Tailwind overflow-y-auto，导致矮视口下超出 max-height
+         的内容被硬性裁掉且无法滚动（syncModal「清空重置」按钮即因此不可达）。
+         overflow-x:hidden 保留圆角与顶部渐变条的裁切效果。 */
+      position:relative; overflow-x:hidden; overflow-y:auto;
       box-shadow:0 30px 70px -30px rgba(2,6,23,.75) !important;
     }
     #answerSheetModal > .theme-card::before,
@@ -835,7 +839,7 @@ window.XS_AI = (function(){
     header{ overflow:clip !important; }
 
     /* 弹窗层级高于底栏、版本角标与 AI 悬浮按钮 */
-    #answerSheetModal, #knowledgeModal, #syncModal, #aiConfigModal{ z-index:70 !important; }
+    #answerSheetModal, #knowledgeModal, #syncModal, #aiConfigModal, #reportModal{ z-index:70 !important; }
     /* 更新卡片出现时，先收起右下角 AI 与左下角版本角标，避免遮挡操作 */
     body:has(#swUpdateBanner:not(.hidden)) #aiqa-btn,
     body:has(#swUpdateBanner:not(.hidden)) #aiqa-panel,
@@ -879,7 +883,23 @@ window.XS_AI = (function(){
     html[data-theme="sepia"] .m-tab.is-active{ background:linear-gradient(135deg,#8b5a2b,#b45309) !important; }
 
     /* ── 知识点中心 ── */
-    #knowledgeModal > .theme-card{ max-height:88vh; }
+    #knowledgeModal > .theme-card{ max-height:min(88vh, calc(var(--app-vv-height, 100vh) - 24px)); }
+
+    /* 贴底弹窗与 iOS 软键盘：vh 按「最大视口」计算，键盘弹出时 layout viewport
+       不收缩；--app-vv-height 由 visualViewport 同步为真实可视高度。
+       桌面 / Android 上该变量等于 innerHeight，min(88vh, vv-24px) 退化为原值。 */
+    #answerSheetModal > .theme-card{ max-height:min(82vh, calc(var(--app-vv-height, 100vh) - 24px)); }
+    #syncModal > .theme-card,
+    #reportModal > .theme-card,
+    #aiConfigModal > .theme-card{ max-height:min(88vh, calc(var(--app-vv-height, 100vh) - 24px)); }
+    /* AI 设置卡片原先既无限高也无滚动，含 API Key 输入框，键盘弹出会整体被盖 */
+    #aiConfigModal > .theme-card{ overflow-x:hidden; overflow-y:auto; }
+    @media (max-width:639px){
+      /* items-end 贴底：把卡片底边抬到键盘上沿。桌面 sm:p-4 的 16px 内边距不受影响。 */
+      #answerSheetModal, #knowledgeModal, #syncModal, #aiConfigModal, #reportModal{
+        padding-bottom:var(--app-kb-inset, 0px);
+      }
+    }
     .k-toolbar{ padding:10px 0 8px; display:flex; flex-direction:column; gap:8px; border-bottom:1px solid var(--border-color); }
     .k-search{ position:relative; display:flex; align-items:center; }
     .k-search input{
@@ -1120,7 +1140,9 @@ window.XS_AI = (function(){
       .modal-head-ico svg{ width:16px; height:16px; }
       .modal-title{ font-size:13.5px; }
       .modal-sub{ font-size:10px; }
-      #knowledgeModal > .theme-card, #answerSheetModal > .theme-card{ max-height:90vh; }
+      #knowledgeModal > .theme-card, #answerSheetModal > .theme-card{
+        max-height:min(90vh, calc(var(--app-vv-height, 100vh) - 24px));
+      }
       .k-card{ padding:9px 10px; }
       .k-point{ font-size:12px; }
       .k-body{ font-size:11px; line-height:1.65; }
