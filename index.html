@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#1a3a6b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="法考刷题" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>法考刷题助手 Pro — 刷题·背诵·错题·离线守护</title>
@@ -1984,6 +1985,17 @@ window.XS_AI = (function(){
     .mode-toggle{ min-height:24px; }
   }
   </style>
+  <style>
+  /* 第五轮：静态占位 → 首次真实渲染会造成一次性大位移(CLS≈0.30)。
+     主内容在 initApp 完成首屏渲染前不参与布局；从 display:none 到显示
+     不会计入 layout-shift。JS 被禁用时不会打标记，内容照常显示。 */
+  html.fk-booting main{display:none}
+  </style>
+  <script>
+  document.documentElement.classList.add('fk-booting');
+  /* 兜底：初始化异常时也不能让主内容长期不可见 */
+  setTimeout(function(){ document.documentElement.classList.remove('fk-booting'); }, 1600);
+  </script>
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -2315,7 +2327,7 @@ window.XS_AI = (function(){
 
         <!-- 关键词搜索框 -->
         <div class="relative flex-1 sm:max-w-xs">
-          <input id="searchInput" type="search" placeholder="搜索题干、法条、考点或笔记..." class="w-full pl-8 pr-7 py-1.5 rounded-lg text-xs theme-subtle border focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input id="searchInput" type="search" aria-label="搜索题干、法条、考点或笔记" placeholder="搜索题干、法条、考点或笔记..." class="w-full pl-8 pr-7 py-1.5 rounded-lg text-xs theme-subtle border focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-55 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
           <button id="clearSearchBtn" type="button" aria-label="清除搜索" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-xs opacity-60 hover:opacity-100">✕</button>
         </div>
@@ -2459,7 +2471,7 @@ window.XS_AI = (function(){
           <div id="aiResponseText" class="leading-relaxed whitespace-pre-line"></div>
           <div class="text-[11px] leading-relaxed text-amber-600/90 dark:text-amber-400/80 border-t border-amber-400/20 pt-2">⚠️ 以上为 AI 生成内容，仅供学习参考，非官方答案，请以现行法条与教材为准；凡标注「AI模拟」的案例为虚构练习素材，不构成真实判例。</div>
           <div class="flex gap-2 pt-1">
-            <input id="aiFollowupInput" type="text" placeholder="针对本题继续追问（如：如果丙不知情构成善意取得吗？）..." class="flex-1 px-2.5 py-1.5 rounded-lg theme-card text-xs focus:outline-none" />
+            <input id="aiFollowupInput" type="text" aria-label="针对本题继续追问" placeholder="针对本题继续追问（如：如果丙不知情构成善意取得吗？）..." class="flex-1 px-2.5 py-1.5 rounded-lg theme-card text-xs focus:outline-none" />
             <button id="sendAiFollowupBtn" type="button" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold">发送</button>
           </div>
         </div>
@@ -2656,7 +2668,7 @@ window.XS_AI = (function(){
         <div class="k-toolbar">
           <div class="k-search">
             <svg class="k-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            <input id="knowledgeSearchInput" type="search" placeholder="搜索考点标题、正文或科目..." autocomplete="off" />
+            <input id="knowledgeSearchInput" type="search" aria-label="搜索考点标题、正文或科目" placeholder="搜索考点标题、正文或科目..." autocomplete="off" />
             <button id="knowledgeSearchClear" type="button" class="k-clear" aria-label="清除考点搜索">✕</button>
           </div>
           <div id="kSubjectChips" class="k-chips" aria-label="考点科目筛选"></div>
@@ -2719,7 +2731,7 @@ window.XS_AI = (function(){
           </label>
         </div>
         <div class="space-y-1.5 pt-2.5">
-          <textarea id="pasteJsonBackupInput" rows="2" placeholder="或直接粘贴备份 JSON 内容后恢复..." class="w-full p-2 rounded-lg theme-card border text-xs font-mono"></textarea>
+          <textarea id="pasteJsonBackupInput" rows="2" aria-label="粘贴备份 JSON 内容" placeholder="或直接粘贴备份 JSON 内容后恢复..." class="w-full p-2 rounded-lg theme-card border text-xs font-mono"></textarea>
           <button id="restoreFromPasteBtn" type="button" class="sync-btn sync-btn-ghost">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
             从粘贴文本恢复
@@ -2734,8 +2746,8 @@ window.XS_AI = (function(){
           <span>GitHub Gist 跨设备云同步</span>
         </div>
         <div class="space-y-2">
-          <input id="gistTokenInput" type="password" placeholder="GitHub Personal Access Token（需 gist 权限）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
-          <input id="gistIdInput" type="text" placeholder="Gist ID（留空则首次推送自动创建）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
+          <input id="gistTokenInput" type="password" aria-label="GitHub 个人访问令牌" placeholder="GitHub Personal Access Token（需 gist 权限）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
+          <input id="gistIdInput" type="text" aria-label="Gist ID" placeholder="Gist ID（留空则首次推送自动创建）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
         </div>
         <div class="flex flex-wrap items-center gap-2 pt-2">
           <button id="saveGistConfigBtn" type="button" class="sync-btn sync-btn-primary">保存配置</button>
@@ -4927,6 +4939,10 @@ window.XS_AI = (function(){
       // 3. 渲染科目栏与初始题目
       renderSubjectBar();
       applyFilters(true);
+      // 首屏已完成真实渲染：解除启动期隐藏（display:none → 显示不产生 layout-shift），
+      // 并触发一次 resize，让依赖元素尺寸的装饰 canvas 重新计算尺寸。
+      document.documentElement.classList.remove("fk-booting");
+      requestAnimationFrame(function(){ try{ window.dispatchEvent(new Event("resize")); }catch(e){} });
 
       // 4. 尝试探测同目录下的完整题库 ./questions/index.json
       tryLoadExternalRepoData();
@@ -5648,7 +5664,7 @@ window.XS_AI = (function(){
   <div id="aiqa-head"><span>AI 答疑 · 法考</span><button id="aiqa-close" type="button" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer">×</button></div>
   <div id="aiqa-chips"></div>
   <div id="aiqa-msgs"></div>
-  <div id="aiqa-foot"><input id="aiqa-in" placeholder="输入问题，或点上方快捷提问…"/><button id="aiqa-send" type="button">发送</button></div>
+  <div id="aiqa-foot"><input id="aiqa-in" aria-label="输入问题" placeholder="输入问题，或点上方快捷提问…"/><button id="aiqa-send" type="button">发送</button></div>
 </div>
 <script id="aiqa-script">
 (function(){
