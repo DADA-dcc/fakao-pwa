@@ -40,3 +40,16 @@ audit/rescue/民法.before.json
 /index.html.bak_*
 /cover-legacy-120bpm.html
 /assets/models/*_preview.png
+
+# ── 第四轮清理 ──
+# 以下为内部审计资料、调试快照、旧设计文档与一次性实验页面/脚本。
+# GitHub Pages 直接发布仓库根目录、没有构建步骤，这些文件此前可被任意下载。
+# 现在仅保留在本地工作区（完整归档亦保存在本地），不再进入公开仓库。
+audit/
+.playwright-mcp/
+docs/superpowers/
+flow/
+scripts/blender/
+/cover-gradient.html
+/cover-gradient-gold.html
+/eval_lawbench.py

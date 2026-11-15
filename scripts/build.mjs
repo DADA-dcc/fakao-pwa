@@ -1,10 +1,11 @@
 /**
  * 构建脚本：把「需要公开发布的文件」复制到 dist/
  *
- * 为什么需要它：
- *   仓库根目录混着 audit/（内部审计脚本）、docs/（设计文档）、
- *   .playwright-mcp/（调试快照）等不该公开的东西。
- *   直接把根目录当 Cloudflare Pages 输出目录，这些全会变成公开可下载的文件。
+ * 为什么保留它：
+ *   2026-11-15 已把 audit/（内部审计脚本）、docs/superpowers/（旧设计文档）、
+ *   .playwright-mcp/（调试快照）等从公开仓库移出，仅留在本地工作区，
+ *   规则见 .gitignore。当前部署在 GitHub Pages、直接发布根目录，暂时用不到本脚本；
+ *   若将来迁到 Cloudflare Pages，用它可进一步收紧发布白名单。
  *
  * 用法：
  *   node scripts/build.mjs
