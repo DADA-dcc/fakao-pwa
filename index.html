@@ -1549,7 +1549,6 @@ window.XS_AI = (function(){
 
       const subjMap = indexData && indexData.subjects && typeof indexData.subjects === "object" ? indexData.subjects : null;
       if (!subjMap) {
-        // 结构不认识：退回原来的全量解析路径
         try { return await legacyFullLoad(indexData); } catch (e) {}
         return;
       }
@@ -1559,28 +1558,20 @@ window.XS_AI = (function(){
       const subtitle = document.getElementById("dataSourceSubtitle");
       const setSubtitle = (txt) => { if (subtitle) subtitle.textContent = txt; };
 
-      // 共同归一化：案例题组缺共享案情的题目保留数据但不进入练习池
       const normalizeAll = (raw) => {
         const skipped = raw.filter((q) => q.incomplete).length;
         const playable = raw.filter((q) => !q.incomplete);
         return { list: playable.map((q, idx) => normalizeQuestion(q, idx)), skipped };
       };
 
-      const loadSubject = async (name) => {
+      // 组装加载单元：大科目已被切成 400 题/块，小科目仍是单文件
+      const filesOf = (name) => {
         const meta = subjMap[name] || {};
-        const file = typeof meta === "string" ? meta : meta.file;
-        if (!file) return [];
-        const url = [".", "questions", file].join("/");
-        try {
-          const r = await fetch(url);
-          if (!r.ok) return [];
-          const json = await r.json();
-          const extracted = await extractQuestionsFromData(json, name);
-          return Array.isArray(extracted) ? extracted : [];
-        } catch (e) { return []; }
+        if (Array.isArray(meta.parts) && meta.parts.length) return meta.parts;
+        if (meta.file) return [meta.file];
+        return [];
       };
 
-      // 优先加载：当前筛选科目 > 上次访问科目 > 最小的一科（先让界面有题可刷）
       let priority = subjectNames[0];
       try {
         if (typeof currentSubject === "string" && subjectNames.includes(currentSubject)) priority = currentSubject;
@@ -1598,20 +1589,18 @@ window.XS_AI = (function(){
         if (smallest) priority = smallest.n;
       }
 
-      setSubtitle("题库加载中…");
-
-      // 1) 先加载优先科目并立即可用
-      const firstRaw = await loadSubject(priority);
-      const loaded = [];
-      if (firstRaw.length) {
-        loaded.push(...firstRaw);
-        const norm = normalizeAll(loaded);
-        allQuestions = norm.list;
-        applyFilters(false);
-        setSubtitle(`已加载 ${priority}（${norm.list.length} 题）· 其余科目后台加载中…`);
+      const units = [];
+      for (const f of filesOf(priority)) units.push({ subject: priority, url: [".", "questions", f].join("/") });
+      for (const name of subjectNames) {
+        if (name === priority) continue;
+        for (const f of filesOf(name)) units.push({ subject: name, url: [".", "questions", f].join("/") });
       }
 
-      // 2) 后台串行补齐其余科目，每补一科合并一次
+      setSubtitle("题库加载中…");
+
+      const loaded = [];
+      const doneSubjects = new Set();
+      let firstFlush = false;
       let rerenderTimer = null;
       const scheduleRerender = () => {
         if (rerenderTimer) return;
@@ -1620,25 +1609,43 @@ window.XS_AI = (function(){
           try {
             const norm = normalizeAll(loaded);
             allQuestions = norm.list;
+            if (typeof currentIndex === "number" && currentIndex >= allQuestions.length) currentIndex = 0;
             applyFilters(false);
-            setSubtitle(`已加载仓库完整题库：共 ${norm.list.length} 题${norm.skipped ? `（已排除 ${norm.skipped} 道缺共享案情的题）` : ""}`);
           } catch (e) {}
         }, 400);
       };
 
-      for (const name of subjectNames) {
-        if (name === priority) continue;
-        const raw = await loadSubject(name);
-        if (!raw.length) continue;
-        loaded.push(...raw);
-        // 每科加载完都刷新一次列表（合并中不打断正在作答的题：仅当题号未超界时重渲染）
-        const norm = normalizeAll(loaded);
-        allQuestions = norm.list;
-        if (typeof currentIndex === "number" && currentIndex >= allQuestions.length) currentIndex = 0;
+      for (const u of units) {
+        let raw = [];
+        try {
+          const r = await fetch(u.url);
+          if (r.ok) {
+            const json = await r.json();
+            const extracted = await extractQuestionsFromData(json, u.subject);
+            raw = Array.isArray(extracted) ? extracted : [];
+          }
+        } catch (e) {}
+        if (raw.length) loaded.push(...raw);
+
+        // 第一个单元加载完立刻可见（通常是一块 400 题）
+        if (!firstFlush && loaded.length) {
+          firstFlush = true;
+          const norm = normalizeAll(loaded);
+          allQuestions = norm.list;
+          applyFilters(false);
+          setSubtitle(`已加载 ${u.subject}（${norm.list.length} 题）· 其余题库后台加载中…`);
+          continue;
+        }
+
+        // 某科目所有块都到齐 → 标记完成
+        const partsLeft = filesOf(u.subject).length;
+        if (!doneSubjects.has(u.subject)) {
+          const arrived = units.filter((x) => x.subject === u.subject).length;
+          if (arrived === partsLeft) doneSubjects.add(u.subject);
+        }
         scheduleRerender();
       }
 
-      // 3) 收尾：确保最终一致
       const finalNorm = normalizeAll(loaded);
       allQuestions = finalNorm.list;
       applyFilters(false);
@@ -1647,9 +1654,7 @@ window.XS_AI = (function(){
       } else if (total) {
         setSubtitle(`题库加载失败（预期 ${total} 题），请检查网络后刷新`);
       }
-
-      // 知识点仍按需加载
-      // （window.__loadKnowledgeBase 在首次打开「知识点」时触发）
+      // knowledge.json 仍按需加载（window.__loadKnowledgeBase）
     }
 
     async function legacyFullLoad(indexData) {

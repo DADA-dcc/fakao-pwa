@@ -3,29 +3,59 @@
  "total": 9707,
  "subjects": {
   "民法": {
-   "file": "民法.json",
    "count": 2790,
-   "size_mb": 5.14
+   "size_mb": 5.14,
+   "parts": [
+    "parts/00-00.json",
+    "parts/00-01.json",
+    "parts/00-02.json",
+    "parts/00-03.json",
+    "parts/00-04.json",
+    "parts/00-05.json",
+    "parts/00-06.json"
+   ],
+   "chunks": 7
   },
   "刑法": {
-   "file": "刑法.json",
    "count": 1251,
-   "size_mb": 2.76
+   "size_mb": 2.76,
+   "parts": [
+    "parts/01-00.json",
+    "parts/01-01.json",
+    "parts/01-02.json",
+    "parts/01-03.json"
+   ],
+   "chunks": 4
   },
   "行政法": {
-   "file": "行政法.json",
    "count": 1009,
-   "size_mb": 2.18
+   "size_mb": 2.18,
+   "parts": [
+    "parts/02-00.json",
+    "parts/02-01.json",
+    "parts/02-02.json"
+   ],
+   "chunks": 3
   },
   "刑诉法": {
-   "file": "刑诉法.json",
    "count": 880,
-   "size_mb": 2.02
+   "size_mb": 2.02,
+   "parts": [
+    "parts/03-00.json",
+    "parts/03-01.json",
+    "parts/03-02.json"
+   ],
+   "chunks": 3
   },
   "民诉法": {
-   "file": "民诉法.json",
    "count": 957,
-   "size_mb": 1.99
+   "size_mb": 1.99,
+   "parts": [
+    "parts/04-00.json",
+    "parts/04-01.json",
+    "parts/04-02.json"
+   ],
+   "chunks": 3
   },
   "知识产权法": {
    "file": "知识产权法.json",
@@ -33,9 +63,15 @@
    "size_mb": 0.88
   },
   "商经法": {
-   "file": "商经法.json",
    "count": 1360,
-   "size_mb": 2.76
+   "size_mb": 2.76,
+   "parts": [
+    "parts/06-00.json",
+    "parts/06-01.json",
+    "parts/06-02.json",
+    "parts/06-03.json"
+   ],
+   "chunks": 4
   },
   "宪法": {
    "file": "宪法.json",
