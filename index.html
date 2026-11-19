@@ -2103,7 +2103,19 @@ window.XS_AI = (function(){
       window.addEventListener('resize', function(){ resize(); if(reduce) renderer.render(scene,camera); });
     }
     function loadScriptOnce(src, ok, fail){ var s=document.createElement('script'); s.src=src; s.async=false; s.onload=ok; s.onerror=fail||function(){}; (document.head||document.documentElement).appendChild(s); }
-    loadScriptOnce('./vendor/three.r128.min.js', function(){ loadScriptOnce('./vendor/GLTFLoader.js', initSplash3D, hideSplashModel); }, hideSplashModel);
+    // ── 3D 加载策略（省流量版）──
+    // 1) 同一 tab 会话只加载一次开屏 3D（three 147KB + loader 22KB + 模型 426KB），之后进站直接走渐变开屏
+    // 2) 系统省流量模式 / 2G-3G 网络直接跳过，不做 3D
+    (function(){
+      var SKIP_KEY = 'fk_splash3d_done';
+      var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+      var slow = !!conn.saveData || /^(slow-2g|2g|3g)$/.test(conn.effectiveType || '');
+      var seen = false;
+      try { seen = sessionStorage.getItem(SKIP_KEY) === '1'; } catch(e) {}
+      if (slow || seen) { hideSplashModel(); return; }
+      try { sessionStorage.setItem(SKIP_KEY, '1'); } catch(e) {}
+      loadScriptOnce('./vendor/three.r128.min.js', function(){ loadScriptOnce('./vendor/GLTFLoader.js', initSplash3D, hideSplashModel); }, hideSplashModel);
+    })();
   })();
   </script>
 
