@@ -1561,7 +1561,18 @@ window.XS_AI = (function(){
       }
       return __qWorker;
     }
-    function fetchJsonViaWorker(url) {
+    // 题库版本号：来自 questions/index.json 的 version 字段。
+    // 分块请求统一附加 ?v=<version>，版本一变缓存键就变，无需再升 SW 版本即可让用户拿到新题库。
+    let questionsVersion = "";
+    function withQVersion(url) {
+      if (!questionsVersion) return url;
+      if (url.indexOf("/questions/") < 0) return url;
+      if (/index\.json(\?|$)/.test(url)) return url;
+      return url + (url.indexOf("?") >= 0 ? "&" : "?") + "v=" + encodeURIComponent(questionsVersion);
+    }
+
+    function fetchJsonViaWorker(rawUrl) {
+      const url = withQVersion(rawUrl);
       const w = __getQWorker();
       if (!w) return fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       return new Promise((resolve) => {
@@ -1582,6 +1593,7 @@ window.XS_AI = (function(){
       let indexData = null;
       try {
         indexData = await fetchJsonViaWorker([".", "questions", "index.json"].join("/"));
+        questionsVersion = (indexData && indexData.version) ? String(indexData.version) : "";
       } catch (e) {}
 
       const subjMap = indexData && indexData.subjects && typeof indexData.subjects === "object" ? indexData.subjects : null;

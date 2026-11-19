@@ -56,3 +56,10 @@
 # AI / 评分接口不缓存
 /api/*
   Cache-Control: no-store
+
+# 题库 JSON 必须短缓存：题库勘误后要尽快生效（GitHub Pages 会忽略本文件）
+/questions/*.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/questions/parts/*.json
+  Cache-Control: public, max-age=0, must-revalidate

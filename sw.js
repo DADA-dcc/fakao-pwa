@@ -187,6 +187,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // questions/index.json 是题库清单：Network First（5s 超时回落缓存），
+  // 保证题库版本变化能被尽快感知；分块 URL 由页面附加 ?v=<version>，版本变即换缓存键。
+  if (url.pathname.endsWith('/questions/index.json')) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(DATA_CACHE);
+        const cached = await cache.match(request);
+        try {
+          const net = await Promise.race([
+            fetch(request, { cache: 'no-store' }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+          ]);
+          if (net && net.status === 200) cache.put(request, net.clone());
+          return net;
+        } catch (err) {
+          return cached || new Response('{}', {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      })()
+    );
+    return;
+  }
+
   // 针对 JSON 题库与知识点数据：Cache First（24h 新鲜期）+ 过期 Stale-While-Revalidate
   if (url.pathname.endsWith('.json') && !url.pathname.endsWith('manifest.json')) {
     event.respondWith(
