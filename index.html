@@ -1537,35 +1537,136 @@ window.XS_AI = (function(){
     }
 
     async function tryLoadExternalRepoData() {
-      // 仅在 HTTP/HTTPS 同源部署下加载外部题库（GitHub Pages / Cloudflare Pages / 自定义域名 / 本地预览均可）
+      // 仅在 HTTP/HTTPS 同源部署下加载外部题库
       if (location.protocol !== "http:" && location.protocol !== "https:") return;
+
+      const qIndexUrl = [".", "questions", "index.json"].join("/");
+      let indexData = null;
       try {
-        const qEndpoint = [".", "questions", "index.json"].join("/");
-        const res = await fetch(qEndpoint);
-        if (res.ok) {
-          const data = await res.json();
-          const expectedTotal = Number(data && data.total) || 0;
-          const rawList = await extractQuestionsFromData(data);
-          if (rawList.length > 0) {
-            // 案例题组子题在题库录入时丢失共享案情，无法独立作答：
-            // 数据保留（incomplete: true）但不进入练习池，避免刷到无解题。
-            const skipped = rawList.filter((q) => q.incomplete).length;
-            const playable = rawList.filter((q) => !q.incomplete);
-            allQuestions = playable.map((q, idx) => normalizeQuestion(q, idx));
-            const subtitle = document.getElementById("dataSourceSubtitle");
-            const suffix = skipped ? `（已排除 ${skipped} 道缺共享案情的题）` : "";
-            if (expectedTotal && rawList.length < expectedTotal * 0.9) {
-              // 离线且部分分科题库尚未缓存时，明确告知用户，避免误以为题目变少
-              subtitle.textContent = `已加载 ${rawList.length} / ${expectedTotal} 题：部分科目尚未缓存，请联网打开一次以补全离线题库${suffix}`;
-            } else {
-              subtitle.textContent = `已加载仓库完整题库：共 ${allQuestions.length} 题${suffix}`;
-            }
-            applyFilters(false);
-          }
-        }
+        const res = await fetch(qIndexUrl);
+        if (res.ok) indexData = await res.json();
       } catch (e) {}
 
-      // knowledge.json 改为首次打开「知识点」时按需加载（见 window.__loadKnowledgeBase）
+      const subjMap = indexData && indexData.subjects && typeof indexData.subjects === "object" ? indexData.subjects : null;
+      if (!subjMap) {
+        // 结构不认识：退回原来的全量解析路径
+        try { return await legacyFullLoad(indexData); } catch (e) {}
+        return;
+      }
+
+      const subjectNames = Object.keys(subjMap);
+      const total = Number(indexData.total) || 0;
+      const subtitle = document.getElementById("dataSourceSubtitle");
+      const setSubtitle = (txt) => { if (subtitle) subtitle.textContent = txt; };
+
+      // 共同归一化：案例题组缺共享案情的题目保留数据但不进入练习池
+      const normalizeAll = (raw) => {
+        const skipped = raw.filter((q) => q.incomplete).length;
+        const playable = raw.filter((q) => !q.incomplete);
+        return { list: playable.map((q, idx) => normalizeQuestion(q, idx)), skipped };
+      };
+
+      const loadSubject = async (name) => {
+        const meta = subjMap[name] || {};
+        const file = typeof meta === "string" ? meta : meta.file;
+        if (!file) return [];
+        const url = [".", "questions", file].join("/");
+        try {
+          const r = await fetch(url);
+          if (!r.ok) return [];
+          const json = await r.json();
+          const extracted = await extractQuestionsFromData(json, name);
+          return Array.isArray(extracted) ? extracted : [];
+        } catch (e) { return []; }
+      };
+
+      // 优先加载：当前筛选科目 > 上次访问科目 > 最小的一科（先让界面有题可刷）
+      let priority = subjectNames[0];
+      try {
+        if (typeof currentSubject === "string" && subjectNames.includes(currentSubject)) priority = currentSubject;
+        else {
+          const saved = localStorage.getItem("fk_last_subject");
+          if (saved && subjectNames.includes(saved)) priority = saved;
+        }
+      } catch (e) {}
+      if (!subjectNames.includes(priority)) {
+        let smallest = null;
+        for (const n of subjectNames) {
+          const mb = Number((subjMap[n] || {}).size_mb) || 99;
+          if (!smallest || mb < smallest.mb) smallest = { n, mb };
+        }
+        if (smallest) priority = smallest.n;
+      }
+
+      setSubtitle("题库加载中…");
+
+      // 1) 先加载优先科目并立即可用
+      const firstRaw = await loadSubject(priority);
+      const loaded = [];
+      if (firstRaw.length) {
+        loaded.push(...firstRaw);
+        const norm = normalizeAll(loaded);
+        allQuestions = norm.list;
+        applyFilters(false);
+        setSubtitle(`已加载 ${priority}（${norm.list.length} 题）· 其余科目后台加载中…`);
+      }
+
+      // 2) 后台串行补齐其余科目，每补一科合并一次
+      let rerenderTimer = null;
+      const scheduleRerender = () => {
+        if (rerenderTimer) return;
+        rerenderTimer = setTimeout(() => {
+          rerenderTimer = null;
+          try {
+            const norm = normalizeAll(loaded);
+            allQuestions = norm.list;
+            applyFilters(false);
+            setSubtitle(`已加载仓库完整题库：共 ${norm.list.length} 题${norm.skipped ? `（已排除 ${norm.skipped} 道缺共享案情的题）` : ""}`);
+          } catch (e) {}
+        }, 400);
+      };
+
+      for (const name of subjectNames) {
+        if (name === priority) continue;
+        const raw = await loadSubject(name);
+        if (!raw.length) continue;
+        loaded.push(...raw);
+        // 每科加载完都刷新一次列表（合并中不打断正在作答的题：仅当题号未超界时重渲染）
+        const norm = normalizeAll(loaded);
+        allQuestions = norm.list;
+        if (typeof currentIndex === "number" && currentIndex >= allQuestions.length) currentIndex = 0;
+        scheduleRerender();
+      }
+
+      // 3) 收尾：确保最终一致
+      const finalNorm = normalizeAll(loaded);
+      allQuestions = finalNorm.list;
+      applyFilters(false);
+      if (finalNorm.list.length) {
+        setSubtitle(`已加载仓库完整题库：共 ${finalNorm.list.length} 题${finalNorm.skipped ? `（已排除 ${finalNorm.skipped} 道缺共享案情的题）` : ""}`);
+      } else if (total) {
+        setSubtitle(`题库加载失败（预期 ${total} 题），请检查网络后刷新`);
+      }
+
+      // 知识点仍按需加载
+      // （window.__loadKnowledgeBase 在首次打开「知识点」时触发）
+    }
+
+    async function legacyFullLoad(indexData) {
+      const expectedTotal = Number(indexData && indexData.total) || 0;
+      const rawList = await extractQuestionsFromData(indexData);
+      if (!rawList.length) return;
+      const skipped = rawList.filter((q) => q.incomplete).length;
+      const playable = rawList.filter((q) => !q.incomplete);
+      allQuestions = playable.map((q, idx) => normalizeQuestion(q, idx));
+      const subtitle = document.getElementById("dataSourceSubtitle");
+      const suffix = skipped ? `（已排除 ${skipped} 道缺共享案情的题）` : "";
+      if (subtitle) {
+        subtitle.textContent = expectedTotal && rawList.length < expectedTotal * 0.9
+          ? `已加载 ${rawList.length} / ${expectedTotal} 题：部分科目尚未缓存，请联网打开一次以补全离线题库${suffix}`
+          : `已加载仓库完整题库：共 ${allQuestions.length} 题${suffix}`;
+      }
+      applyFilters(false);
     }
 
     function normalizeQuestion(raw, idx) {
