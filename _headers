@@ -1,0 +1,58 @@
+# Cloudflare Pages 响应头配置
+# 文档：https://developers.cloudflare.com/pages/configuration/headers/
+# 注意：GitHub Pages 会忽略本文件；仅在 Cloudflare Pages 部署时生效
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://ai.xs06.de5.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://ai.xs06.de5.net https://api.deepseek.com https://api.github.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# Service Worker 必须不被长缓存，否则热更新会卡住
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+# 入口 HTML 每次回源验证（保证新版本即时生效）
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/
+
+  Cache-Control: public, max-age=0, must-revalidate
+
+# 内容哈希命名的资源：一年 immutable（改内容即改文件名）
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 第三方库：一年 immutable
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 题库分块：1 小时新鲜期 + 过期先给旧的再后台更新
+/questions/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+  Content-Type: application/json; charset=utf-8
+
+/knowledge.json
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+  Content-Type: application/json; charset=utf-8
+
+/case_library.json
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+  Content-Type: application/json; charset=utf-8
+
+/manifest.json
+  Cache-Control: public, max-age=3600
+  Content-Type: application/manifest+json; charset=utf-8
+
+# 图标与预览图
+/*.png
+  Cache-Control: public, max-age=604800
+/*.jpg
+  Cache-Control: public, max-age=604800
+/*.webp
+  Cache-Control: public, max-age=604800
+
+# AI / 评分接口不缓存
+/api/*
+  Cache-Control: no-store

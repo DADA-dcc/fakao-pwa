@@ -55,9 +55,7 @@ scripts/blender/
 /eval_lawbench.py
 
 # NOT_PUBLIC_MARKER - GitHub Pages publishes repo root as-is
-/_headers
 /wrangler.toml
-/functions/
 /scripts/
 /docs/
 /archive/

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "include": ["/api/*"],
+  "exclude": [
+    "/assets/*",
+    "/vendor/*",
+    "/questions/*",
+    "/workers/*",
+    "/preview/*",
+    "/privacy/*",
+    "/subjective-grading/*"
+  ]
+}
