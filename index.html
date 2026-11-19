@@ -3149,6 +3149,35 @@ window.XS_AI = (function(){
     // =========================================================================
     let allQuestions = [...FALLBACK_QUESTIONS];
     let knowledgeBase = [...FALLBACK_KNOWLEDGE];
+  // ── 按需加载知识点数据（首屏不拉 207KB 的 knowledge.json）──
+  window.__loadKnowledgeBase = async function(){
+    if (window.__kbLoaded || window.__kbLoading) return;
+    window.__kbLoading = true;
+    try {
+        const kEndpoint = [".", "knowledge.json"].join("/");
+        const kRes = await fetch(kEndpoint);
+        if (kRes.ok) {
+          const kData = await kRes.json();
+          if (Array.isArray(kData) && kData.length > 0) {
+            knowledgeBase = kData;
+          } else if (kData && typeof kData === "object") {
+            const flatK = [];
+            Object.entries(kData).forEach(([subj, arr]) => {
+              if (Array.isArray(arr)) {
+                arr.forEach((item) => flatK.push(typeof item === "object" ? { subject: item.subject || subj, ...item } : { subject: subj, title: subj, content: String(item) }));
+              }
+            });
+            if (flatK.length > 0) knowledgeBase = flatK;
+          }
+        }
+      } catch (e) {}
+    window.__kbLoading = false;
+    window.__kbLoaded = true;
+    try {
+      const km = document.getElementById("knowledgeModal");
+      if (km && !km.classList.contains("hidden")) renderKnowledgeAndNotesModal();
+    } catch (e) {}
+  };
     let filteredQuestions = [...allQuestions];
     let currentIndex = 0;
 
@@ -3487,24 +3516,7 @@ window.XS_AI = (function(){
         }
       } catch (e) {}
 
-      try {
-        const kEndpoint = [".", "knowledge.json"].join("/");
-        const kRes = await fetch(kEndpoint);
-        if (kRes.ok) {
-          const kData = await kRes.json();
-          if (Array.isArray(kData) && kData.length > 0) {
-            knowledgeBase = kData;
-          } else if (kData && typeof kData === "object") {
-            const flatK = [];
-            Object.entries(kData).forEach(([subj, arr]) => {
-              if (Array.isArray(arr)) {
-                arr.forEach((item) => flatK.push(typeof item === "object" ? { subject: item.subject || subj, ...item } : { subject: subj, title: subj, content: String(item) }));
-              }
-            });
-            if (flatK.length > 0) knowledgeBase = flatK;
-          }
-        }
-      } catch (e) {}
+      // knowledge.json 改为首次打开「知识点」时按需加载（见 window.__loadKnowledgeBase）
     }
 
     function normalizeQuestion(raw, idx) {
@@ -5191,6 +5203,7 @@ window.XS_AI = (function(){
 
       // 知识点与笔记中心弹窗
       document.getElementById("openKnowledgeBtn").addEventListener("click", () => {
+        try { if (window.__loadKnowledgeBase) window.__loadKnowledgeBase(); } catch (e) {}
         knowledgePage = 0;
         setKnowledgeTab("knowledge");
         renderKnowledgeAndNotesModal();
