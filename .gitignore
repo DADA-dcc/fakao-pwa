@@ -53,3 +53,20 @@ scripts/blender/
 /cover-gradient.html
 /cover-gradient-gold.html
 /eval_lawbench.py
+
+# NOT_PUBLIC_MARKER - GitHub Pages publishes repo root as-is
+/_headers
+/wrangler.toml
+/functions/
+/scripts/
+/docs/
+/archive/
+/CLAUDE.md
+/tailwind.config.js
+/tools/
+/main.js
+/preload.js
+/launch.bat
+/create-shortcut.ps1
+/package.json
+/package-lock.json
