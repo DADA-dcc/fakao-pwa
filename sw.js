@@ -54,7 +54,7 @@ const OPTIONAL_ASSETS = [
   './vendor/three.r128.min.js',
   './vendor/GLTFLoader.js',
   './assets/models/legal.glb',
-  './vendor/tailwind-3.4.17.js',
+  './assets/tailwind.build.css',
   './questions/index.json',
   './knowledge.json',
   './case_library.json'
