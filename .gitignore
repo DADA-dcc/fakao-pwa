@@ -68,3 +68,7 @@ scripts/blender/
 /create-shortcut.ps1
 /package.json
 /package-lock.json
+# 题库源文件与本地备份（线上只发布 parts/ 与索引，源码不入库）
+source/
+questions/*.bak-*
+questions/*.bak_*

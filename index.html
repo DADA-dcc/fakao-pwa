@@ -53,6 +53,7 @@ window.XS_AI = (function(){
 })();
 </script>
   <link rel="stylesheet" href="./assets/app.d409dcc7.css">
+  <link rel="stylesheet" href="./assets/ai-analysis.css">
 
   <!-- ===== UI 美化层（精致质感升级）· 纯视觉，不改任何逻辑 ===== -->
   
@@ -516,6 +517,7 @@ window.XS_AI = (function(){
           </div>
           <div id="explanationContent" class="leading-relaxed whitespace-pre-line"></div>
           <div id="lawBasisBadge" class="pt-1 flex flex-wrap gap-1.5"></div>
+          <div id="analysisAIBox" class="hidden space-y-1.5 mt-1"></div>
         </div>
 
         <!-- AI 追问回复展示区 -->
@@ -1822,7 +1824,11 @@ window.XS_AI = (function(){
         options: opts,
         answer: ans,
         explanation: raw.explanation || raw.analysis || raw.exp || raw.parse || raw.detail || raw.solution || "暂无详细解析",
-        lawBasis: Array.isArray(raw.lawBasis) ? raw.lawBasis : (raw.law ? [String(raw.law)] : [])
+        lawBasis: Array.isArray(raw.lawBasis) ? raw.lawBasis : (raw.law ? [String(raw.law)] : []),
+      // 三段式结构化解析（由 scripts/gen-analysis.mjs 批量生成）
+      analysisAI: (raw.analysis_ai && raw.analysis_ai.point)
+        ? { point: raw.analysis_ai.point, trap: raw.analysis_ai.trap || "", law: raw.analysis_ai.law || "" }
+        : null
       };
     }
 
@@ -2236,6 +2242,33 @@ window.XS_AI = (function(){
       renderWrongList();
     }
 
+    // 渲染三段式 AI 解析：考点 / 易错陷阱 / 法条定位
+    function renderAnalysisAI(ai) {
+      const box = document.getElementById("analysisAIBox");
+      if (!box) return;
+      box.innerHTML = "";
+      if (!ai || (!ai.point && !ai.trap && !ai.law)) { box.classList.add("hidden"); return; }
+      [["point", "考点", ai.point], ["trap", "易错陷阱", ai.trap], ["law", "法条定位", ai.law]]
+        .forEach(([key, label, text]) => {
+          if (!text) return;
+          const row = document.createElement("div");
+          row.className = "ai3 ai3-" + key;
+          const l = document.createElement("div");
+          l.className = "ai3-label";
+          l.textContent = label;
+          const b = document.createElement("div");
+          b.className = "ai3-body";
+          b.textContent = text;
+          row.appendChild(l); row.appendChild(b);
+          box.appendChild(row);
+        });
+      const note = document.createElement("div");
+      note.className = "ai3-note";
+      note.textContent = "AI 生成解析，请以法条原文为准";
+      box.appendChild(note);
+      box.classList.remove("hidden");
+    }
+
     function populateExplanation(q, record) {
       document.getElementById("correctAnsSpan").textContent = q.answer.join("");
       const userAnsStr = record && Array.isArray(record.userAnswer) && record.userAnswer.length > 0
@@ -2257,6 +2290,7 @@ window.XS_AI = (function(){
       }
 
       renderExplanation(q.explanation);
+      renderAnalysisAI(q.analysisAI);
 
       const basisContainer = document.getElementById("lawBasisBadge");
       basisContainer.innerHTML = "";

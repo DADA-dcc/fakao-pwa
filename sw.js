@@ -33,10 +33,10 @@
 
 // 第三轮审计：仅升外壳版本，让老用户拿到新 index.html / 新 CSS；
 // DATA_CACHE 仍固定 fakao-v34-data，activate 不会删除，避免重下约 20MB 离线题库。
-const CACHE_VERSION = 'fakao-v37';
+const CACHE_VERSION = 'fakao-v38';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 // 题库缓存名固定，不随外壳版本变化：activate 只清旧外壳，避免用户重下约 20MB 题库
-const DATA_CACHE = 'fakao-v34-data';
+const DATA_CACHE = 'fakao-v38-data';
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
 
 const CORE_SHELL = [

@@ -1,0 +1,16 @@
+/* 三段式 AI 解析：考点 / 易错陷阱 / 法条定位 */
+#analysisAIBox .ai3{ display:flex; gap:8px; padding:8px 10px; border-radius:10px; border-left:4px solid; font-size:12.5px; line-height:1.75; }
+#analysisAIBox .ai3-label{ flex:0 0 auto; font-weight:700; font-size:11px; padding-top:1px; }
+#analysisAIBox .ai3-body{ flex:1 1 auto; }
+#analysisAIBox .ai3-point{ background:rgba(45,110,120,.10); border-left-color:#2E6E77; }
+#analysisAIBox .ai3-point .ai3-label{ color:#2E6E77; }
+#analysisAIBox .ai3-trap{ background:rgba(201,162,39,.12); border-left-color:#C9A227; }
+#analysisAIBox .ai3-trap .ai3-label{ color:#9A7B12; }
+#analysisAIBox .ai3-law{ background:rgba(120,120,130,.10); border-left-color:#7A7A82; }
+#analysisAIBox .ai3-law .ai3-label{ color:#5F5F66; }
+html[data-theme="dark"] #analysisAIBox .ai3{ background:rgba(255,255,255,.05); }
+html[data-theme="dark"] #analysisAIBox .ai3-point .ai3-label{ color:#7FD1DA; }
+html[data-theme="dark"] #analysisAIBox .ai3-trap .ai3-label{ color:#E0C468; }
+html[data-theme="dark"] #analysisAIBox .ai3-law .ai3-label{ color:#B8B8C0; }
+#analysisAIBox .ai3-note{ font-size:10.5px; opacity:.62; padding-top:2px; }
+html[data-theme="sepia"] #analysisAIBox .ai3{ background:rgba(139,90,43,.07); }
