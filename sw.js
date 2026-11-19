@@ -51,12 +51,7 @@ const CORE_SHELL = [
 
 const OPTIONAL_ASSETS = [
   './cover.html',
-  './vendor/three.r128.min.js',
-  './vendor/GLTFLoader.js',
-  './assets/models/legal.glb',
-  './assets/tailwind.build.css',
   './questions/index.json',
-  './knowledge.json',
   './case_library.json'
 ];
 
@@ -118,13 +113,8 @@ self.addEventListener('install', (event) => {
       const dataCache = await caches.open(DATA_CACHE);
       // 小体积资源并发缓存
       await Promise.all(OPTIONAL_ASSETS.map((url) => ensureCached(dataCache, url)));
-      // 大体积题库每批 2 个，避免移动端并发下载拖慢首次安装或被系统中断
-      for (let i = 0; i < QUESTION_ASSETS.length; i += 2) {
-        await Promise.all(
-          QUESTION_ASSETS.slice(i, i + 2).map((url) => ensureCached(dataCache, url))
-        );
-      }
-    })()
+      // 题库改为按需缓存：由页面在 Wi-Fi 下主动发 PREFETCH_QUESTIONS 触发
+          })()
   );
 });
 
@@ -145,8 +135,20 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  const data = event.data || {};
+  if (data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  // 页面在 Wi-Fi / 桌面环境请求后台补齐其余题库（分批，避免并发过高）
+  if (data.type === 'PREFETCH_QUESTIONS' && Array.isArray(data.files)) {
+    event.waitUntil((async () => {
+      const cache = await caches.open(DATA_CACHE);
+      const files = data.files.filter((f) => typeof f === 'string' && f.indexOf('./questions/') === 0);
+      for (let i = 0; i < files.length; i += 3) {
+        await Promise.all(files.slice(i, i + 3).map((f) => ensureCached(cache, f).catch(() => null)));
+      }
+    })());
   }
 });
 

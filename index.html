@@ -1537,13 +1537,11 @@ window.XS_AI = (function(){
     }
 
     async function tryLoadExternalRepoData() {
-      // 仅在 HTTP/HTTPS 同源部署下加载外部题库
       if (location.protocol !== "http:" && location.protocol !== "https:") return;
 
-      const qIndexUrl = [".", "questions", "index.json"].join("/");
       let indexData = null;
       try {
-        const res = await fetch(qIndexUrl);
+        const res = await fetch([".", "questions", "index.json"].join("/"));
         if (res.ok) indexData = await res.json();
       } catch (e) {}
 
@@ -1558,18 +1556,66 @@ window.XS_AI = (function(){
       const subtitle = document.getElementById("dataSourceSubtitle");
       const setSubtitle = (txt) => { if (subtitle) subtitle.textContent = txt; };
 
+      const filesOf = (name) => {
+        const meta = subjMap[name] || {};
+        if (Array.isArray(meta.parts) && meta.parts.length) return meta.parts;
+        if (meta.file) return [meta.file];
+        return [];
+      };
+
+      // 网络预算：省流量/慢网/移动蜂窝下不后台拉全部题库，只加载当前科目
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+      const rtt = Number(conn.rtt) || 0;
+      const frugal = !!conn.saveData
+        || /^(slow-2g|2g)$/.test(conn.effectiveType || "")
+        || (conn.effectiveType === "3g" && rtt >= 600)
+        || (isMobile && conn.type === "cellular");
+
       const normalizeAll = (raw) => {
         const skipped = raw.filter((q) => q.incomplete).length;
         const playable = raw.filter((q) => !q.incomplete);
         return { list: playable.map((q, idx) => normalizeQuestion(q, idx)), skipped };
       };
 
-      // 组装加载单元：大科目已被切成 400 题/块，小科目仍是单文件
-      const filesOf = (name) => {
-        const meta = subjMap[name] || {};
-        if (Array.isArray(meta.parts) && meta.parts.length) return meta.parts;
-        if (meta.file) return [meta.file];
-        return [];
+      // 已加载 / 已入队 的科目记录，供按需加载复用
+      const loadedSubjects = new Set();
+      const inflightSubjects = new Map();
+      const loaded = [];
+
+      const merge = (raw) => { if (raw && raw.length) loaded.push(...raw); };
+
+      const fetchSubject = async (name) => {
+        const parts = filesOf(name);
+        for (const f of parts) {
+          try {
+            const r = await fetch([".", "questions", f].join("/"));
+            if (r.ok) {
+              const json = await r.json();
+              const extracted = await extractQuestionsFromData(json, name);
+              merge(Array.isArray(extracted) ? extracted : []);
+            }
+          } catch (e) {}
+        }
+      };
+
+      // 供科目筛选切换时调用：按需加载某一科
+      window.__ensureSubject = async function (name) {
+        if (!name || !subjectNames.includes(name)) return;
+        if (loadedSubjects.has(name)) { applyFilters(false); return; }
+        if (inflightSubjects.has(name)) { await inflightSubjects.get(name); return; }
+        const p = (async () => {
+          await fetchSubject(name);
+          loadedSubjects.add(name);
+          const norm = normalizeAll(loaded);
+          allQuestions = norm.list;
+          if (typeof currentIndex === "number" && currentIndex >= allQuestions.length) currentIndex = 0;
+          applyFilters(false);
+          setSubtitle(`已加载 ${loadedSubjects.size}/${subjectNames.length} 科 · 共 ${norm.list.length} 题`);
+        })();
+        inflightSubjects.set(name, p);
+        await p;
+        inflightSubjects.delete(name);
       };
 
       let priority = subjectNames[0];
@@ -1589,18 +1635,40 @@ window.XS_AI = (function(){
         if (smallest) priority = smallest.n;
       }
 
-      const units = [];
-      for (const f of filesOf(priority)) units.push({ subject: priority, url: [".", "questions", f].join("/") });
-      for (const name of subjectNames) {
-        if (name === priority) continue;
-        for (const f of filesOf(name)) units.push({ subject: name, url: [".", "questions", f].join("/") });
-      }
-
       setSubtitle("题库加载中…");
 
-      const loaded = [];
-      const doneSubjects = new Set();
-      let firstFlush = false;
+      // 1) 优先科目：逐块加载，第一块到达即可作答
+      const prioParts = filesOf(priority);
+      for (let k = 0; k < prioParts.length; k++) {
+        try {
+          const r = await fetch([".", "questions", prioParts[k]].join("/"));
+          if (r.ok) {
+            const json = await r.json();
+            const extracted = await extractQuestionsFromData(json, priority);
+            merge(Array.isArray(extracted) ? extracted : []);
+          }
+        } catch (e) {}
+        if (k === 0 && loaded.length) {
+          const norm = normalizeAll(loaded);
+          allQuestions = norm.list;
+          applyFilters(false);
+          setSubtitle(`已加载 ${priority}（${norm.list.length} 题）· 其余${frugal ? "科目切换时加载" : "题库后台加载中"}…`);
+        }
+      }
+      loadedSubjects.add(priority);
+      {
+        const norm = normalizeAll(loaded);
+        allQuestions = norm.list;
+        applyFilters(false);
+      }
+
+      // 2) 省流量模式到此为止；其余科目等用户切换时按需加载
+      if (frugal) {
+        setSubtitle(`已加载 ${priority}（${allQuestions.length} 题）· 省流量模式：其余科目切换时加载`);
+        return;
+      }
+
+      // 3) 正常模式：后台串行补齐其余科目
       let rerenderTimer = null;
       const scheduleRerender = () => {
         if (rerenderTimer) return;
@@ -1615,34 +1683,10 @@ window.XS_AI = (function(){
         }, 400);
       };
 
-      for (const u of units) {
-        let raw = [];
-        try {
-          const r = await fetch(u.url);
-          if (r.ok) {
-            const json = await r.json();
-            const extracted = await extractQuestionsFromData(json, u.subject);
-            raw = Array.isArray(extracted) ? extracted : [];
-          }
-        } catch (e) {}
-        if (raw.length) loaded.push(...raw);
-
-        // 第一个单元加载完立刻可见（通常是一块 400 题）
-        if (!firstFlush && loaded.length) {
-          firstFlush = true;
-          const norm = normalizeAll(loaded);
-          allQuestions = norm.list;
-          applyFilters(false);
-          setSubtitle(`已加载 ${u.subject}（${norm.list.length} 题）· 其余题库后台加载中…`);
-          continue;
-        }
-
-        // 某科目所有块都到齐 → 标记完成
-        const partsLeft = filesOf(u.subject).length;
-        if (!doneSubjects.has(u.subject)) {
-          const arrived = units.filter((x) => x.subject === u.subject).length;
-          if (arrived === partsLeft) doneSubjects.add(u.subject);
-        }
+      for (const name of subjectNames) {
+        if (name === priority) continue;
+        await fetchSubject(name);
+        loadedSubjects.add(name);
         scheduleRerender();
       }
 
@@ -1654,7 +1698,6 @@ window.XS_AI = (function(){
       } else if (total) {
         setSubtitle(`题库加载失败（预期 ${total} 题），请检查网络后刷新`);
       }
-      // knowledge.json 仍按需加载（window.__loadKnowledgeBase）
     }
 
     async function legacyFullLoad(indexData) {
@@ -1764,7 +1807,7 @@ window.XS_AI = (function(){
         btn.innerHTML = (SUBJECT_ICONS[item.key] || "") + `<span>${item.label}</span>`;
         btn.addEventListener("click", () => {
           wrongPracticeIds = null;   // 从科目栏进入「错题重做」视为全部错题
-          currentSubject = item.key;
+          currentSubject = item.key; try { if (window.__ensureSubject && item.key && item.key !== "全部") window.__ensureSubject(item.key); } catch (e) {}
           renderSubjectBar();
           applyFilters(true);
         });
@@ -3691,6 +3734,29 @@ window.XS_AI = (function(){
             });
           });
         }).catch(() => {});
+
+      // ── 题库预缓存（省流量策略）──
+      // 默认不预缓存全部题库（约 20MB）；仅在明确是 Wi-Fi 或桌面环境时后台补齐，
+      // 移动蜂窝网络下只缓存用户实际刷到的分块（fetch 时会自动入缓存）
+      try {
+        navigator.serviceWorker.ready.then(async (reg) => {
+          try {
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+            const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+            const wifi = conn.type === "wifi" || (!isMobile && !conn.saveData);
+            if (!wifi) return;
+            const res = await fetch([".", "questions", "index.json"].join("/"));
+            if (!res.ok) return;
+            const data = await res.json();
+            const files = [];
+            Object.values(data.subjects || {}).forEach((meta) => {
+              const list = Array.isArray(meta.parts) ? meta.parts : (meta.file ? [meta.file] : []);
+              list.forEach((f) => files.push("./questions/" + f));
+            });
+            if (files.length && reg.active) reg.active.postMessage({ type: "PREFETCH_QUESTIONS", files });
+          } catch (e) {}
+        });
+      } catch (e) {}
       }
 
       document.getElementById("swApplyUpdateBtn").addEventListener("click", () => {
