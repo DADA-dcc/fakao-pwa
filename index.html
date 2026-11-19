@@ -1536,13 +1536,50 @@ window.XS_AI = (function(){
       return [];
     }
 
+    // ── 题库 JSON 走 Worker 解析（失败自动回退主线程 fetch）──
+    let __qWorker;
+    let __qSeq = 0;
+    const __qPending = new Map();
+    function __getQWorker() {
+      if (__qWorker !== undefined) return __qWorker;
+      try {
+        const w = new Worker([".", "workers", "questions-worker.js"].join("/"));
+        w.onmessage = (ev) => {
+          const d = ev.data || {};
+          const p = __qPending.get(d.id);
+          if (!p) return;
+          __qPending.delete(d.id);
+          clearTimeout(p.timer);
+          p.resolve(d.ok ? d.json : null);
+        };
+        w.onerror = () => { __qWorker = null; };
+        __qWorker = w;
+      } catch (e) {
+        __qWorker = null;
+      }
+      return __qWorker;
+    }
+    function fetchJsonViaWorker(url) {
+      const w = __getQWorker();
+      if (!w) return fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      return new Promise((resolve) => {
+        const id = ++__qSeq;
+        const timer = setTimeout(() => {
+          __qPending.delete(id);
+          __qWorker = null;
+          resolve(null);
+        }, 15000);
+        __qPending.set(id, { resolve: resolve, timer: timer });
+        try { w.postMessage({ id: id, url: new URL(url, location.href).href }); } catch (e) { __qPending.delete(id); clearTimeout(timer); __qWorker = null; resolve(null); }
+      });
+    }
+
     async function tryLoadExternalRepoData() {
       if (location.protocol !== "http:" && location.protocol !== "https:") return;
 
       let indexData = null;
       try {
-        const res = await fetch([".", "questions", "index.json"].join("/"));
-        if (res.ok) indexData = await res.json();
+        indexData = await fetchJsonViaWorker([".", "questions", "index.json"].join("/"));
       } catch (e) {}
 
       const subjMap = indexData && indexData.subjects && typeof indexData.subjects === "object" ? indexData.subjects : null;
@@ -1589,9 +1626,8 @@ window.XS_AI = (function(){
         const parts = filesOf(name);
         for (const f of parts) {
           try {
-            const r = await fetch([".", "questions", f].join("/"));
-            if (r.ok) {
-              const json = await r.json();
+            const json = await fetchJsonViaWorker([".", "questions", f].join("/"));
+            if (json) {
               const extracted = await extractQuestionsFromData(json, name);
               merge(Array.isArray(extracted) ? extracted : []);
             }
@@ -1641,9 +1677,8 @@ window.XS_AI = (function(){
       const prioParts = filesOf(priority);
       for (let k = 0; k < prioParts.length; k++) {
         try {
-          const r = await fetch([".", "questions", prioParts[k]].join("/"));
-          if (r.ok) {
-            const json = await r.json();
+          const json = await fetchJsonViaWorker([".", "questions", prioParts[k]].join("/"));
+          if (json) {
             const extracted = await extractQuestionsFromData(json, priority);
             merge(Array.isArray(extracted) ? extracted : []);
           }
