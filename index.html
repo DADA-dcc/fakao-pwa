@@ -1144,8 +1144,8 @@ window.XS_AI = (function(){
       DEEPSEEK_KEY: "fakao_deepseek_key"
     };
 
-    // AI 统一走 window.XS_AI（同源 Cloudflare Pages Functions /api/ai、/api/grade），
-    // 密钥仅存服务端环境变量，前端不持有任何令牌。
+    // AI 统一走 window.XS_AI（外部网关 https://ai.xs06.de5.net），
+    // 当前静态部署无服务端，网关令牌在前端；迁移 Cloudflare Pages 后可切回 /api/ai。
 
     const IDBEngine = {
       dbName: "FakaoGuardDB",
