@@ -1,42 +1,22 @@
 /**
- * 法考刷题助手 (fakao-pwa) 升级版 Service Worker (v34)
- * 优化点：
- * 1. 拆分核心外壳 (CORE_SHELL) 与 大体积题库资源 (DATA_ASSETS)，避免 caches.addAll 因单个文件超时导致整个 SW 安装失败
- * 2. 安装时预缓存 12 个分科题库（分批、跳过已缓存项），保证添加到主屏幕后离线也能刷全部科目
- * 3. 对题库 JSON 采用 Cache First + 24 小时新鲜期：新鲜期内直接返回缓存，不发后台请求，
- *    避免每次冷启动在移动网络下重新拉取约 20MB 题库；过期后仍按 Stale-While-Revalidate 更新
- * 4. 对外部 AI 接口 (api.deepseek.com) 与 GitHub Gist 同步接口 (api.github.com) 严格走 Network Only
- * 5. 支持客户端发送 SKIP_WAITING 消息实现一键热更新
- * 6. 2026-11-14：index.html 增加题干 pre-line 换行保留与【共享案情】折叠卡片。
- *    仅变更本文件内容即可让浏览器触发 updatefound 并弹出更新提示；
- *    CACHE_VERSION 故意保持不变，activate 不会删除同名缓存，
- *    QUESTION_ASSETS 经 ensureCached 跳过已缓存项，避免重复下载约 20MB 题库。
- *    install 会重新 add CORE_SHELL，因此新的 index.html 仍会被写入外壳缓存。
- * 7. 2026-11-14 第二批 UI 改动：错题本按科目/错因筛选、主观题作答草稿自动保存
- *    与 AI 批改结果缓存、长解析折叠阈值按视口宽高自适应。同样只改注释触发
- *    updatefound，CACHE_VERSION 仍保持 v34，避免重下约 20MB 题库。
- * 8. 2026-11-14 第三批：修复草稿自动保存在「清空重置 / 导入备份」时的回写
- *    回归，并把窄屏主要交互控件放大到 44px 触摸目标。仍只改注释触发更新，
- *    CACHE_VERSION 保持 v34。
- * 9. 2026-11-14 第四批：iOS Safari 软键盘适配——作答框限高改用
- *    visualViewport 实时高度（--app-vv-height）+ 200px 绝对上限；AI 答疑
- *    浮层按 --app-kb-inset 上移，避免输入框被键盘遮挡；新增 #iosdiag
- *    真机读数面板（仅 URL 带该 hash 时启用）。仍只改注释触发 updatefound，
- *    CACHE_VERSION 保持 v34，避免重下约 20MB 题库。
- * 10. 2026-11-15 第五批：修复 5 个弹窗的可达性——恢复被 overflow:hidden
- *     覆盖的卡片滚动（syncModal 矮视口下底部按钮原本不可达）、统一按
- *     --app-vv-height 收缩 max-height 并用 --app-kb-inset 抬升贴底弹窗、
- *     补齐 reportModal 的 z-index。本批不改动 CACHE_VERSION（同期审计提交
- *     统一升外壳版本）；DATA_CACHE 固定为 fakao-v34-data，activate 不会删除，
- *     故仅换外壳缓存、不会重下约 20MB 离线题库。
+ * 法考刷题助手 (fakao-pwa) Service Worker
+ * 缓存策略：
+ * - 核心外壳 CORE_SHELL：install 时逐个容错预缓存；导航/HTML 命中缓存后后台静默更新。
+ * - 题库 JSON：questions/index.json 走 Network First（5s 超时回落缓存）；
+ *   其余 .json 走 Cache First + 24h 新鲜期，过期 Stale-While-Revalidate。
+ *   分块 URL 由页面附加 ?v=<version>，题库版本变化即换缓存键，无需升 SW 版本。
+ * - 题库离线补齐：页面在 Wi-Fi/桌面下发 PREFETCH_QUESTIONS（携带 ?v= 键）分批缓存。
+ * - 外部接口（api.deepseek.com 自备 Key 回退、api.github.com Gist 同步）不走缓存。
+ * - 客户端发 SKIP_WAITING 实现一键热更新。
+ * 升级约定：改动 index.html/数据时升 CACHE_VERSION，让浏览器触发 updatefound；
+ * activate 会清理非当前 SHELL/DATA 的旧缓存。
  */
 
-// 第三轮审计：仅升外壳版本，让老用户拿到新 index.html / 新 CSS；
-// DATA_CACHE 仍固定 fakao-v34-data，activate 不会删除，避免重下约 20MB 离线题库。
-const CACHE_VERSION = 'fakao-v38';
+// v39：主应用 AI 改走同源 /api/*、题库勘误（index v13）、预缓存键与实际请求对齐。
+// 外壳与数据缓存一并升版：activate 清掉旧缓存，题库按新的 ?v=v13 键重新下载一次。
+const CACHE_VERSION = 'fakao-v39';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
-// 题库缓存名固定，不随外壳版本变化：activate 只清旧外壳，避免用户重下约 20MB 题库
-const DATA_CACHE = 'fakao-v38-data';
+const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
 
 const CORE_SHELL = [
@@ -55,61 +35,7 @@ const OPTIONAL_ASSETS = [
   './case_library.json'
 ];
 
-// 分科题库：离线刷题的关键数据（合计约 20MB），安装时分批预缓存
-const QUESTION_ASSETS = [
-  './questions/parts/00-00.json',
-  './questions/parts/00-01.json',
-  './questions/parts/00-02.json',
-  './questions/parts/00-03.json',
-  './questions/parts/00-04.json',
-  './questions/parts/00-05.json',
-  './questions/parts/00-06.json',
-  './questions/parts/00-07.json',
-  './questions/parts/00-08.json',
-  './questions/parts/00-09.json',
-  './questions/parts/00-10.json',
-  './questions/parts/00-11.json',
-  './questions/parts/00-12.json',
-  './questions/parts/00-13.json',
-  './questions/parts/01-00.json',
-  './questions/parts/01-01.json',
-  './questions/parts/01-02.json',
-  './questions/parts/01-03.json',
-  './questions/parts/01-04.json',
-  './questions/parts/01-05.json',
-  './questions/parts/01-06.json',
-  './questions/parts/02-00.json',
-  './questions/parts/02-01.json',
-  './questions/parts/02-02.json',
-  './questions/parts/02-03.json',
-  './questions/parts/02-04.json',
-  './questions/parts/02-05.json',
-  './questions/parts/03-00.json',
-  './questions/parts/03-01.json',
-  './questions/parts/03-02.json',
-  './questions/parts/03-03.json',
-  './questions/parts/03-04.json',
-  './questions/parts/04-00.json',
-  './questions/parts/04-01.json',
-  './questions/parts/04-02.json',
-  './questions/parts/04-03.json',
-  './questions/parts/04-04.json',
-  './questions/知识产权法.json',
-  './questions/parts/06-00.json',
-  './questions/parts/06-01.json',
-  './questions/parts/06-02.json',
-  './questions/parts/06-03.json',
-  './questions/parts/06-04.json',
-  './questions/parts/06-05.json',
-  './questions/parts/06-06.json',
-  './questions/宪法.json',
-  './questions/国际法.json',
-  './questions/法理学.json',
-  './questions/法制史.json',
-  './questions/司法制度与职业道德.json'
-];
-
-// 只缓存缺失项：SW 自身更新时不会重复下载已有的 20MB 题库
+// 只缓存缺失项：SW 自身更新时不会重复下载已有的题库
 async function ensureCached(cache, url) {
   try {
     if (await cache.match(url)) return;
@@ -178,11 +104,10 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // 排除 AI 接口与 GitHub Gist 同步 API
+  // 排除外部 AI 回退接口与 GitHub Gist 同步 API（同源 /api/* 为 POST，本就不拦截）
   if (
     url.hostname.includes('deepseek.com') ||
-    url.hostname.includes('api.github.com') ||
-    url.hostname.includes('ai.xs06.de5.net')
+    url.hostname.includes('api.github.com')
   ) {
     return;
   }

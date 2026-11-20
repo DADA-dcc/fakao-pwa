@@ -7,7 +7,7 @@
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://ai.xs06.de5.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://ai.xs06.de5.net https://api.deepseek.com https://api.github.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://api.deepseek.com https://api.github.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
 # Service Worker 必须不被长缓存，否则热更新会卡住
 /sw.js
@@ -17,7 +17,6 @@
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
 /
-
   Cache-Control: public, max-age=0, must-revalidate
 
 # 内容哈希命名的资源：一年 immutable（改内容即改文件名）

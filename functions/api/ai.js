@@ -9,7 +9,8 @@
  *   DEEPSEEK_MODEL     可选，默认 deepseek-chat
  *   AI_RATE_LIMIT_KV   可选，KV 命名空间绑定名（未绑定则退化为单实例内存限流）
  *
- * 请求体：{ prompt: string, followup?: string }
+ * 请求体：{ prompt: string, followup?: string }（单题解析）
+ *         或 { messages: [{ role, content }, ...] }（多轮答疑，role ∈ system/user/assistant）
  * 响应：  { content: string } 或 { error: string }
  */
 
@@ -110,14 +111,42 @@ export async function onRequestPost(context) {
   const prompt = typeof payload?.prompt === "string" ? payload.prompt.trim() : "";
   const followup = typeof payload?.followup === "string" ? payload.followup.trim() : "";
 
-  if (!prompt) {
-    return jsonResponse({ error: "缺少 prompt 字段。" }, 400);
-  }
-  if (prompt.length + followup.length > MAX_PROMPT_CHARS) {
-    return jsonResponse({ error: "题目内容过长。" }, 413);
+  // 两种模式：多轮答疑（messages 数组）或单题解析（prompt + 可选 followup）
+  let messages;
+  if (Array.isArray(payload?.messages) && payload.messages.length) {
+    const allowedRoles = new Set(["system", "user", "assistant"]);
+    const cleaned = [];
+    let totalChars = 0;
+    for (const m of payload.messages.slice(0, 24)) {
+      if (!m || typeof m !== "object") continue;
+      const content = typeof m.content === "string" ? m.content : "";
+      if (!content.trim()) continue;
+      totalChars += content.length;
+      cleaned.push({ role: allowedRoles.has(m.role) ? m.role : "user", content });
+    }
+    if (!cleaned.length) {
+      return jsonResponse({ error: "messages 中没有有效内容。" }, 400);
+    }
+    if (totalChars > MAX_PROMPT_CHARS) {
+      return jsonResponse({ error: "对话内容过长。" }, 413);
+    }
+    messages = cleaned;
+  } else {
+    if (!prompt) {
+      return jsonResponse({ error: "缺少 prompt 字段。" }, 400);
+    }
+    if (prompt.length + followup.length > MAX_PROMPT_CHARS) {
+      return jsonResponse({ error: "题目内容过长。" }, 413);
+    }
+    messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: buildUserPrompt(prompt, followup) }
+    ];
   }
 
   let upstream;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 50000);
   try {
     upstream = await fetch(DEEPSEEK_ENDPOINT, {
       method: "POST",
@@ -127,15 +156,16 @@ export async function onRequestPost(context) {
       },
       body: JSON.stringify({
         model: env.DEEPSEEK_MODEL || "deepseek-chat",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: buildUserPrompt(prompt, followup) }
-        ],
-        temperature: 0.3
-      })
+        messages,
+        temperature: 0.3,
+        max_tokens: 900
+      }),
+      signal: ctrl.signal
     });
   } catch (err) {
     return jsonResponse({ error: "上游 AI 服务连接失败。" }, 502);
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!upstream.ok) {
