@@ -2,12 +2,12 @@
 <html lang="zh-CN" data-theme="light">
 <head>
 <!--
-  当前部署为 GitHub Pages，无服务端函数，AI 走外部网关；
-  若后续迁移到 Cloudflare Pages，可切回同源 /api/ai 并移除令牌。
+  部署于 Cloudflare Pages：AI 统一走同源 /api/*（Pages Functions），
+  DeepSeek 密钥仅存服务端环境变量，前端不含任何令牌。
 -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://ai.xs06.de5.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://ai.xs06.de5.net https://api.deepseek.com https://api.github.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://api.deepseek.com https://api.github.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="theme-color" content="#1a3a6b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -29,48 +29,22 @@
   <meta name="twitter:description" content="民法·刑法·行政法……近万道真题，陪你稳过法考。" />
   <meta name="twitter:image" content="https://xs06.de5.net/preview/cover.jpg" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-<link rel="preconnect" href="https://ai.xs06.de5.net" crossorigin />
 <script>
-/* 统一 AI 网关：绑定自定义域名，国内可达；静态站点无法藏密钥，网关侧必须做 Origin 白名单 + 限流 */
+/* 统一 AI 入口：同源 /api/*（Cloudflare Pages Functions）。密钥仅存服务端环境变量，前端不接触任何令牌。 */
 window.XS_AI = (function(){
-  var ENDPOINT = "https://ai.xs06.de5.net/v1/chat/completions";
-  var TOKEN = "xs06gw-e5d812f6af4fe987ee57248989b168fb849b7230";
-  function chat(messages, opts){
-    opts = opts || {};
+  function post(path, body, timeoutMs){
     var ctrl = new AbortController();
-    var timer = setTimeout(function(){ ctrl.abort(); }, opts.timeoutMs || 40000);
-    return fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + TOKEN },
-      body: JSON.stringify({ messages: messages, max_tokens: opts.maxTokens || 900, temperature: opts.temperature || 0.3 }),
-      signal: ctrl.signal
-    }).then(function(r){
-      if (!r.ok) throw new Error("AI 网关 HTTP " + r.status);
-      return r.json();
-    }).then(function(j){
-      var text = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-      if (!text) throw new Error("AI 返回为空");
-      return text;
-    }).finally(function(){ clearTimeout(timer); });
+    var timer = setTimeout(function(){ ctrl.abort(); }, timeoutMs || 40000);
+    return fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body), signal:ctrl.signal })
+      .then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ if(!r.ok) throw new Error(j&&j.error?j.error:("AI 接口 HTTP "+r.status)); return j; }); })
+      .finally(function(){ clearTimeout(timer); });
   }
-  function explain(prompt, followup, opts){
-    var explainSys = "你是一位资深的国家统一法律职业资格考试（法考）辅导名师，擅长提炼题眼、拆解请求权基础与犯罪构成要件。直接给出结论与解析，不要输出思考过程。";
-    var explainUser = followup
-      ? prompt + "\n考生追问：" + followup + "\n请用简明扼要的法考应试语言解答考生的追问。"
-      : prompt + "\n请从【命题陷阱】【请求权基础/构成要件】【同类题秒杀口诀】三个维度进行精炼拆解。";
-    return chat([{ role: "system", content: explainSys }, { role: "user", content: explainUser }], { maxTokens: 900, timeoutMs: (opts || {}).timeoutMs });
-  }
-  function grade(payload, opts){
-    payload = payload || {};
-    var gradeSys = "你是法考主观题阅卷老师。不要输出思考过程、不要 markdown 代码块、不要任何额外文字，直接输出唯一一个完整 JSON 对象。字段：score(0-10数字)、level(字符串)、summary(字符串)、pointHits(数组，每项 {point,hit:布尔,comment,score:数字})、problems(字符串数组)、suggestions(字符串数组)、lawBasis(字符串数组)。";
-    var gradeUser = "题目：" + (payload.question || "") + "\n参考要点：" + (payload.reference || "") + "\n考生作答：" + (payload.answer || "") + "\n满分 " + (payload.maxScore || 10) + " 分，请按采分点逐项批改。";
-    return chat([{ role: "system", content: gradeSys }, { role: "user", content: gradeUser }], { maxTokens: 900, timeoutMs: (opts || {}).timeoutMs || 45000 }).then(function(raw){
-      var cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
-      var first = cleaned.indexOf("{"), last = cleaned.lastIndexOf("}");
-      return JSON.parse(first >= 0 && last > first ? cleaned.slice(first, last + 1) : cleaned);
-    });
-  }
-  return { chat: chat, explain: explain, grade: grade, ENDPOINT: ENDPOINT };
+  function contentOf(j){ if(!j||!j.content) throw new Error("AI 返回为空"); return j.content; }
+  return {
+    chat: function(messages, opts){ return post("/api/ai",{messages:messages},(opts||{}).timeoutMs).then(contentOf); },
+    explain: function(prompt, followup, opts){ return post("/api/ai",{prompt:prompt,followup:followup||""},(opts||{}).timeoutMs).then(contentOf); },
+    grade: function(payload, opts){ return post("/api/grade",payload,(opts||{}).timeoutMs||45000); }
+  };
 })();
 </script>
   <link rel="stylesheet" href="./assets/app.d409dcc7.css">
@@ -1144,8 +1118,8 @@ window.XS_AI = (function(){
       DEEPSEEK_KEY: "fakao_deepseek_key"
     };
 
-    // AI 统一走 window.XS_AI（外部网关 https://ai.xs06.de5.net），
-    // 当前静态部署无服务端，网关令牌在前端；迁移 Cloudflare Pages 后可切回 /api/ai。
+    // AI 统一走 window.XS_AI（同源 /api/*，Cloudflare Pages Functions），
+    // 密钥仅在服务端环境变量，前端不接触令牌；用户自备 DeepSeek Key 仅作可选兜底。
 
     const IDBEngine = {
       dbName: "FakaoGuardDB",
