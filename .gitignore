@@ -6,6 +6,7 @@ Thumbs.db
 nul
 *.log
 __pycache__/
+*.pyc
 
 # Cloudflare Pages 构建产物（由 scripts/build.mjs 生成）
 dist/
@@ -45,7 +46,8 @@ audit/rescue/民法.before.json
 # 以下为内部审计资料、调试快照、旧设计文档与一次性实验页面/脚本。
 # GitHub Pages 直接发布仓库根目录、没有构建步骤，这些文件此前可被任意下载。
 # 现在仅保留在本地工作区（完整归档亦保存在本地），不再进入公开仓库。
-audit/
+/audit/
+/reports/
 .playwright-mcp/
 docs/superpowers/
 flow/
@@ -69,6 +71,12 @@ scripts/blender/
 /package.json
 /package-lock.json
 # 题库源文件与本地备份（线上只发布 parts/ 与索引，源码不入库）
-source/
+/source/
 questions/*.bak-*
 questions/*.bak_*
+
+# 题库构建与校验脚本属于有效产物，单独放行（/scripts/ 其余内容仍忽略）
+!/scripts/
+/scripts/*
+!/scripts/build-questions.mjs
+!/scripts/validate-questions.mjs

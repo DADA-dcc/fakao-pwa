@@ -576,6 +576,11 @@ window.XS_AI = (function(){
             <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
             <span>导出错题/笔记 CSV</span>
           </button>
+          <button id="exportWrongCsvDetailBtn" type="button" class="px-2.5 py-1 rounded-lg theme-subtle border font-medium hover:border-blue-400 transition inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed" title="暂无错题">
+            <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            <span>导出 CSV</span>
+          </button>
+          <span id="exportWrongCsvHint" class="theme-muted hidden">暂无错题</span>
         </div>
       </div>
 
@@ -2537,6 +2542,7 @@ window.XS_AI = (function(){
         : `${wrongQuestions.length} 题`;
       const practiceBtn = document.getElementById("wrongFilterPracticeBtn");
       if (practiceBtn) practiceBtn.disabled = filtered.length === 0;
+      updateWrongCsvButtonState();
       container.innerHTML = "";
 
       if (wrongQuestions.length === 0) {
@@ -2925,6 +2931,72 @@ window.XS_AI = (function(){
       a.remove();
       URL.revokeObjectURL(url);
       showToast("错题与笔记 CSV 已导出（Excel 可直接打开）", "success");
+    }
+
+    // 导出错题本明细 CSV：序号 / 科目 / 题干 / 我的答案 / 正确答案 / 是否已掌握 / 最近作答 / 作答次数
+    // 错题键只存题目 id，其余列从 allQuestions 与 userProgress 关联；缺失字段留空，不补造。
+    function csvEscapeCell(value) {
+      const s = value == null ? "" : String(value);
+      return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+
+    function formatCsvTime(ts) {
+      const n = Number(ts);
+      if (!Number.isFinite(n) || n <= 0) return "";
+      const d = new Date(n);
+      if (Number.isNaN(d.getTime())) return "";
+      const p = (v) => String(v).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    function updateWrongCsvButtonState() {
+      const btn = document.getElementById("exportWrongCsvDetailBtn");
+      const hint = document.getElementById("exportWrongCsvHint");
+      if (!btn) return;
+      const empty = wrongQuestions.length === 0;
+      btn.disabled = empty;
+      btn.title = empty ? "暂无错题" : "导出错题本明细 CSV";
+      if (hint) hint.classList.toggle("hidden", !empty);
+    }
+
+    function exportWrongCsvDetail() {
+      if (wrongQuestions.length === 0) {
+        showToast("暂无错题", "warn");
+        return;
+      }
+      const qMap = new Map(allQuestions.map((q) => [q.id, q]));
+      const rows = [["序号", "科目", "题干", "我的答案", "正确答案", "是否已掌握", "最近一次作答时间", "作答次数"]];
+      wrongQuestions.forEach((qid, i) => {
+        const q = qMap.get(qid);
+        const rec = userProgress[qid] || {};
+        const myAnswer = Array.isArray(rec.userAnswer) ? rec.userAnswer.join("") : "";
+        const correctAnswer = q && Array.isArray(q.answer) ? q.answer.join("") : "";
+        const mastered = rec.answered ? (rec.isCorrect ? "已掌握" : "未掌握") : "";
+        rows.push([
+          i + 1,
+          q ? q.subject : "",
+          q ? q.title : "",
+          myAnswer,
+          correctAnswer,
+          mastered,
+          formatCsvTime(rec.lastAnsweredAt),
+          rec.attempts ? String(rec.attempts) : ""
+        ]);
+      });
+
+      const csvContent = "\uFEFF" + rows.map((r) => r.map(csvEscapeCell).join(",")).join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const now = new Date();
+      const p = (v) => String(v).padStart(2, "0");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `错题本_${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast(`已导出 ${wrongQuestions.length} 道错题`, "success");
     }
 
     // 主观题 AI 批改（统一走自建网关，采分点结构化返回）
@@ -3604,6 +3676,8 @@ window.XS_AI = (function(){
       if (speakEl) speakEl.addEventListener("click", speakCurrentQuestion);
       document.getElementById("exportFullJsonBtn").addEventListener("click", exportFullBackupJSON);
       document.getElementById("exportWrongCsvBtn").addEventListener("click", exportWrongAndNotesCSV);
+      document.getElementById("exportWrongCsvDetailBtn").addEventListener("click", exportWrongCsvDetail);
+      updateWrongCsvButtonState();
 
       document.getElementById("importJsonFileInput").addEventListener("change", (e) => {
         const file = e.target.files && e.target.files[0];
