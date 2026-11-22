@@ -1,10 +1,10 @@
 {
- "version": "v14",
+ "version": "v92fd5722",
  "total": 9680,
  "subjects": {
   "民法": {
    "count": 2773,
-   "size_mb": 5.9,
+   "size_mb": 5.86,
    "parts": [
     "parts/00-00.json",
     "parts/00-01.json",
@@ -81,7 +81,7 @@
   },
   "商经法": {
    "count": 1358,
-   "size_mb": 3.13,
+   "size_mb": 3.12,
    "parts": [
     "parts/06-00.json",
     "parts/06-01.json",
@@ -96,7 +96,7 @@
   "宪法": {
    "file": "宪法.json",
    "count": 473,
-   "size_mb": 0.9
+   "size_mb": 0.89
   },
   "国际法": {
    "file": "国际法.json",
@@ -116,7 +116,7 @@
   "司法制度与职业道德": {
    "file": "司法制度与职业道德.json",
    "count": 139,
-   "size_mb": 0.35
+   "size_mb": 0.34
   }
  }
 }
