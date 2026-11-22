@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>题目工坊 · 批量生成</title>
+<style>
+  :root{--bg:#f6f7fb;--card:#fff;--line:#e5e7eb;--text:#1f2328;--muted:#64748b;--brand:#7c1d2b;--ok:#15803d;--err:#b91c1c;--warn:#b45309}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  header{background:linear-gradient(120deg,var(--brand),#4a1018);color:#fff;padding:18px 20px}
+  header h1{margin:0;font-size:19px}
+  header p{margin:4px 0 0;font-size:13px;opacity:.85}
+  main{max-width:1000px;margin:0 auto;padding:20px 16px 80px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+  .card h2{margin:0 0 12px;font-size:15px;color:var(--brand)}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  textarea,input,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fff}
+  textarea{min-height:150px;resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+  .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  button{cursor:pointer;border:none;border-radius:9px;padding:10px 16px;font:inherit;font-weight:600}
+  .primary{background:var(--brand);color:#fff}
+  .ghost{background:#fff;border:1px solid var(--line);color:var(--text)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f1f5f9}
+  .st{font-weight:600}
+  .st.ok{color:var(--ok)} .st.err{color:var(--err)} .st.wait{color:var(--muted)} .st.dup{color:var(--warn)} .st.run{color:#1d4ed8}
+  .hint{font-size:12px;color:var(--muted)}
+  .stats{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px}
+  .stats b{font-size:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>📦 题目工坊 · 批量生成</h1>
+  <p>一行一个链接 → 自动抓取+结构化 → 题干相似度去重 → 导出 batch.json</p>
+</header>
+<main>
+  <section class="card">
+    <h2>1. 输入</h2>
+    <label>链接列表（每行一个，http/https）</label>
+    <textarea id="urls" placeholder="https://zh.wikipedia.org/wiki/中华人民共和国民法典&#10;https://zh.wikipedia.org/wiki/中华人民共和国刑法"></textarea>
+    <div class="row">
+      <div><label>科目（全部按此科目）</label>
+        <select id="subject">
+          <option>民法</option><option>刑法</option><option>行政法</option><option>刑诉法</option><option>民诉法</option>
+          <option>知识产权法</option><option>商经法</option><option>宪法</option><option>国际法</option><option>法理学</option>
+          <option>法制史</option><option>司法制度与职业道德</option>
+        </select>
+      </div>
+      <div><label>题型</label><select id="type"><option>单选</option><option>多选</option></select></div>
+      <div><label>难度</label><select id="difficulty"><option>基础</option><option>进阶</option><option>挑战</option></select></div>
+      <div><label>每题间隔（秒，防限流）</label><input id="gap" type="number" min="3" max="60" value="7"></div>
+      <div><label>去重阈值（0.4-0.95，默认0.70）</label><input id="thr" type="number" min="0.4" max="0.95" step="0.05" value="0.70"></div>
+    </div>
+    <div class="actions">
+      <button id="btnRun" class="primary">开始批量生成</button>
+      <button id="btnStop" class="ghost" disabled>停止</button>
+    </div>
+    <p class="hint">限流说明：接口每 IP 每分钟 10 次，脚本会按"间隔"串行执行，遇到 429 自动退避重试 2 次。</p>
+  </section>
+
+  <section class="card">
+    <h2>2. 进度</h2>
+    <div class="stats" id="stats"></div>
+    <table>
+      <thead><tr><th style="width:36px">#</th><th>链接</th><th style="width:86px">状态</th><th>结果</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>3. 导出</h2>
+    <div class="actions">
+      <button id="btnExport" class="primary">导出 batch.json（去重后）</button>
+      <button id="btnCopy" class="ghost">复制 JSON</button>
+      <button id="btnClear" class="ghost">清空结果</button>
+    </div>
+    <p class="hint" id="exportHint">—</p>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let results = [];      // {url, status:'wait|run|ok|err|dup', question?, error?}
+let running = false;
+let stopFlag = false;
+
+const SUBJECTS = [...$("subject").options].map(o => o.value);
+
+/* ---------- 相似度去重 ---------- */
+const norm = (s) => (s || "").replace(/[\s\p{P}\p{S}]/gu, "");
+function bigrams(s) {
+  const t = norm(s); const set = new Set();
+  for (let i = 0; i < t.length - 1; i++) set.add(t.slice(i, i + 2));
+  if (t.length === 1) set.add(t);
+  return set;
+}
+function jaccard(a, b) {
+  const A = bigrams(a), B = bigrams(b);
+  if (!A.size || !B.size) return 0;
+  let inter = 0;
+  for (const x of A) if (B.has(x)) inter++;
+  return (2 * inter) / (A.size + B.size);
+}
+function findDuplicate(item, pool) {
+  const thr = Math.min(0.95, Math.max(0.4, parseFloat($("thr").value) || 0.7));
+  for (const other of pool) {
+    if (!other.question) continue;
+    const score = jaccard(item.question, other.question.question);
+    if (score >= thr) return { other, score };
+  }
+  return null;
+}
+
+/* ---------- 渲染 ---------- */
+function render() {
+  $("tbody").innerHTML = results.map((r, i) => {
+    const cls = { wait: "wait", run: "run", ok: "ok", err: "err", dup: "dup" }[r.status] || "wait";
+    const label = { wait: "待处理", run: "处理中…", ok: "✓ 成功", err: "✕ 失败", dup: "⚠ 重复" }[r.status];
+    let detail = "";
+    if (r.status === "ok") detail = `${r.question.analysis_ai?.point || ""}｜答案 ${r.question.answer}`;
+    if (r.status === "dup") detail = `与第 ${r.dupIndex + 1} 题相似 ${(r.score * 100).toFixed(0)}% — 已跳过`;
+    if (r.status === "err") detail = r.error || "";
+    return `<tr><td>${i + 1}</td><td style="word-break:break-all">${escapeHtml(r.url)}</td>
+      <td><span class="st ${cls}">${label}</span></td><td>${escapeHtml(detail)}</td></tr>`;
+  }).join("");
+
+  const ok = results.filter(r => r.status === "ok").length;
+  const dup = results.filter(r => r.status === "dup").length;
+  const err = results.filter(r => r.status === "err").length;
+  const pending = results.filter(r => r.status === "wait" || r.status === "run").length;
+  $("stats").innerHTML = `<div>总链接 <b>${results.length}</b></div><div>成功 <b style="color:var(--ok)">${ok}</b></div>
+    <div>重复 <b style="color:var(--warn)">${dup}</b></div><div>失败 <b style="color:var(--err)">${err}</b></div>
+    <div>未处理 <b>${pending}</b></div>`;
+  $("exportHint").textContent = ok ? `可导出 ${ok} 道题` : "暂无可导出题目";
+}
+const escapeHtml = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ---------- 调用 ---------- */
+async function post(url, body, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    if (res.status === 429 && attempt < retries) {
+      await sleep(25000 + attempt * 15000);
+      continue;
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+  throw new Error("限流重试失败");
+}
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function processOne(i) {
+  const r = results[i];
+  r.status = "run"; render();
+
+  const ext = await post("/api/extract", { url: r.url });
+  const md = (ext.markdown || "").trim();
+  if (!md) throw new Error("未抓到正文");
+
+  const st = await post("/api/structure", {
+    markdown: md.slice(0, 30000),
+    subject: $("subject").value,
+    type: $("type").value,
+    difficulty: $("difficulty").value,
+    sourceURL: r.url
+  });
+
+  const item = st.question;
+  const pool = results.filter((x, j) => j !== i && x.status === "ok");
+  const dup = findDuplicate(item, pool);
+  if (dup) {
+    r.status = "dup";
+    r.dupIndex = results.indexOf(dup.other);
+    r.score = dup.score;
+  } else {
+    r.status = "ok";
+    r.question = item;
+  }
+}
+
+$("btnRun").addEventListener("click", async () => {
+  const urls = $("urls").value.split("\n").map(s => s.trim()).filter(Boolean);
+  if (!urls.length) return alert("请先填写链接");
+  const bad = urls.filter(u => !/^https?:\/\//i.test(u));
+  if (bad.length) return alert("这些链接格式不对：\n" + bad.slice(0, 5).join("\n"));
+
+  results = urls.map(url => ({ url, status: "wait" }));
+  running = true; stopFlag = false;
+  $("btnRun").disabled = true; $("btnStop").disabled = false;
+  render();
+
+  const gapMs = Math.max(3, Number($("gap").value) || 7) * 1000;
+  for (let i = 0; i < results.length; i++) {
+    if (stopFlag) break;
+    try {
+      await processOne(i);
+    } catch (e) {
+      results[i].status = "err";
+      results[i].error = e.message;
+    }
+    render();
+    if (i < results.length - 1 && !stopFlag) await sleep(gapMs);
+  }
+
+  running = false;
+  $("btnRun").disabled = false; $("btnStop").disabled = true;
+  render();
+});
+
+$("btnStop").addEventListener("click", () => { stopFlag = true; $("btnStop").disabled = true; });
+
+/* ---------- 导出 ---------- */
+const exportable = () => results.filter(r => r.status === "ok").map(r => r.question);
+
+$("btnExport").addEventListener("click", () => {
+  const list = exportable();
+  if (!list.length) return alert("没有可导出的题目");
+  const blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `batch-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$("btnCopy").addEventListener("click", async () => {
+  const list = exportable();
+  if (!list.length) return alert("没有可导出的题目");
+  await navigator.clipboard.writeText(JSON.stringify(list, null, 2));
+  $("exportHint").textContent = `✅ 已复制 ${list.length} 道题`;
+});
+
+$("btnClear").addEventListener("click", () => {
+  if (!confirm("清空当前结果？")) return;
+  results = []; render();
+});
+
+render();
+</script>
+</body>
+</html>
