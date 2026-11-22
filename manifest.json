@@ -36,5 +36,41 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "错题重做",
+      "short_name": "错题重做",
+      "description": "直接进入错题本重做",
+      "url": "/?go=wrong",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    },
+    {
+      "name": "智能复习",
+      "short_name": "智能复习",
+      "description": "复习今天到期的题目",
+      "url": "/?go=review",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "preview/app.jpg",
+      "sizes": "1188x999",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "刷题界面"
+    },
+    {
+      "src": "preview/cover.jpg",
+      "sizes": "1100x720",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "开屏"
+    }
   ]
 }

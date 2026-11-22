@@ -14,7 +14,8 @@
 
 // v44：P2-1 清理旧版本题库缓存（?v= 不等于当前版本的条目），避免每个题库版本残留 ~23MB。
 // v45：P2-9 开屏 3D 本机仅首次 + 释放 WebGL；P2-10 Hero rAF 按可见性启停；P2-13 主观题不计入正确率；P2-15 记忆学习位置。
-const CACHE_VERSION = 'fakao-v45';
+// v46：P2-5 manifest 快捷方式 ?go= 启动跳转；P2-14 复习间隔改为连续答对次数（streak）驱动。
+const CACHE_VERSION = 'fakao-v46';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;

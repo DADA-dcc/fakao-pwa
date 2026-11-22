@@ -1338,6 +1338,11 @@ window.XS_AI = (function(){
     let lastPosPending = null;    // 启动时读到、等待一次性恢复的 {subject,index,qid,qsubj}
     let lastPosWritable = false;  // 真实题库就绪并完成恢复判定后才允许写 fk_last_pos
 
+    // P2-5：manifest shortcuts（/?go=wrong、/?go=review）启动跳转
+    const GO_SHORTCUTS = { wrong: "错题重做", review: "智能复习" };
+    let pendingGo = null;         // 待切换的目标视图；真实题库就绪后由 applyPendingGo() 一次性执行
+    let pendingGoBase = null;     // 解析 go 时的 currentSubject；用户在题库就绪前自己换了科目则放弃跳转
+
     // 学习与交互模式
     let studyMode = "practice"; // 'practice' | 'recite' | 'exam'
     let isKeywordHighlight = true;
@@ -1354,7 +1359,11 @@ window.XS_AI = (function(){
     let knowledgeSubject = "全部";
 
     // 持久化用户数据
-    // userProgress[qid] = { answered: true, isCorrect: bool, userAnswer: [...], attempts: number, nextReviewAt: timestamp, lastAnsweredAt: timestamp }
+    // userProgress[qid] = { answered: true, isCorrect: bool（主观题为 null）, subjective?: true, userAnswer: [...],
+    //   attempts: 累计作答次数（仅统计用）, streak: 连续答对次数（驱动复习间隔）, nextReviewAt: timestamp, lastAnsweredAt: timestamp }
+    // 复习间隔（P2-14）：客观题答对 streak+1，间隔取 REVIEW_INTERVAL_DAYS[min(streak,5)-1]（1/3/7/14/30 天）；
+    //   答错 streak 归 0，间隔 0（立即到期）；主观题提交后固定 1 天。
+    const REVIEW_INTERVAL_DAYS = [1, 3, 7, 14, 30];
     let userProgress = safeLoadJSON(STORAGE_KEYS.PROGRESS, {});
     // wrongQuestions: array of question IDs
     let wrongQuestions = safeLoadJSON(STORAGE_KEYS.WRONG, []);
@@ -2083,8 +2092,43 @@ window.XS_AI = (function(){
       } catch (e) {}
       return null;
     }
+    // P2-5：去掉地址栏里的 go 参数，避免刷新反复触发
+    function stripGoParam() {
+      try {
+        const u = new URL(location.href);
+        if (!u.searchParams.has("go")) return;
+        u.searchParams.delete("go");
+        history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+      } catch (e) {}
+    }
+    // P2-5：执行快捷方式跳转。force=false 时要求真实题库（>20 题）已就绪，
+    // 否则错题/复习列表会按内置兜底题算成空；force=true 用于题库加载结束后的兜底。
+    function applyPendingGo(force) {
+      if (!pendingGo) return;
+      if (!force && allQuestions.length <= 20) return;
+      const target = pendingGo;
+      pendingGo = null;
+      stripGoParam();
+      if (currentSubject !== pendingGoBase) return;   // 用户已自行切换视图：尊重用户操作
+      lastPosPending = null;                          // 快捷方式意图优先，不再恢复上次题号
+      wrongPracticeIds = null;
+      currentSubject = target;
+      persistLastSubject(target);
+      renderSubjectBar();
+      applyFilters(true);
+      const n = filteredQuestions.length;
+      if (target === "错题重做") showToast(n ? `已打开错题重做（${n} 题）` : "错题本还是空的，先去刷几题吧", "info");
+      else showToast(n ? `已打开智能复习（${n} 题到期）` : "暂无到期的复习题", "info");
+      const card = document.getElementById("questionCard");
+      const header = document.querySelector("header");
+      if (card) {
+        const y = card.getBoundingClientRect().top + window.scrollY - ((header ? header.offsetHeight : 0) + 12);
+        window.scrollTo({ top: Math.max(0, y), behavior: "auto" });
+      }
+    }
     // 真实题库（allQuestions.length > 20）就绪后调用：一次性恢复题号，随即作废
     function restoreLastPosOnce() {
+      applyPendingGo(false);                    // P2-5：快捷方式跳转优先于恢复上次位置（会作废 lastPosPending）
       if (lastPosWritable) return;              // 已判定过，之后的搜索/筛选不再被拉回旧题号
       if (allQuestions.length <= 20) return;    // 仍是内置兜底题，继续等
       const pos = lastPosPending;
@@ -2481,18 +2525,26 @@ window.XS_AI = (function(){
       const isCorrect = userArr.join("") === correctArr.join("");
 
       const prev = userProgress[q.id] || { attempts: 0 };
-      const attempts = (prev.attempts || 0) + 1;
+      const attempts = (prev.attempts || 0) + 1;   // 累计作答次数：只用于统计展示，不参与间隔计算
 
-      // 艾宾浩斯复习间隔计算：答错立即进入待复习；答对根据次数推迟 1天/3天/7天
-      const reviewHours = isCorrect ? Math.min(24 * Math.pow(2, attempts - 1), 24 * 14) : 0;
+      // 复习间隔（P2-14）：由「连续答对次数」streak 驱动
+      // 答对：streak+1，间隔 = REVIEW_INTERVAL_DAYS[min(streak,5)-1] → 1/3/7/14/30 天
+      // 答错：streak 归 0，间隔 0（立即到期，进入智能复习）
+      // 旧记录没有 streak：上次客观题答对按 1 起算，否则按 0
+      const prevStreak = Number.isInteger(prev.streak) && prev.streak >= 0
+        ? prev.streak
+        : (prev.isCorrect === true && !isSubjectiveRecord(prev) ? 1 : 0);
+      const streak = isCorrect ? prevStreak + 1 : 0;
+      const reviewDays = isCorrect ? REVIEW_INTERVAL_DAYS[Math.min(streak, REVIEW_INTERVAL_DAYS.length) - 1] : 0;
 
       userProgress[q.id] = {
         answered: true,
         isCorrect,
         userAnswer: userArr,
         attempts,
+        streak,
         lastAnsweredAt: Date.now(),
-        nextReviewAt: Date.now() + reviewHours * 3600 * 1000
+        nextReviewAt: Date.now() + reviewDays * 24 * 3600 * 1000
       };
       safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress);
 
@@ -3606,13 +3658,27 @@ window.XS_AI = (function(){
       } catch (e) {}
       renderSubjectBar();
       applyFilters(true);
+      // P2-5：读取 ?go=；此处只记下意图，等真实题库就绪再切（applyPendingGo），避免被初始视图覆盖或在兜底题上算空
+      try {
+        const go = new URLSearchParams(location.search).get("go");
+        if (go !== null && Object.prototype.hasOwnProperty.call(GO_SHORTCUTS, go)) {
+          pendingGo = GO_SHORTCUTS[go];
+          pendingGoBase = currentSubject;
+        } else if (go !== null) {
+          stripGoParam();   // 未知取值直接清掉
+        }
+      } catch (e) {}
       // 首屏已完成真实渲染：解除启动期隐藏（display:none → 显示不产生 layout-shift），
       // 并触发一次 resize，让依赖元素尺寸的装饰 canvas 重新计算尺寸。
       document.documentElement.classList.remove("fk-booting");
       requestAnimationFrame(function(){ try{ window.dispatchEvent(new Event("resize")); }catch(e){} });
 
       // 4. 尝试探测同目录下的完整题库 ./questions/index.json
-      tryLoadExternalRepoData();
+      // P2-5：加载流程结束（含失败 / 离线 / 非 http 环境）后兜底执行一次快捷方式跳转
+      Promise.resolve()
+        .then(() => tryLoadExternalRepoData())
+        .catch(() => {})
+        .then(() => applyPendingGo(true));
 
       // 5. 绑定顶部与模式切换按钮
       document.getElementById("themeToggleBtn").addEventListener("click", (event) => {
