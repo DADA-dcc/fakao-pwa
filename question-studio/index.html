@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>题目工坊 · 链接转题</title>
+<style>
+  :root{--bg:#f6f7fb;--card:#fff;--line:#e5e7eb;--text:#1f2328;--muted:#64748b;--brand:#7c1d2b;--brand2:#b8860b;--ok:#15803d;--err:#b91c1c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  header{background:linear-gradient(120deg,var(--brand),#4a1018);color:#fff;padding:18px 20px}
+  header h1{margin:0;font-size:19px}
+  header p{margin:4px 0 0;font-size:13px;opacity:.85}
+  main{max-width:960px;margin:0 auto;padding:20px 16px 80px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+  .card h2{margin:0 0 12px;font-size:15px;color:var(--brand);display:flex;align-items:center;gap:8px}
+  .step{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;align-items:center;justify-content:center}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fff}
+  textarea{min-height:90px;resize:vertical}
+  .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  button{cursor:pointer;border:none;border-radius:9px;padding:10px 16px;font:inherit;font-weight:600}
+  .primary{background:var(--brand);color:#fff}
+  .ghost{background:#fff;border:1px solid var(--line);color:var(--text)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .status{font-size:13px;color:var(--muted);margin-top:10px;white-space:pre-wrap}
+  .status.ok{color:var(--ok)} .status.err{color:var(--err)}
+  .hide{display:none}
+  .opts{display:grid;gap:8px}
+  .opt{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center}
+  .opt b{text-align:center;color:var(--brand)}
+  .preview{background:#0f172a;color:#e5e7eb;border-radius:10px;padding:12px;font:12px/1.5 ui-monospace,Consolas,monospace;max-height:260px;overflow:auto;white-space:pre-wrap}
+  .badge{display:inline-block;font-size:12px;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 8px;margin-left:6px}
+  .hint{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧪 题目工坊 · 链接转题</h1>
+  <p>粘贴一个法条/案例/讲义链接 → 自动抓正文 → AI 生成「题干 + 选项 + 法条/要件/口诀」→ 校验后导出题库 JSON</p>
+</header>
+<main>
+  <!-- 步骤 1 -->
+  <section class="card">
+    <h2><span class="step">1</span>材料来源</h2>
+    <label>网页链接（http/https）</label>
+    <input id="url" placeholder="https://zh.wikipedia.org/wiki/民法典">
+    <div class="row">
+      <div><label>科目</label>
+        <select id="subject">
+          <option>民法</option><option>刑法</option><option>行政法</option><option>刑诉法</option><option>民诉法</option>
+          <option>知识产权法</option><option>商经法</option><option>宪法</option><option>国际法</option><option>法理学</option>
+          <option>法制史</option><option>司法制度与职业道德</option>
+        </select>
+      </div>
+      <div><label>题型</label><select id="type"><option>单选</option><option>多选</option></select></div>
+      <div><label>年份（可空）</label><input id="year" type="number" min="1990" max="2100" placeholder="2024"></div>
+      <div><label>难度</label><select id="difficulty"><option>基础</option><option>进阶</option><option>挑战</option></select></div>
+    </div>
+    <div class="actions">
+      <button id="btnExtract" class="primary">① 抓取正文</button>
+      <button id="btnManual" class="ghost">手动粘贴正文</button>
+    </div>
+    <div id="extractStatus" class="status"></div>
+    <div id="manualWrap" class="hide">
+      <label>正文（Markdown / 纯文本，≤30000 字）</label>
+      <textarea id="manualText" placeholder="把网页正文粘贴到这里…"></textarea>
+    </div>
+  </section>
+
+  <!-- 步骤 2 -->
+  <section class="card">
+    <h2><span class="step">2</span>结构化</h2>
+    <div class="actions">
+      <button id="btnStructure" class="primary" disabled>② 生成题目</button>
+      <span id="charsInfo" class="hint"></span>
+    </div>
+    <div id="structureStatus" class="status"></div>
+    <div id="mdPreview" class="preview hide"></div>
+  </section>
+
+  <!-- 步骤 3 -->
+  <section class="card hide" id="editorCard">
+    <h2><span class="step">3</span>校对与编辑 <span class="badge" id="validBadge">待校验</span></h2>
+    <label>题干</label>
+    <textarea id="fQuestion"></textarea>
+    <label>选项（A-D，单选须 4 项）</label>
+    <div class="opts" id="optWrap"></div>
+    <div class="row">
+      <div><label>正确答案</label><input id="fAnswer" placeholder="A"></div>
+      <div><label>难度</label><select id="fDifficulty"><option>基础</option><option>进阶</option><option>挑战</option></select></div>
+    </div>
+    <label>解析</label>
+    <textarea id="fAnalysis"></textarea>
+    <div class="row">
+      <div><label>考点（point）</label><input id="fPoint"></div>
+      <div><label>法条（law）</label><input id="fLaw"></div>
+    </div>
+    <label>命题陷阱（trap）</label>
+    <input id="fTrap">
+    <div class="actions">
+      <button id="btnRevalidate" class="ghost">校验</button>
+      <button id="btnCopy" class="primary">复制 JSON</button>
+      <button id="btnDownload" class="primary">下载 .json</button>
+      <button id="btnAddLocal" class="ghost">存本地草稿</button>
+    </div>
+    <div id="editorStatus" class="status"></div>
+    <label>入库命令（在仓库根目录执行）</label>
+    <div class="preview" id="cmdPreview">—</div>
+  </section>
+
+  <!-- 草稿箱 -->
+  <section class="card">
+    <h2><span class="step">4</span>本地草稿 <span id="draftCount" class="hint"></span></h2>
+    <div class="actions">
+      <button id="btnExportDrafts" class="ghost">导出全部草稿</button>
+      <button id="btnClearDrafts" class="ghost">清空</button>
+    </div>
+    <div id="draftList" class="status"></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const LS_KEY = "fakao_question_drafts_v1";
+let currentMarkdown = "";
+let currentItem = null;
+
+const setStatus = (el, text, kind = "") => {
+  el.textContent = text;
+  el.className = "status" + (kind ? " " + kind : "");
+};
+
+/* ---------- 步骤 1：抓取 ---------- */
+$("btnManual").addEventListener("click", () => {
+  $("manualWrap").classList.toggle("hide");
+  if (!$("manualWrap").classList.contains("hide")) $("manualText").focus();
+});
+
+$("manualText").addEventListener("input", () => {
+  currentMarkdown = $("manualText").value.trim();
+  $("charsInfo").textContent = currentMarkdown ? `正文 ${currentMarkdown.length} 字` : "";
+  $("btnStructure").disabled = !currentMarkdown;
+  if (currentMarkdown) { $("mdPreview").classList.remove("hide"); $("mdPreview").textContent = currentMarkdown.slice(0, 1200); }
+});
+
+$("btnExtract").addEventListener("click", async () => {
+  const url = $("url").value.trim();
+  if (!/^https?:\/\//i.test(url)) return setStatus($("extractStatus"), "请填写 http/https 链接", "err");
+  $("btnExtract").disabled = true;
+  setStatus($("extractStatus"), "抓取中…（一般 5-20 秒）");
+  try {
+    const res = await fetch("/api/extract", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    currentMarkdown = (data.markdown || "").trim();
+    if (!currentMarkdown) throw new Error("没有抓到正文");
+    $("manualText").value = currentMarkdown;
+    $("manualWrap").classList.remove("hide");
+    $("charsInfo").textContent = `正文 ${currentMarkdown.length} 字${data.truncated ? "（已截断）" : ""}`;
+    $("btnStructure").disabled = false;
+    $("mdPreview").classList.remove("hide");
+    $("mdPreview").textContent = currentMarkdown.slice(0, 1200) + (currentMarkdown.length > 1200 ? "\n…" : "");
+    setStatus($("extractStatus"), `✅ 抓取成功：${data.title || data.sourceURL || ""}`, "ok");
+  } catch (e) {
+    setStatus($("extractStatus"), "❌ " + e.message, "err");
+  } finally {
+    $("btnExtract").disabled = false;
+  }
+});
+
+/* ---------- 步骤 2：结构化 ---------- */
+$("btnStructure").addEventListener("click", async () => {
+  if (!currentMarkdown) return;
+  if (currentMarkdown.length > 30000) return setStatus($("structureStatus"), "正文超过 30000 字，请裁剪后再试", "err");
+  $("btnStructure").disabled = true;
+  setStatus($("structureStatus"), "AI 结构化中…（约 10-40 秒）");
+  try {
+    const res = await fetch("/api/structure", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        markdown: currentMarkdown,
+        subject: $("subject").value,
+        type: $("type").value,
+        year: $("year").value ? Number($("year").value) : undefined,
+        difficulty: $("difficulty").value,
+        sourceURL: $("url").value.trim()
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    currentItem = data.question;
+    fillEditor(currentItem);
+    $("editorCard").classList.remove("hide");
+    $("editorCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    setStatus($("structureStatus"), "✅ 已生成，请校对后导出", "ok");
+  } catch (e) {
+    setStatus($("structureStatus"), "❌ " + e.message, "err");
+  } finally {
+    $("btnStructure").disabled = false;
+  }
+});
+
+/* ---------- 步骤 3：编辑器 ---------- */
+function fillEditor(item) {
+  $("fQuestion").value = item.question || "";
+  $("fAnswer").value = item.answer || "";
+  $("fDifficulty").value = item.difficulty || "基础";
+  $("fAnalysis").value = item.analysis || "";
+  $("fPoint").value = item.analysis_ai?.point || "";
+  $("fLaw").value = item.analysis_ai?.law || "";
+  $("fTrap").value = item.analysis_ai?.trap || "";
+  const wrap = $("optWrap");
+  wrap.innerHTML = "";
+  ["A", "B", "C", "D"].forEach((k) => {
+    const div = document.createElement("div");
+    div.className = "opt";
+    div.innerHTML = `<b>${k}</b><input data-opt="${k}" value="${(item.options?.[k] || "").replace(/"/g, "&quot;")}">`;
+    wrap.appendChild(div);
+  });
+  validateAndRender();
+}
+
+function collect() {
+  const options = {};
+  document.querySelectorAll("[data-opt]").forEach((el) => {
+    if (el.value.trim()) options[el.dataset.opt] = el.value.trim();
+  });
+  return {
+    subject: $("subject").value,
+    type: $("type").value,
+    year: $("year").value ? Number($("year").value) : undefined,
+    question: $("fQuestion").value.trim(),
+    options,
+    answer: $("fAnswer").value.trim().toUpperCase(),
+    analysis: $("fAnalysis").value.trim(),
+    difficulty: $("fDifficulty").value,
+    analysis_ai: {
+      point: $("fPoint").value.trim(),
+      trap: $("fTrap").value.trim(),
+      law: $("fLaw").value.trim(),
+      _meta: { provider: "deepseek-structure", at: new Date().toISOString(), sourceURL: $("url").value.trim() }
+    }
+  };
+}
+
+function validateItem(item) {
+  const p = [];
+  if (item.question.length < 20) p.push("题干过短");
+  const keys = Object.keys(item.options);
+  if (keys.length < 2) p.push("选项不足");
+  if (!keys.includes(item.answer)) p.push("答案不在选项内");
+  if (item.type === "单选" && keys.length !== 4) p.push("单选需 4 个选项");
+  if (item.analysis.length < 30) p.push("解析过短");
+  if (!item.analysis_ai.point) p.push("缺考点");
+  if (!item.analysis_ai.law) p.push("缺法条");
+  return p;
+}
+
+function validateAndRender() {
+  const item = collect();
+  const problems = validateItem(item);
+  const badge = $("validBadge");
+  if (problems.length) {
+    badge.textContent = "✕ " + problems.join(" / ");
+    badge.style.background = "#fee2e2"; badge.style.color = "#b91c1c";
+  } else {
+    badge.textContent = "✓ 通过";
+    badge.style.background = "#dcfce7"; badge.style.color = "#15803d";
+  }
+  currentItem = item;
+  $("cmdPreview").textContent =
+`# 1) 把下面内容存成 new-question.json
+# 2) 在仓库根目录执行：
+node scripts/add-question.mjs new-question.json
+# 3) 重新编译题库：
+node scripts/build-questions.mjs`;
+  return problems;
+}
+
+["fQuestion","fAnswer","fAnalysis","fPoint","fLaw","fTrap"].forEach((id) =>
+  $(id).addEventListener("input", validateAndRender)
+);
+$("optWrap").addEventListener("input", validateAndRender);
+$("btnRevalidate").addEventListener("click", () => {
+  const p = validateAndRender();
+  setStatus($("editorStatus"), p.length ? "❌ " + p.join("；") : "✅ 校验通过", p.length ? "err" : "ok");
+});
+
+$("btnCopy").addEventListener("click", async () => {
+  const p = validateAndRender();
+  if (p.length) return setStatus($("editorStatus"), "❌ 先修正：" + p.join("；"), "err");
+  await navigator.clipboard.writeText(JSON.stringify(currentItem, null, 2));
+  setStatus($("editorStatus"), "✅ 已复制 JSON", "ok");
+});
+
+$("btnDownload").addEventListener("click", () => {
+  const p = validateAndRender();
+  if (p.length) return setStatus($("editorStatus"), "❌ 先修正：" + p.join("；"), "err");
+  const blob = new Blob([JSON.stringify(currentItem, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `question-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setStatus($("editorStatus"), "✅ 已下载", "ok");
+});
+
+/* ---------- 草稿箱 ---------- */
+const getDrafts = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; } };
+const setDrafts = (d) => localStorage.setItem(LS_KEY, JSON.stringify(d));
+function renderDrafts() {
+  const d = getDrafts();
+  $("draftCount").textContent = d.length ? `共 ${d.length} 条` : "（空）";
+  $("draftList").textContent = d.map((x, i) => `${i + 1}. [${x.subject}/${x.type}] ${x.question.slice(0, 40)}…`).join("\n") || "暂无草稿";
+}
+$("btnAddLocal").addEventListener("click", () => {
+  const p = validateAndRender();
+  if (p.length) return setStatus($("editorStatus"), "❌ 先修正：" + p.join("；"), "err");
+  const d = getDrafts(); d.push(currentItem); setDrafts(d); renderDrafts();
+  setStatus($("editorStatus"), "✅ 已存入本地草稿（可批量导出）", "ok");
+});
+$("btnExportDrafts").addEventListener("click", () => {
+  const d = getDrafts();
+  if (!d.length) return;
+  const blob = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `questions-batch-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$("btnClearDrafts").addEventListener("click", () => {
+  if (confirm("确定清空本地草稿？")) { setDrafts([]); renderDrafts(); }
+});
+renderDrafts();
+</script>
+</body>
+</html>
