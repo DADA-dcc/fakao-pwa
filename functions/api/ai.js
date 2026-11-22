@@ -39,6 +39,18 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+// 同源校验：阻止第三方站点把这个接口当免费 LLM 代理调用
+function isAllowedOrigin(request) {
+  const origin = request.headers.get("origin") || request.headers.get("referer");
+  if (!origin) return true; // 无 Origin/Referer 的直连请求仍受 IP 限流约束
+  try {
+    const selfHost = new URL(request.url).host;
+    return new URL(origin).host === selfHost;
+  } catch (e) {
+    return false;
+  }
+}
+
 function getClientIp(request) {
   return (
     request.headers.get("cf-connecting-ip") ||
@@ -92,6 +104,9 @@ export async function onRequestPost(context) {
     );
   }
 
+  if (!isAllowedOrigin(request)) {
+    return jsonResponse({ error: "非法来源。" }, 403);
+  }
   const ip = getClientIp(request);
   if (await isRateLimited(env, ip)) {
     return jsonResponse({ error: "请求过于频繁，请稍后再试。" }, 429);
@@ -111,13 +126,14 @@ export async function onRequestPost(context) {
   const prompt = typeof payload?.prompt === "string" ? payload.prompt.trim() : "";
   const followup = typeof payload?.followup === "string" ? payload.followup.trim() : "";
 
-  // 两种模式：多轮答疑（messages 数组）或单题解析（prompt + 可选 followup）
+  // 多轮答疑：只接受 user/assistant，禁止客户端注入 system 角色（防提示词劫持/当免费通用代理）
   let messages;
   if (Array.isArray(payload?.messages) && payload.messages.length) {
-    const allowedRoles = new Set(["system", "user", "assistant"]);
+    const allowedRoles = new Set(["user", "assistant"]);
     const cleaned = [];
     let totalChars = 0;
-    for (const m of payload.messages.slice(0, 24)) {
+    // 取最近 24 条（滑动窗口），而不是最早的 24 条，否则长对话必然 413
+    for (const m of payload.messages.slice(-24)) {
       if (!m || typeof m !== "object") continue;
       const content = typeof m.content === "string" ? m.content : "";
       if (!content.trim()) continue;
@@ -130,7 +146,7 @@ export async function onRequestPost(context) {
     if (totalChars > MAX_PROMPT_CHARS) {
       return jsonResponse({ error: "对话内容过长。" }, 413);
     }
-    messages = cleaned;
+    messages = [{ role: "system", content: SYSTEM_PROMPT }, ...cleaned];
   } else {
     if (!prompt) {
       return jsonResponse({ error: "缺少 prompt 字段。" }, 400);

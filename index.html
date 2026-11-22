@@ -809,6 +809,7 @@ window.XS_AI = (function(){
         <div class="space-y-2">
           <input id="gistTokenInput" type="password" aria-label="GitHub 个人访问令牌" placeholder="GitHub Personal Access Token（需 gist 权限）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
           <input id="gistIdInput" type="text" aria-label="Gist ID" placeholder="Gist ID（留空则首次推送自动创建）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
+          <p class="text-[10px] theme-muted">令牌仅存本机浏览器（明文），不会镜像进 IndexedDB；建议使用仅勾选 gist 权限的 fine-grained token。</p>
         </div>
         <div class="flex flex-wrap items-center gap-2 pt-2">
           <button id="saveGistConfigBtn" type="button" class="sync-btn sync-btn-primary">保存配置</button>
@@ -859,7 +860,7 @@ window.XS_AI = (function(){
       <div class="space-y-1.5">
         <label for="deepseekApiKeyInput" class="block text-xs font-semibold">DeepSeek API Key</label>
         <input id="deepseekApiKeyInput" type="password" placeholder="sk-..." autocomplete="off" class="w-full px-3 py-2 rounded-lg theme-subtle border text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <p class="text-[10px] theme-muted">密钥仅保存在本机浏览器，不会上传到任何服务器。</p>
+        <p class="text-[10px] theme-muted">密钥仅保存在本机浏览器（localStorage 明文），不会上传到任何服务器，也不会镜像进 IndexedDB；公共电脑请用完即清除。</p>
       </div>
       <div class="flex justify-end gap-2 pt-1">
         <button id="saveAiConfigBtn" type="button" class="px-4 py-2 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold">保存设置</button>
@@ -1172,8 +1173,33 @@ window.XS_AI = (function(){
             resolve(null);
           }
         });
+      },
+      async del(key) {
+        const db = await this.open();
+        if (!db) return;
+        return new Promise((resolve) => {
+          try {
+            const tx = db.transaction(this.storeName, "readwrite");
+            tx.objectStore(this.storeName).delete(key);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+          } catch (e) {
+            resolve(false);
+          }
+        });
       }
     };
+
+    // 凭据类键：只留在 localStorage 供本机使用，绝不镜像进 IndexedDB（少一份可被读取的副本）
+    const SECRET_STORAGE_KEYS = new Set([STORAGE_KEYS.GIST, STORAGE_KEYS.DEEPSEEK_KEY]);
+    // 一次性清理：把历史版本镜像进 IndexedDB 的凭据副本删掉
+    try {
+      setTimeout(() => {
+        SECRET_STORAGE_KEYS.forEach((k) => {
+          try { IDBEngine.del(k).catch(() => {}); } catch (e) {}
+        });
+      }, 1500);
+    } catch (e) {}
 
     function safeLoadJSON(key, fallback) {
       try {
@@ -1185,15 +1211,38 @@ window.XS_AI = (function(){
     }
 
     function safeSaveJSON(key, data) {
+      let raw;
       try {
-        const raw = JSON.stringify(data);
+        raw = JSON.stringify(data);
+      } catch (e) {
+        if (typeof showToast === "function") showToast("保存失败：数据序列化异常", "error");
+        return false;
+      }
+      let ok = true;
+      try {
         localStorage.setItem(key, raw);
-        IDBEngine.write(key, raw);
-        const nowStr = new Date().toLocaleTimeString();
-        const el = document.getElementById("idbSyncTimeText");
-        if (el) el.textContent = "IndexedDB 已双写 (" + nowStr + ")";
-      } catch (e) {}
+      } catch (e) {
+        ok = false;
+      }
+      if (!SECRET_STORAGE_KEYS.has(key)) {
+        try {
+          IDBEngine.write(key, raw);
+        } catch (e) {
+          ok = false;
+        }
+      }
+      if (!ok && typeof showToast === "function") {
+        showToast("本地存储写入失败（可能是空间不足），数据未丢失，请尽快导出备份", "error");
+      }
+      const nowStr = new Date().toLocaleTimeString();
+      const el = document.getElementById("idbSyncTimeText");
+      if (el) el.textContent = (ok ? "IndexedDB 已双写 (" : "写入异常 (") + nowStr + ")";
+      return ok;
     }
+    // 申请持久化存储，降低浏览器在磁盘紧张时回收答题数据的概率
+    try {
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+    } catch (e) {}
 
     // =========================================================================
     // 3. 全局应用状态
@@ -1634,7 +1683,24 @@ window.XS_AI = (function(){
       const inflightSubjects = new Map();
       const loaded = [];
 
-      const merge = (raw) => { if (raw && raw.length) loaded.push(...raw); };
+      // 合并去重：后台补齐与按需加载可能并发拉同一科，重复入队会导致题目重复
+      const seenQuestionKeys = new Set();
+      const questionKey = (q) => {
+        if (!q || typeof q !== "object") return null;
+        if (q.id !== undefined && q.id !== null && String(q.id) !== "") return "id:" + String(q.id);
+        const t = q.title || q.question || q.content || q.q || "";
+        return "txt:" + String(q.subject || "") + "|" + String(t).slice(0, 120);
+      };
+      const merge = (raw) => {
+        if (!raw || !raw.length) return;
+        for (const q of raw) {
+          const key = questionKey(q);
+          if (key === null) continue;
+          if (seenQuestionKeys.has(key)) continue;
+          seenQuestionKeys.add(key);
+          loaded.push(q);
+        }
+      };
 
       const fetchSubject = async (name) => {
         const parts = filesOf(name);
@@ -1724,10 +1790,13 @@ window.XS_AI = (function(){
         rerenderTimer = setTimeout(() => {
           rerenderTimer = null;
           try {
+            const cur = filteredQuestions[currentIndex];
+            const anchorId = cur ? cur.id : null;
             const norm = normalizeAll(loaded);
             allQuestions = norm.list;
-            if (typeof currentIndex === "number" && currentIndex >= allQuestions.length) currentIndex = 0;
-            applyFilters(false);
+            // 保持用户当前这道题不变，且不重绘题干（后台补齐不应打断作答）；
+            // 若首屏尚未渲染出任何题（anchorId 为空），则正常渲染
+            applyFilters(false, anchorId, !!anchorId);
           } catch (e) {}
         }, 400);
       };
@@ -1741,7 +1810,11 @@ window.XS_AI = (function(){
 
       const finalNorm = normalizeAll(loaded);
       allQuestions = finalNorm.list;
-      applyFilters(false);
+      {
+        // 收尾同样保持当前题与作答状态，用户手动切题时才重绘
+        const cur = filteredQuestions[currentIndex];
+        applyFilters(false, cur ? cur.id : null, !!(cur && cur.id));
+      }
       if (finalNorm.list.length) {
         setSubtitle(`已加载仓库完整题库：共 ${finalNorm.list.length} 题${finalNorm.skipped ? `（已排除 ${finalNorm.skipped} 道缺共享案情的题）` : ""}`);
       } else if (total) {
@@ -1823,7 +1896,7 @@ window.XS_AI = (function(){
 
       let rawDiff = String(raw.difficulty || raw.diff || raw.level || "中");
       let normalizedDiff = "中";
-      if (rawDiff.includes("易") || rawDiff.includes("简") || rawDiff === "1" || rawDiff.toLowerCase() === "easy") normalizedDiff = "易";
+      if (rawDiff.includes("易") || rawDiff.includes("简") || rawDiff.includes("基础") || rawDiff === "1" || rawDiff.toLowerCase() === "easy") normalizedDiff = "易";
       else if (rawDiff.includes("难") || rawDiff.includes("困") || rawDiff === "3" || rawDiff.toLowerCase() === "hard") normalizedDiff = "难";
 
       return {
@@ -1876,7 +1949,7 @@ window.XS_AI = (function(){
       return rec.nextReviewAt ? now >= rec.nextReviewAt : false;
     }
 
-    function applyFilters(resetIndex = true) {
+    function applyFilters(resetIndex = true, preserveId = null, skipRender = false) {
       const qLower = searchQuery.trim().toLowerCase();
       filteredQuestions = allQuestions.filter((q) => {
         // 1. 科目或专项模式筛选
@@ -1917,10 +1990,20 @@ window.XS_AI = (function(){
         return true;
       });
 
-      if (resetIndex || currentIndex >= filteredQuestions.length) {
+      if (preserveId !== null && preserveId !== undefined) {
+        const keptIdx = filteredQuestions.findIndex((q) => q.id === preserveId);
+        if (keptIdx >= 0) {
+          currentIndex = keptIdx;
+        } else if (resetIndex || currentIndex >= filteredQuestions.length) {
+          currentIndex = 0;
+        }
+      } else if (resetIndex || currentIndex >= filteredQuestions.length) {
         currentIndex = 0;
       }
-      renderQuestion(currentIndex);
+      // skipRender=true 用于后台题库补齐：只更新列表与统计，不重绘当前题，避免打断作答
+      if (!skipRender) {
+        renderQuestion(currentIndex);
+      }
       updateStats();
       renderWrongList();
     }
@@ -2858,25 +2941,51 @@ window.XS_AI = (function(){
         showToast("备份格式无效，请检查 JSON 内容", "error");
         return;
       }
+      // 结构校验：只接受预期类型，避免把任意对象/HTML 注入到本地存储
+      const isPlainObj = (v) => v && typeof v === "object" && !Array.isArray(v);
+      const cleanMap = (v) => {
+        if (!isPlainObj(v)) return null;
+        const out = {};
+        Object.keys(v).forEach((k) => {
+          const val = v[k];
+          if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") out[k] = val;
+          else if (val && typeof val === "object") out[k] = val; // 记录本体（含 subjectiveText 等）保留原结构
+        });
+        return out;
+      };
+      if (data.fakao_progress !== undefined && !isPlainObj(data.fakao_progress)) {
+        showToast("备份中的 fakao_progress 结构不合法，已拒绝导入", "error");
+        return;
+      }
+      if (data.fakao_wrong_questions !== undefined && !Array.isArray(data.fakao_wrong_questions)) {
+        showToast("备份中的 fakao_wrong_questions 结构不合法，已拒绝导入", "error");
+        return;
+      }
+      for (const k of ["fakao_favorites_v1", "fakao_notes_v1", "fakao_wrong_reasons_v1"]) {
+        if (data[k] !== undefined && !isPlainObj(data[k])) {
+          showToast("备份中的 " + k + " 结构不合法，已拒绝导入", "error");
+          return;
+        }
+      }
       resetSubjectiveDraftState();   // 防止旧草稿覆盖即将恢复的备份数据
       if (data.fakao_progress) {
-        userProgress = { ...userProgress, ...data.fakao_progress };
+        userProgress = { ...userProgress, ...cleanMap(data.fakao_progress) };
         safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress);
       }
       if (Array.isArray(data.fakao_wrong_questions)) {
-        wrongQuestions = Array.from(new Set([...data.fakao_wrong_questions, ...wrongQuestions]));
+        wrongQuestions = Array.from(new Set([...data.fakao_wrong_questions.filter((x) => typeof x === "number" || typeof x === "string"), ...wrongQuestions]));
         safeSaveJSON(STORAGE_KEYS.WRONG, wrongQuestions);
       }
       if (data.fakao_favorites_v1) {
-        favorites = { ...favorites, ...data.fakao_favorites_v1 };
+        favorites = { ...favorites, ...cleanMap(data.fakao_favorites_v1) };
         safeSaveJSON(STORAGE_KEYS.FAVORITES, favorites);
       }
       if (data.fakao_notes_v1) {
-        userNotes = { ...userNotes, ...data.fakao_notes_v1 };
+        userNotes = { ...userNotes, ...cleanMap(data.fakao_notes_v1) };
         safeSaveJSON(STORAGE_KEYS.NOTES, userNotes);
       }
       if (data.fakao_wrong_reasons_v1) {
-        wrongReasons = { ...wrongReasons, ...data.fakao_wrong_reasons_v1 };
+        wrongReasons = { ...wrongReasons, ...cleanMap(data.fakao_wrong_reasons_v1) };
         safeSaveJSON(STORAGE_KEYS.WRONG_REASONS, wrongReasons);
       }
       renderQuestion(currentIndex);
@@ -3309,7 +3418,7 @@ window.XS_AI = (function(){
 
       document.getElementById("modePracticeBtn").addEventListener("click", () => setStudyMode("practice"));
       document.getElementById("modeReciteBtn").addEventListener("click", () => setStudyMode("recite"));
-      document.getElementById("modeExamBtn").addEventListener("click", () => setStudyMode("exam"));
+      document.getElementById("modeExamBtn").addEventListener("click", () => { if (window.__openExam) window.__openExam(); else setStudyMode("exam"); });
 
       document.getElementById("examResetTimerBtn").addEventListener("click", () => {
         examSeconds = 0;
@@ -3700,6 +3809,25 @@ window.XS_AI = (function(){
       });
 
       document.getElementById("clearAllProgressBtn").addEventListener("click", () => {
+        const snapshot = {
+          fakao_progress: userProgress,
+          fakao_wrong_questions: wrongQuestions,
+          fakao_favorites_v1: favorites,
+          fakao_notes_v1: userNotes,
+          fakao_wrong_reasons_v1: wrongReasons
+        };
+        const affected =
+          Object.keys(userProgress || {}).length +
+          (wrongQuestions || []).length +
+          Object.keys(favorites || {}).length +
+          Object.keys(userNotes || {}).length +
+          Object.keys(wrongReasons || {}).length;
+        if (!window.confirm("将清空本机全部答题记录、错题、收藏与笔记（约 " + affected + " 项），且无法撤销。\n\n清空前会自动留一份快照，确定继续？")) {
+          return;
+        }
+        try {
+          localStorage.setItem("fakao_auto_snapshot_before_clear", JSON.stringify({ at: new Date().toISOString(), data: snapshot }));
+        } catch (e) {}
         resetSubjectiveDraftState();   // 先断掉草稿写回，否则清空后旧文本会被写回
         userProgress = {};
         wrongQuestions = [];
@@ -3714,7 +3842,7 @@ window.XS_AI = (function(){
         renderQuestion(currentIndex);
         updateStats();
         renderWrongList();
-        showToast("已清空并重置本地做题记录", "info");
+        showToast("已清空并重置本地做题记录（清空前快照已保存）", "info");
       });
 
       // GitHub Gist 云同步操作
@@ -4188,6 +4316,312 @@ window.XS_AI = (function(){
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync);
   else sync();
 })();
+    // =========================================================================
+    // 模拟考试引擎（P1-3）：组卷 / 限时 / 交卷判分 / 断点续考 / 成绩历史
+    // =========================================================================
+    (function () {
+      const SKEY = "fakao_exam_session_v1";
+      const HKEY = "fakao_exam_history_v1";
+
+      const optList = (q) => {
+        const o = q && q.options;
+        if (Array.isArray(o)) return o.map((x, i) => ({
+          key: (x && (x.id || x.key || x.label)) || "ABCDEFGH"[i] || String(i + 1),
+          text: String((x && (x.text != null ? x.text : x.content)) != null ? (x.text != null ? x.text : x.content) : x || "")
+        }));
+        if (o && typeof o === "object") return Object.keys(o).map((k) => ({ key: k, text: String(o[k]) }));
+        return [];
+      };
+      const ansList = (q) => {
+        const a = q && q.answer;
+        if (Array.isArray(a)) return a.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
+        if (typeof a === "string") return a.toUpperCase().replace(/[^A-Z]/g, "").split("").filter(Boolean);
+        return [];
+      };
+      const isMulti = (q) => /多|不定/.test(String(q && q.type || ""));
+      const titleOf = (q) => String((q && (q.title || q.question || q.content || q.q || q.stem)) || "");
+
+      let session = null;
+      let timerId = null;
+      let root = null;
+
+      const loadSession = () => { try { return JSON.parse(localStorage.getItem(SKEY) || "null"); } catch (e) { return null; } };
+      const saveSession = () => { try { localStorage.setItem(SKEY, JSON.stringify(session)); } catch (e) {} };
+      const clearSession = () => { try { localStorage.removeItem(SKEY); } catch (e) {} };
+      const loadHistory = () => { try { return JSON.parse(localStorage.getItem(HKEY) || "[]"); } catch (e) { return []; } };
+      const saveHistory = (rec) => { try { const h = loadHistory(); h.unshift(rec); localStorage.setItem(HKEY, JSON.stringify(h.slice(0, 20))); } catch (e) {} };
+
+      const remaining = () => (session ? Math.max(0, session.durationSec - Math.floor((Date.now() - session.startedAt) / 1000)) : 0);
+      const fmt = (sec) => {
+        const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+        return (h > 0 ? h + ":" + String(m).padStart(2, "0") : String(m).padStart(2, "0")) + ":" + String(s).padStart(2, "0");
+      };
+
+      function el(tag, style, html) {
+        const n = document.createElement(tag);
+        if (style) n.setAttribute("style", style);
+        if (html != null) n.innerHTML = html;
+        return n;
+      }
+
+      function ensureRoot() {
+        if (root && document.body.contains(root)) return root;
+        root = el("div", "position:fixed;inset:0;z-index:99999;background:rgba(8,10,16,.72);display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(2px)");
+        root.id = "examOverlay";
+        document.body.appendChild(root);
+        return root;
+      }
+      function closeOverlay() { if (timerId) { clearInterval(timerId); timerId = null; } if (root) { root.remove(); root = null; } }
+
+      function panel(title) {
+        const r = ensureRoot();
+        r.innerHTML = "";
+        const box = el("div", "background:#171a21;color:#e7e9ef;width:min(880px,100%);max-height:92vh;overflow:auto;border-radius:14px;border:1px solid #2b3040;box-shadow:0 20px 60px rgba(0,0,0,.5)");
+        const head = el("div", "display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #262b39");
+        head.appendChild(el("div", "font-size:15px;font-weight:700", title));
+        const x = el("button", "background:transparent;border:0;color:#9aa3b2;font-size:20px;cursor:pointer;line-height:1", "&times;");
+        x.onclick = () => { if (session && !session.submitted) { if (!confirm("考试进行中，关闭后可在刷新后继续。确定关闭？")) return; } closeOverlay(); };
+        head.appendChild(x);
+        box.appendChild(head);
+        const body = el("div", "padding:16px 18px");
+        box.appendChild(body);
+        r.appendChild(box);
+        return body;
+      }
+
+      function renderSetup() {
+        const body = panel("模拟考试");
+        const subjects = ["全部", ...new Set(allQuestions.map((q) => q.subject).filter(Boolean))];
+        const wrap = el("div", "display:grid;gap:14px");
+        const mk = (label, opts, val) => {
+          const row = el("div", "display:grid;grid-template-columns:110px 1fr;align-items:center;gap:10px");
+          row.appendChild(el("div", "font-size:13px;opacity:.85", label));
+          const sel = document.createElement("select");
+          sel.setAttribute("style", "background:#0f1218;color:#e7e9ef;border:1px solid #2b3040;border-radius:9px;padding:8px 10px;font-size:13px");
+          opts.forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; if (v === val) o.selected = true; sel.appendChild(o); });
+          row.appendChild(sel);
+          wrap.appendChild(row);
+          return sel;
+        };
+        const selScope = mk("科目范围", subjects.map((s) => [s, s]), "全部");
+        const selCount = mk("题目数量", [["50", "50 题"], ["100", "100 题"], ["150", "150 题"], ["200", "200 题"]], "100");
+        const selDur = mk("考试时长", [["60", "60 分钟"], ["120", "120 分钟"], ["180", "180 分钟"], ["240", "240 分钟"]], "180");
+        body.appendChild(wrap);
+
+        const tip = el("div", "margin-top:14px;font-size:12px;line-height:1.7;opacity:.7",
+          "说明：只抽客观题（单选/多选/不定项）；倒计时按时间戳计算，切后台不漂移；交卷后按题判分并记入成绩历史；考试作答不写入日常练习记录。");
+        body.appendChild(tip);
+
+        const btn = el("button", "margin-top:16px;width:100%;padding:11px;border-radius:10px;border:0;background:#4f6bff;color:#fff;font-size:14px;font-weight:700;cursor:pointer", "开始考试");
+        btn.onclick = () => startExam(selScope.value, Number(selCount.value), Number(selDur.value) * 60);
+        body.appendChild(btn);
+
+        const hist = loadHistory();
+        if (hist.length) {
+          const hw = el("div", "margin-top:18px;border-top:1px solid #262b39;padding-top:12px");
+          hw.appendChild(el("div", "font-size:13px;font-weight:700;margin-bottom:8px", "最近成绩"));
+          hist.slice(0, 5).forEach((h) => {
+            hw.appendChild(el("div", "font-size:12px;opacity:.8;padding:4px 0",
+              new Date(h.at).toLocaleString() + "　" + h.scope + "　" + h.score + "/" + h.total + "　正确率 " + h.rate + "%"));
+          });
+          body.appendChild(hw);
+        }
+      }
+
+      function startExam(scope, count, durationSec) {
+        let pool = allQuestions.filter((q) => {
+          if (/主观/.test(String(q.type || ""))) return false;
+          if (scope !== "全部" && q.subject !== scope) return false;
+          return true;
+        });
+        if (pool.length < 10) { showToast("当前范围可用题目太少，请切换科目范围", "warn"); return; }
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        const picked = pool.slice(0, Math.min(count, pool.length));
+        session = {
+          id: "exam-" + Date.now(),
+          startedAt: Date.now(),
+          durationSec,
+          scope,
+          ids: picked.map((q) => q.id),
+          answers: {},
+          submitted: false,
+          idx: 0
+        };
+        saveSession();
+        renderRun();
+      }
+
+      function byId(id) { return allQuestions.find((q) => String(q.id) === String(id)); }
+
+      function renderRun() {
+        if (!session) return renderSetup();
+        if (remaining() <= 0) return submitExam(true);
+        const body = panel("模拟考试 · " + session.scope);
+        const top = el("div", "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px");
+        const prog = el("div", "font-size:13px;opacity:.85", "第 " + (session.idx + 1) + " / " + session.ids.length + " 题");
+        const clock = el("div", "font-family:ui-monospace,monospace;font-size:18px;font-weight:800;color:#ff6b81", fmt(remaining()));
+        top.appendChild(prog); top.appendChild(clock);
+        body.appendChild(top);
+
+        const q = byId(session.ids[session.idx]);
+        if (!q) {
+          // 题库可能仍在分科渐进加载，该题尚未进内存：只等待重试，绝不重置题号
+          body.appendChild(el("div", "padding:24px 0;text-align:center;font-size:13px;opacity:.8", "题库加载中，请稍候…"));
+          if (timerId) { clearInterval(timerId); timerId = null; }
+          setTimeout(() => { if (session && root) renderRun(); }, 800);
+          return;
+        }
+        body.appendChild(el("div", "font-size:14px;line-height:1.8;margin:6px 0 14px;white-space:pre-wrap", titleOf(q).replace(/</g, "&lt;")));
+
+        const cur = new Set(session.answers[q.id] || []);
+        const multi = isMulti(q);
+        const optsWrap = el("div", "display:grid;gap:8px");
+        optList(q).forEach((o) => {
+          const picked = cur.has(o.key);
+          const row = el("button",
+            "text-align:left;display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;line-height:1.6;" +
+            "border:1px solid " + (picked ? "#4f6bff" : "#2b3040") + ";background:" + (picked ? "rgba(79,107,255,.18)" : "#12161d") + ";color:#e7e9ef");
+          const k = el("span", "font-weight:800;min-width:18px", o.key);
+          const t = el("span", "flex:1;white-space:pre-wrap", String(o.text).replace(/</g, "&lt;"));
+          row.appendChild(k); row.appendChild(t);
+          row.onclick = () => {
+            const set = new Set(session.answers[q.id] || []);
+            if (multi) { set.has(o.key) ? set.delete(o.key) : set.add(o.key); }
+            else { set.clear(); set.add(o.key); }
+            session.answers[q.id] = [...set];
+            saveSession();
+            renderRun();
+          };
+          optsWrap.appendChild(row);
+        });
+        body.appendChild(optsWrap);
+        body.appendChild(el("div", "margin-top:8px;font-size:11px;opacity:.6", multi ? "多选题：可多选，选完点下一题" : "单选题：点选即记录"));
+
+        // 题号网格
+        const grid = el("div", "display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid #262b39");
+        session.ids.forEach((id, i) => {
+          const answered = (session.answers[id] || []).length > 0;
+          const b = el("button",
+            "width:30px;height:30px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid " + (i === session.idx ? "#4f6bff" : "#2b3040") + ";" +
+            "background:" + (i === session.idx ? "#4f6bff" : answered ? "rgba(61,214,140,.22)" : "#12161d") + ";color:#e7e9ef", String(i + 1));
+          b.onclick = () => { session.idx = i; saveSession(); renderRun(); };
+          grid.appendChild(b);
+        });
+        body.appendChild(grid);
+
+        const bar = el("div", "display:flex;gap:10px;margin-top:14px");
+        const prev = el("button", "flex:1;padding:10px;border-radius:10px;border:1px solid #2b3040;background:#12161d;color:#e7e9ef;cursor:pointer", "上一题");
+        prev.onclick = () => { session.idx = Math.max(0, session.idx - 1); saveSession(); renderRun(); };
+        const next = el("button", "flex:1;padding:10px;border-radius:10px;border:1px solid #2b3040;background:#12161d;color:#e7e9ef;cursor:pointer", "下一题");
+        next.onclick = () => { session.idx = Math.min(session.ids.length - 1, session.idx + 1); saveSession(); renderRun(); };
+        const sub = el("button", "flex:1.2;padding:10px;border-radius:10px;border:0;background:#e05561;color:#fff;font-weight:700;cursor:pointer", "交卷");
+        sub.onclick = () => submitExam(false);
+        bar.appendChild(prev); bar.appendChild(next); bar.appendChild(sub);
+        body.appendChild(bar);
+
+        if (timerId) clearInterval(timerId);
+        timerId = setInterval(() => {
+          if (!session) return;
+          const rem = remaining();
+          if (clock) clock.textContent = fmt(rem);
+          if (rem <= 0) submitExam(true);
+        }, 1000);
+      }
+
+      function submitExam(auto) {
+        if (!session) return;
+        const unanswered = session.ids.length - Object.keys(session.answers).filter((k) => (session.answers[k] || []).length).length;
+        if (!auto) {
+          const msg = "还有 " + unanswered + " 题未作答。确定交卷？交卷后不可修改。";
+          if (!confirm(msg)) return;
+        }
+        const bySubject = {};
+        let correct = 0, objective = 0;
+        const wrong = [];
+        session.ids.forEach((id) => {
+          const q = byId(id);
+          if (!q) return;
+          objective++;
+          const right = ansList(q).sort().join("");
+          const mine = (session.answers[id] || []).map((x) => String(x).toUpperCase()).sort().join("");
+          const ok = right && mine && right === mine;
+          if (ok) correct++;
+          else wrong.push({ id, title: titleOf(q).slice(0, 60), right, mine: mine || "(未答)" });
+          const s = q.subject || "未分类";
+          if (!bySubject[s]) bySubject[s] = { total: 0, correct: 0 };
+          bySubject[s].total++;
+          if (ok) bySubject[s].correct++;
+        });
+        const rate = objective ? Math.round((correct / objective) * 1000) / 10 : 0;
+        const result = { score: correct, total: objective, rate, bySubject, wrong, scope: session.scope, at: Date.now(), auto: !!auto };
+        saveHistory(result);
+        clearSession();
+        session = null;
+        if (timerId) { clearInterval(timerId); timerId = null; }
+        renderResult(result);
+      }
+
+      function renderResult(r) {
+        const body = panel("考试成绩");
+        body.appendChild(el("div", "text-align:center;padding:8px 0 14px",
+          '<div style="font-size:40px;font-weight:800;color:' + (r.rate >= 60 ? "#3dd68c" : "#ff6b81") + '">' + r.score + " / " + r.total + "</div>" +
+          '<div style="font-size:13px;opacity:.8;margin-top:4px">正确率 ' + r.rate + "%　·　" + r.scope + "　·　" + (r.auto ? "时间到自动交卷" : "手动交卷") + "</div>"));
+
+        const subj = Object.keys(r.bySubject).sort();
+        if (subj.length) {
+          body.appendChild(el("div", "font-size:13px;font-weight:700;margin:6px 0 8px", "分科得分"));
+          const t = el("div", "display:grid;gap:5px");
+          subj.forEach((s) => {
+            const x = r.bySubject[s];
+            t.appendChild(el("div", "display:flex;justify-content:space-between;font-size:12px;padding:4px 8px;background:#12161d;border-radius:7px",
+              "<span>" + s + "</span><span>" + x.correct + " / " + x.total + "（" + (x.total ? Math.round((x.correct / x.total) * 100) : 0) + "%）</span>"));
+          });
+          body.appendChild(t);
+        }
+        if (r.wrong.length) {
+          body.appendChild(el("div", "font-size:13px;font-weight:700;margin:14px 0 8px", "错题 " + r.wrong.length + " 道"));
+          const w = el("div", "display:grid;gap:5px;max-height:220px;overflow:auto");
+          r.wrong.forEach((x) => {
+            w.appendChild(el("div", "font-size:12px;padding:5px 8px;background:#12161d;border-radius:7px;border-left:3px solid #e05561",
+              "id " + x.id + "　" + x.title + "…　<span style='color:#9aa3b2'>你的:" + x.mine + " 正确:" + x.right + "</span>"));
+          });
+          body.appendChild(w);
+        }
+        const bar = el("div", "display:flex;gap:10px;margin-top:16px");
+        const again = el("button", "flex:1;padding:10px;border-radius:10px;border:0;background:#4f6bff;color:#fff;font-weight:700;cursor:pointer", "再考一次");
+        again.onclick = () => renderSetup();
+        const close = el("button", "flex:1;padding:10px;border-radius:10px;border:1px solid #2b3040;background:#12161d;color:#e7e9ef;cursor:pointer", "关闭");
+        close.onclick = () => closeOverlay();
+        bar.appendChild(again); bar.appendChild(close);
+        body.appendChild(bar);
+      }
+
+      window.__openExam = function () {
+        if (allQuestions.length < 10) { showToast("题库尚在加载，请稍候再开始模拟考试", "warn"); return; }
+        session = loadSession();
+        if (session && !session.submitted && remaining() > 0) renderRun();
+        else { if (session) clearSession(); session = null; renderSetup(); }
+      };
+
+      // 断点续考：轮询等题库就绪后调用 __openExam()（其内部会按时间戳恢复剩余时间与题号）
+      (function resumeIfNeeded() {
+        const s = loadSession();
+        if (!s || s.submitted) return;
+        const rem = Math.max(0, (s.durationSec || 0) - Math.floor((Date.now() - (s.startedAt || 0)) / 1000));
+        if (rem <= 0) return; // 时间已过，不再恢复
+        let tries = 0;
+        const tick = () => {
+          if (allQuestions && allQuestions.length >= 10) {
+            try { window.__openExam(); } catch (e) {}
+            return;
+          }
+          if (++tries > 120) return; // 最多等 60 秒
+          setTimeout(tick, 500);
+        };
+        setTimeout(tick, 300);
+      })();
+    })();
+
 </script>
 <link rel="stylesheet" href="./assets/tailwind.build.css">
 </body>

@@ -1,9 +1,9 @@
 {
- "version": "v13",
- "total": 9707,
+ "version": "v14",
+ "total": 9680,
  "subjects": {
   "民法": {
-   "count": 2789,
+   "count": 2773,
    "size_mb": 5.9,
    "parts": [
     "parts/00-00.json",
@@ -24,7 +24,7 @@
    "chunks": 14
   },
   "刑法": {
-   "count": 1251,
+   "count": 1249,
    "size_mb": 3.12,
    "parts": [
     "parts/01-00.json",
@@ -38,7 +38,7 @@
    "chunks": 7
   },
   "行政法": {
-   "count": 1009,
+   "count": 1008,
    "size_mb": 2.45,
    "parts": [
     "parts/02-00.json",
@@ -63,7 +63,7 @@
    "chunks": 5
   },
   "民诉法": {
-   "count": 957,
+   "count": 956,
    "size_mb": 2.27,
    "parts": [
     "parts/04-00.json",
@@ -80,7 +80,7 @@
    "size_mb": 1.08
   },
   "商经法": {
-   "count": 1360,
+   "count": 1358,
    "size_mb": 3.13,
    "parts": [
     "parts/06-00.json",
@@ -95,7 +95,7 @@
   },
   "宪法": {
    "file": "宪法.json",
-   "count": 475,
+   "count": 473,
    "size_mb": 0.9
   },
   "国际法": {
@@ -105,7 +105,7 @@
   },
   "法理学": {
    "file": "法理学.json",
-   "count": 111,
+   "count": 110,
    "size_mb": 0.25
   },
   "法制史": {
@@ -115,7 +115,7 @@
   },
   "司法制度与职业道德": {
    "file": "司法制度与职业道德.json",
-   "count": 141,
+   "count": 139,
    "size_mb": 0.35
   }
  }
