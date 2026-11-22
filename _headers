@@ -39,10 +39,8 @@
 /workers/*
   Cache-Control: public, max-age=0, must-revalidate
 
-# 题库分块：1 小时新鲜期 + 过期先给旧的再后台更新
-/questions/*
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-  Content-Type: application/json; charset=utf-8
+# 注意：不再写通用 /questions/* 规则（P2-2）。它与下面 *.json 规则同时命中会让
+# Cloudflare 把两个 Cache-Control 用逗号合并，产生矛盾指令。题库统一走短缓存规则。
 
 /knowledge.json
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400
@@ -68,9 +66,12 @@
 /api/*
   Cache-Control: no-store
 
-# 题库 JSON 必须短缓存：题库勘误后要尽快生效（GitHub Pages 会忽略本文件）
+# 题库 JSON 唯一短缓存规则（P2-2：避免与通配规则冲突）：勘误后尽快生效；
+# 离线由 Service Worker 的 DATA_CACHE 负责，不依赖 HTTP 缓存
 /questions/*.json
   Cache-Control: public, max-age=0, must-revalidate
+  Content-Type: application/json; charset=utf-8
 
 /questions/parts/*.json
   Cache-Control: public, max-age=0, must-revalidate
+  Content-Type: application/json; charset=utf-8

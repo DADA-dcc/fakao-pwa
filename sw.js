@@ -12,9 +12,8 @@
  * activate 会清理非当前 SHELL/DATA 的旧缓存。
  */
 
-// v43：省流量模式三态化（自动/强制开/强制关），iOS/Firefox 无网络 API 时保守省流量；
-// 预缓存移除 questions/index.json 与 case_library.json，消除首访重复下载。
-const CACHE_VERSION = 'fakao-v43';
+// v44：P2-1 清理旧版本题库缓存（?v= 不等于当前版本的条目），避免每个题库版本残留 ~23MB。
+const CACHE_VERSION = 'fakao-v44';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
@@ -95,6 +94,27 @@ self.addEventListener('message', (event) => {
   const data = event.data || {};
   if (data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  // P2-1：页面拿到新题库版本后通知清理旧版本分片，避免历史 ?v= 缓存无限堆积
+  if (data.type === 'PRUNE_QUESTION_CACHE' && typeof data.version === 'string' && data.version) {
+    event.waitUntil((async () => {
+      try {
+        const cache = await caches.open(DATA_CACHE);
+        const reqs = await cache.keys();
+        let removed = 0;
+        for (const req of reqs) {
+          const u = new URL(req.url);
+          if (u.pathname.indexOf('/questions/') === -1) continue;
+          const v = u.searchParams.get('v');
+          if (v && v !== data.version) {
+            await cache.delete(req);
+            removed++;
+          }
+        }
+        if (removed) console.info('[SW] pruned stale question cache entries:', removed);
+      } catch (e) {}
+    })());
     return;
   }
   // 页面在 Wi-Fi / 桌面环境请求后台补齐其余题库（分批，避免并发过高）

@@ -1259,6 +1259,17 @@ window.XS_AI = (function(){
     // =========================================================================
     let allQuestions = [...FALLBACK_QUESTIONS];
     let knowledgeBase = [...FALLBACK_KNOWLEDGE];
+    // P2-7：按 id 建索引缓存（仅当 allQuestions 整体被替换时重建），
+    // 避免在遍历错题/列表时反复 allQuestions.find 造成 O(N×M)
+    let __qByIdRef = null;
+    let __qByIdMap = new Map();
+    function getQById(id) {
+      if (__qByIdRef !== allQuestions) {
+        __qByIdMap = new Map(allQuestions.map((q) => [String(q.id), q]));
+        __qByIdRef = allQuestions;
+      }
+      return __qByIdMap.get(String(id));
+    }
   // ── 按需加载知识点数据（首屏不拉 207KB 的 knowledge.json）──
   window.__loadKnowledgeBase = async function(){
     if (window.__kbLoaded || window.__kbLoading) return;
@@ -1654,6 +1665,14 @@ window.XS_AI = (function(){
         indexData = await fetchJsonViaWorker([".", "questions", "index.json"].join("/"));
         try { window.__fkIndexData = indexData; } catch (e) {}
         questionsVersion = (indexData && indexData.version) ? String(indexData.version) : "";
+        // P2-1：通知 SW 清理旧版本题库分片缓存
+        try {
+          const notifyPrune = (worker) => { try { worker && worker.postMessage({ type: "PRUNE_QUESTION_CACHE", version: questionsVersion }); } catch (e) {} };
+          if (navigator.serviceWorker) {
+            if (navigator.serviceWorker.controller) notifyPrune(navigator.serviceWorker.controller);
+            else navigator.serviceWorker.ready.then((reg) => notifyPrune(reg.active)).catch(() => {});
+          }
+        } catch (e) {}
       } catch (e) {}
 
       const subjMap = indexData && indexData.subjects && typeof indexData.subjects === "object" ? indexData.subjects : null;
@@ -1699,18 +1718,26 @@ window.XS_AI = (function(){
       // 只有带稳定 id 的题目才缓存（无 id 时 normalizeQuestion 依赖下标生成 id）
       const __normCache = new WeakMap();
       const __normStats = { computed: 0, reused: 0, items: 0 };
+      // P2-6：把「题干+解析+选项+科目」的小写全文预计算一次，搜索时不再逐题拼接
+      const __decorate = (n) => {
+        try {
+          n._search = (String(n.title || "") + " " + String(n.explanation || "") + " " +
+            (n.options || []).map((o) => o.text || "").join(" ") + " " + String(n.subject || "")).toLowerCase();
+        } catch (e) {}
+        return n;
+      };
       const __normOne = (q, idx) => {
         const cacheable = q && q.id !== undefined && q.id !== null && String(q.id) !== "";
         if (cacheable) {
           const hit = __normCache.get(q);
           if (hit) { __normStats.reused++; return hit; }
-          const made = normalizeQuestion(q, idx);
+          const made = __decorate(normalizeQuestion(q, idx));
           __normCache.set(q, made);
           __normStats.computed++;
           return made;
         }
         __normStats.computed++;
-        return normalizeQuestion(q, idx);
+        return __decorate(normalizeQuestion(q, idx));
       };
       const normalizeAll = (raw) => {
         const skipped = raw.filter((q) => q.incomplete).length;
@@ -2029,12 +2056,13 @@ window.XS_AI = (function(){
           return false;
         }
 
-        // 4. 关键词搜索（题干 + 解析 + 选项 + 个人笔记）
+        // 4. 关键词搜索（预计算的 _search 全文 + 实时笔记）
         if (qLower) {
           const noteStr = userNotes[q.id] || "";
-          const optStr = (q.options || []).map((o) => o.text).join(" ");
-          const fullText = `${q.title} ${q.explanation} ${optStr} ${noteStr} ${q.subject}`.toLowerCase();
-          if (!fullText.includes(qLower)) return false;
+          const hay = (q._search !== undefined
+            ? q._search
+            : `${q.title} ${q.explanation} ${(q.options || []).map((o) => o.text).join(" ")} ${q.subject}`.toLowerCase()) + " " + String(noteStr).toLowerCase();
+          if (!hay.includes(qLower)) return false;
         }
 
         return true;
@@ -2263,7 +2291,7 @@ window.XS_AI = (function(){
         const isRightOpt = correctSet.has(opt.id);
 
         let stateClass = "";
-        let badgeHtml = `<span class="w-6 h-6 rounded-full border border-current flex items-center justify-center text-xs font-bold shrink-0">${opt.id}</span>`;
+        let badgeHtml = `<span class="w-6 h-6 rounded-full border border-current flex items-center justify-center text-xs font-bold shrink-0">${escapeHtml(String(opt.id))}</span>`;
 
         if (showJudgement) {
           if (isRightOpt && isSelected) {
@@ -2271,14 +2299,14 @@ window.XS_AI = (function(){
             badgeHtml = `<span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">✓</span>`;
           } else if (isRightOpt && !isSelected) {
             stateClass = studyMode === "recite" ? "is-correct" : "is-missed";
-            badgeHtml = `<span class="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0">${opt.id}</span>`;
+            badgeHtml = `<span class="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0">${escapeHtml(String(opt.id))}</span>`;
           } else if (!isRightOpt && isSelected) {
             stateClass = "is-wrong";
             badgeHtml = `<span class="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold shrink-0">✕</span>`;
           }
         } else if (isSelected) {
           stateClass = "is-selected";
-          badgeHtml = `<span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">${opt.id}</span>`;
+          badgeHtml = `<span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">${escapeHtml(String(opt.id))}</span>`;
         }
 
         row.className = `option-row w-full text-left p-3 sm:p-3.5 rounded-xl flex items-start gap-3 ${stateClass}`;
@@ -2633,7 +2661,7 @@ window.XS_AI = (function(){
       const sel = document.getElementById("wrongFilterSubject");
       if (!sel) return;
       const subs = [...new Set(wrongQuestions
-        .map((id) => { const q = allQuestions.find((x) => x.id === id); return q && q.subject; })
+        .map((id) => { const q = getQById(id); return q && q.subject; })
         .filter(Boolean))].sort();
       const sig = subs.join("|");
       if (sel.dataset.sig === sig) return;
@@ -2646,7 +2674,7 @@ window.XS_AI = (function(){
 
     function getFilteredWrongIds() {
       return wrongQuestions.filter((qid) => {
-        const q = allQuestions.find((item) => item.id === qid);
+        const q = getQById(qid);
         if (!q) return false;
         if (wrongFilterSubject !== "ALL" && q.subject !== wrongFilterSubject) return false;
         const reason = wrongReasons[qid] || "";
@@ -2680,7 +2708,7 @@ window.XS_AI = (function(){
       }
 
       filtered.forEach((qid) => {
-        const q = allQuestions.find((item) => item.id === qid);
+        const q = getQById(qid);
         if (!q) return;
         const reason = wrongReasons[qid] || "";
         const itemDiv = document.createElement("div");
@@ -2916,7 +2944,7 @@ window.XS_AI = (function(){
       }
 
       container.innerHTML = noteIds.map((qid) => {
-        const q = allQuestions.find((item) => item.id === qid);
+        const q = getQById(qid);
         return `<article class="k-card" style="border-left-color:#f59e0b">
           <div class="flex items-center justify-between gap-2 mb-1">
             <span class="text-[11px] font-bold text-blue-600 dark:text-blue-400">${escapeHtml(q ? `${q.subject} · ${q.type}` : qid)}</span>
@@ -2981,7 +3009,7 @@ window.XS_AI = (function(){
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       showToast("全量 JSON 备份已导出下载", "success");
     }
 
@@ -3071,7 +3099,13 @@ window.XS_AI = (function(){
         return;
       }
 
-      const csvContent = "\uFEFF" + rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+      // P2-25：防 CSV 公式注入（Excel 会把 = + - @ 开头的单元格当公式执行）
+      const csvCell = (value) => {
+        let s = value == null ? "" : String(value);
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+      };
+      const csvContent = "\uFEFF" + rows.map((r) => r.map(csvCell).join(",")).join("\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -3080,7 +3114,7 @@ window.XS_AI = (function(){
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       showToast("错题与笔记 CSV 已导出（Excel 可直接打开）", "success");
     }
 
@@ -3146,7 +3180,7 @@ window.XS_AI = (function(){
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       showToast(`已导出 ${wrongQuestions.length} 道错题`, "success");
     }
 
@@ -3522,7 +3556,13 @@ window.XS_AI = (function(){
         applyFilters(true);
       });
       document.getElementById("shuffleQuestionsBtn").addEventListener("click", () => {
-        filteredQuestions.sort(() => Math.random() - 0.5);
+        // P2-16：Fisher-Yates 洗牌（原 sort(random-0.5) 分布不均匀）
+        for (let i = filteredQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = filteredQuestions[i];
+          filteredQuestions[i] = filteredQuestions[j];
+          filteredQuestions[j] = t;
+        }
         currentIndex = 0;
         renderQuestion(0);
         showToast("已随机打乱当前题库顺序", "info");
@@ -3530,12 +3570,28 @@ window.XS_AI = (function(){
 
       const searchInput = document.getElementById("searchInput");
       const clearSearchBtn = document.getElementById("clearSearchBtn");
-      searchInput.addEventListener("input", (e) => {
-        searchQuery = e.target.value;
+      // P2-6：搜索 250ms 防抖；中文输入法组字期间（composition）不触发重筛
+      let searchTimer = null;
+      let searchComposing = false;
+      const runSearch = () => {
         clearSearchBtn.classList.toggle("hidden", !searchQuery);
         applyFilters(true);
+      };
+      searchInput.addEventListener("compositionstart", () => { searchComposing = true; });
+      searchInput.addEventListener("compositionend", (e) => {
+        searchComposing = false;
+        searchQuery = e.target.value;
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(runSearch, 0);
+      });
+      searchInput.addEventListener("input", (e) => {
+        searchQuery = e.target.value;
+        if (searchComposing) return;
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(runSearch, 250);
       });
       clearSearchBtn.addEventListener("click", () => {
+        clearTimeout(searchTimer);
         searchQuery = "";
         searchInput.value = "";
         clearSearchBtn.classList.add("hidden");
@@ -3619,15 +3675,29 @@ window.XS_AI = (function(){
         autoRemoveWrong = e.target.checked;
       });
 
-      // 随手笔记自动保存
+      // 随手笔记自动保存（P2-12：500ms 防抖，失焦立即落盘，避免逐字双写）
       const noteInput = document.getElementById("questionNoteInput");
+      let noteSaveTimer = null;
+      let notePending = null;
+      const commitNote = () => {
+        if (!notePending) return;
+        const pend = notePending;
+        notePending = null;
+        try {
+          userNotes[pend.qid] = pend.text;
+          safeSaveJSON(STORAGE_KEYS.NOTES, userNotes);
+          document.getElementById("noteSavedStatus").textContent = "✓ 已自动保存至本地与 IndexedDB";
+        } catch (e) {}
+      };
       noteInput.addEventListener("input", () => {
         if (filteredQuestions.length === 0) return;
         const q = filteredQuestions[currentIndex];
-        userNotes[q.id] = noteInput.value;
-        safeSaveJSON(STORAGE_KEYS.NOTES, userNotes);
-        document.getElementById("noteSavedStatus").textContent = "✓ 已自动保存至本地与 IndexedDB";
+        notePending = { qid: q.id, text: noteInput.value };
+        document.getElementById("noteSavedStatus").textContent = "编辑中…";
+        clearTimeout(noteSaveTimer);
+        noteSaveTimer = setTimeout(commitNote, 500);
       });
+      noteInput.addEventListener("blur", () => { clearTimeout(noteSaveTimer); commitNote(); });
 
       document.getElementById("insertNoteTemplateBtn").addEventListener("click", () => {
         if (filteredQuestions.length === 0) return;
@@ -4246,9 +4316,9 @@ window.XS_AI = (function(){
         var key=q?q.id:'ai_general';
         userNotes[key]=(userNotes[key]?userNotes[key]:'')+stamped;
         safeSaveJSON(STORAGE_KEYS.NOTES,userNotes);
-        alert(q?('已保存到本页题目笔记'):('已保存到"AI答疑"通用笔记'));
-      } else { alert('笔记系统未就绪'); }
-    }catch(e){ alert('保存失败: '+e.message); }
+        if (typeof showToast === "function") showToast(q ? "已保存到本页题目笔记" : '已保存到"AI答疑"通用笔记', "success");
+      } else { if (typeof showToast === "function") showToast("笔记系统未就绪", "warn"); }
+    }catch(e){ if (typeof showToast === "function") showToast("保存失败: " + e.message, "error"); }
   }
   btn.addEventListener('click',function(){ panel.classList.toggle('open'); if(panel.classList.contains('open')) inp.focus(); });
   close.addEventListener('click',function(){ panel.classList.remove('open'); });
@@ -4527,7 +4597,7 @@ window.XS_AI = (function(){
         renderRun();
       }
 
-      function byId(id) { return allQuestions.find((q) => String(q.id) === String(id)); }
+      function byId(id) { return getQById(id); }
 
       function renderRun() {
         if (!session) return renderSetup();
