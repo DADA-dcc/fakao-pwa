@@ -12,8 +12,9 @@
  * activate 会清理非当前 SHELL/DATA 的旧缓存。
  */
 
-// v40：首访即可离线——把样式表、题库 Worker 纳入 install 预缓存；vendor/模型改为可选预缓存。
-const CACHE_VERSION = 'fakao-v40';
+// v41：新增真正的模拟考试（组卷/限时/交卷判分/断点续考）；改动 index.html 必须同步升 CACHE_VERSION，
+// 否则老用户会被 Cache First 的旧外壳挡住，看不到新功能。
+const CACHE_VERSION = 'fakao-v41';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
