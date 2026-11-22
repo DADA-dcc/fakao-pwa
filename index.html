@@ -111,9 +111,10 @@ window.XS_AI = (function(){
     // 倒计时（2028 法考：9 月第三个周六，具体以官方公告为准）
     var cdD=document.getElementById('scCdDays');
     if(cdD){ var target=new Date(2028,8,16,9,0,0).getTime(); cdD.textContent=Math.max(0,Math.ceil((target-Date.now())/86400000)); }
-    // 关闭
+    // 关闭：淡出 600ms 后移除节点，并释放开屏 3D 的 WebGL 资源（P2-9）
     var closed=false;
-    function close(){ if(closed) return; closed=true; overlay.classList.add('sc-hide'); setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); },600); }
+    var releaseSplash3D=null; // initSplash3D 创建 renderer 后注册释放函数
+    function close(){ if(closed) return; closed=true; document.removeEventListener('keydown',close); overlay.classList.add('sc-hide'); setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); if(releaseSplash3D){ var fn=releaseSplash3D; releaseSplash3D=null; try{ fn(); }catch(e){} } },600); }
     document.getElementById('splashEnter').addEventListener('click',function(e){ e.stopPropagation(); close(); });
     overlay.addEventListener('click',close);
     document.addEventListener('keydown',close);
@@ -123,8 +124,28 @@ window.XS_AI = (function(){
     function initSplash3D(){
       var wrap=document.getElementById('scModel'), cv=document.getElementById('scModelCanvas');
       if(!wrap||!cv||!window.THREE){ hideSplashModel(); return; }
-      var THREE=window.THREE, renderer;
+      if(closed||!document.body.contains(overlay)){ hideSplashModel(); return; } // 脚本到达前开屏已关闭：不再创建 WebGL 上下文
+      var THREE=window.THREE, renderer, disposed=false, rafId=0, onResize=null;
       try{ renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); }catch(e){ hideSplashModel(); return; }
+      // P2-9：释放 WebGL —— 停 rAF、移除监听、遍历释放 geometry/material/texture，最后 dispose + forceContextLoss
+      function disposeMaterial(m){ if(!m) return; for(var k in m){ var v=m[k]; if(v&&v.isTexture){ try{ v.dispose(); }catch(e){} } } try{ m.dispose(); }catch(e){} }
+      function disposeTree(root){ if(!root||!root.traverse) return; root.traverse(function(o){ if(o.geometry){ try{ o.geometry.dispose(); }catch(e){} } if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(disposeMaterial); } }); }
+      function dispose(){
+        if(disposed) return; disposed=true;
+        if(rafId){ cancelAnimationFrame(rafId); rafId=0; }
+        if(onResize){ window.removeEventListener('resize',onResize); onResize=null; }
+        if(scene){
+          try{ disposeTree(scene); }catch(e){}
+          try{ scene.environment=null; }catch(e){}
+          try{ while(scene.children.length) scene.remove(scene.children[0]); }catch(e){}
+        }
+        try{ if(envRT) envRT.dispose(); }catch(e){}
+        try{ if(renderer.renderLists) renderer.renderLists.dispose(); }catch(e){}
+        try{ renderer.dispose(); }catch(e){}
+        try{ renderer.forceContextLoss(); }catch(e){}
+        renderer=null;
+      }
+      releaseSplash3D=dispose;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
       renderer.setClearColor(0x000000,0);
       if('outputEncoding' in renderer) renderer.outputEncoding=THREE.sRGBEncoding;
@@ -141,24 +162,27 @@ window.XS_AI = (function(){
       function resize(){ var r=wrap.getBoundingClientRect(); var w=Math.max(1,Math.round(r.width)), h=Math.max(1,Math.round(r.height)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
       function frame(model){ var box=new THREE.Box3().setFromObject(model); var size=new THREE.Vector3(); box.getSize(size); var center=new THREE.Vector3(); box.getCenter(center); model.position.sub(center); pivot.add(model); var md=Math.max(size.x,size.y,size.z)||1; var fov=camera.fov*Math.PI/180; var dist=(md*0.5)/Math.tan(fov/2)*1.22; camera.position.set(0,md*0.08,dist); camera.lookAt(0,0,0); pivot.rotation.x=-0.04; }
       var t0=performance.now();
-      function animate(){ if(!document.body.contains(overlay)) return; requestAnimationFrame(animate); var t=(performance.now()-t0)/1000; pivot.rotation.y=t*0.55; pivot.position.y=Math.sin(t*1.1)*0.035; renderer.render(scene,camera); }
+      function animate(){ rafId=0; if(disposed) return; if(!document.body.contains(overlay)){ dispose(); return; } rafId=requestAnimationFrame(animate); var t=(performance.now()-t0)/1000; pivot.rotation.y=t*0.55; pivot.position.y=Math.sin(t*1.1)*0.035; renderer.render(scene,camera); }
       resize();
       var loader=new THREE.GLTFLoader();
-      loader.load('./assets/models/legal.glb', function(gltf){ if(!document.body.contains(overlay)) return; var model=gltf.scene; model.traverse(function(o){ if(o.isMesh) o.frustumCulled=false; }); frame(model); resize(); wrap.classList.add('is-ready'); if(reduce){ renderer.render(scene,camera); } else { animate(); } }, undefined, function(err){ if(window.console) console.warn('[splash3d] 模型加载失败，回退渐变开屏',err); hideSplashModel(); });
-      window.addEventListener('resize', function(){ resize(); if(reduce) renderer.render(scene,camera); });
+      loader.load('./assets/models/legal.glb', function(gltf){ if(disposed||closed){ disposeTree(gltf&&gltf.scene); if(!document.body.contains(overlay)) dispose(); return; } var model=gltf.scene; model.traverse(function(o){ if(o.isMesh) o.frustumCulled=false; }); frame(model); resize(); wrap.classList.add('is-ready'); try{ localStorage.setItem('fk_splash3d_done','1'); }catch(e){} if(reduce){ renderer.render(scene,camera); } else { animate(); } }, undefined, function(err){ if(window.console) console.warn('[splash3d] 模型加载失败，回退渐变开屏',err); try{ localStorage.setItem('fk_splash3d_done','1'); }catch(e){} hideSplashModel(); dispose(); });
+      onResize=function(){ if(disposed) return; resize(); if(reduce) renderer.render(scene,camera); };
+      window.addEventListener('resize', onResize);
     }
     function loadScriptOnce(src, ok, fail){ var s=document.createElement('script'); s.src=src; s.async=false; s.onload=ok; s.onerror=fail||function(){}; (document.head||document.documentElement).appendChild(s); }
     // ── 3D 加载策略（省流量版）──
-    // 1) 同一 tab 会话只加载一次开屏 3D（three 147KB + loader 22KB + 模型 426KB），之后进站直接走渐变开屏
-    // 2) 系统省流量模式 / 2G-3G 网络直接跳过，不做 3D
+    // 1) 本机只在首次访问加载一次开屏 3D（three 147KB + loader 22KB + 模型 426KB），之后进站直接走渐变开屏（P2-9：改用 localStorage）
+    // 2) 系统省流量模式 / 2G-3G 网络直接跳过，不做 3D（不写标记，换到好网络后仍有一次机会）
     (function(){
       var SKIP_KEY = 'fk_splash3d_done';
       var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
       var slow = !!conn.saveData || /^(slow-2g|2g|3g)$/.test(conn.effectiveType || '');
       var seen = false;
-      try { seen = sessionStorage.getItem(SKIP_KEY) === '1'; } catch(e) {}
+      try { seen = localStorage.getItem(SKIP_KEY) === '1'; } catch(e) {}
       if (slow || seen) { hideSplashModel(); return; }
-      try { sessionStorage.setItem(SKIP_KEY, '1'); } catch(e) {}
+      // 注意：标记不在这里写。开屏 3 秒就自动关闭，而模型 426KB 往往来不及加载完；
+      // 若在此处标记，用户将永远看不到 3D。改由 initSplash3D 在模型真正显示（is-ready）
+      // 或明确失败（onerror）时写入 —— 见 loader.load 的两个回调。
       loadScriptOnce('./vendor/three.r128.min.js', function(){ loadScriptOnce('./vendor/GLTFLoader.js', initSplash3D, hideSplashModel); }, hideSplashModel);
     })();
   })();
@@ -1308,6 +1332,12 @@ window.XS_AI = (function(){
     let currentDiffFilter = "ALL";
     let searchQuery = "";
 
+    // P2-15：学习位置记忆
+    const LAST_SUBJECT_KEY = "fk_last_subject";
+    const LAST_POS_KEY = "fk_last_pos";
+    let lastPosPending = null;    // 启动时读到、等待一次性恢复的 {subject,index,qid,qsubj}
+    let lastPosWritable = false;  // 真实题库就绪并完成恢复判定后才允许写 fk_last_pos
+
     // 学习与交互模式
     let studyMode = "practice"; // 'practice' | 'recite' | 'exam'
     let isKeywordHighlight = true;
@@ -1798,6 +1828,7 @@ window.XS_AI = (function(){
           allQuestions = norm.list;
           if (typeof currentIndex === "number" && currentIndex >= allQuestions.length) currentIndex = 0;
           applyFilters(false);
+          restoreLastPosOnce();   // P2-15：优先科目失败时，由首个按需加载的科目完成恢复判定
           setSubtitle(`已加载 ${loadedSubjects.size}/${subjectNames.length} 科 · 共 ${norm.list.length} 题`);
         })();
         inflightSubjects.set(name, p);
@@ -1809,8 +1840,11 @@ window.XS_AI = (function(){
       try {
         if (typeof currentSubject === "string" && subjectNames.includes(currentSubject)) priority = currentSubject;
         else {
+          // P2-15：「全部 / 智能复习 / 收藏」等非单科视图，优先加载上次所在题目的科目，保证题号可恢复
+          const pendSubj = lastPosPending && lastPosPending.qsubj;
           const saved = localStorage.getItem("fk_last_subject");
-          if (saved && subjectNames.includes(saved)) priority = saved;
+          if (pendSubj && subjectNames.includes(pendSubj)) priority = pendSubj;
+          else if (saved && subjectNames.includes(saved)) priority = saved;
         }
       } catch (e) {}
       if (!subjectNames.includes(priority)) {
@@ -1847,6 +1881,7 @@ window.XS_AI = (function(){
         allQuestions = norm.list;
         applyFilters(false);
       }
+      restoreLastPosOnce();   // P2-15：优先科目完整到位后一次性恢复题号
 
       // 2) 省流量模式到此为止；其余科目等用户切换时按需加载
       if (frugal) {
@@ -1914,6 +1949,7 @@ window.XS_AI = (function(){
           : `已加载仓库完整题库：共 ${allQuestions.length} 题${suffix}`;
       }
       applyFilters(false);
+      restoreLastPosOnce();   // P2-15
     }
 
     function normalizeQuestion(raw, idx) {
@@ -2011,6 +2047,8 @@ window.XS_AI = (function(){
         btn.addEventListener("click", () => {
           wrongPracticeIds = null;   // 从科目栏进入「错题重做」视为全部错题
           currentSubject = item.key; try { if (window.__ensureSubject && item.key && item.key !== "全部") window.__ensureSubject(item.key); } catch (e) {}
+          persistLastSubject(item.key);   // P2-15：切换科目即写入
+          lastPosPending = null;          // 用户主动切换：作废待恢复题号
           renderSubjectBar();
           applyFilters(true);
         });
@@ -2018,10 +2056,61 @@ window.XS_AI = (function(){
       });
     }
 
+    // P2-13：主观题记录（新数据 subjective:true；旧数据 userAnswer=["主观已作答"]）不参与对错判定
+    function isSubjectiveRecord(rec) {
+      return !!rec && (rec.subjective === true
+        || (Array.isArray(rec.userAnswer) && rec.userAnswer.length === 1 && rec.userAnswer[0] === "主观已作答"));
+    }
+
+    // P2-15：学习位置记忆（fk_last_subject / fk_last_pos）
+    function persistLastSubject(key) {
+      try { localStorage.setItem(LAST_SUBJECT_KEY, String(key)); } catch (e) {}
+    }
+    function persistLastPos() {
+      // 真实题库就绪并完成一次恢复判定前禁止写，防止内置兜底题渲染冲掉保存值
+      if (!lastPosWritable || allQuestions.length <= 20) return;
+      const q = filteredQuestions[currentIndex];
+      if (!q) return;
+      try {
+        localStorage.setItem(LAST_POS_KEY, JSON.stringify({ subject: currentSubject, index: currentIndex, qid: q.id, qsubj: q.subject || "" }));
+        localStorage.setItem(LAST_SUBJECT_KEY, currentSubject);
+      } catch (e) {}
+    }
+    function readLastPos() {
+      try {
+        const p = JSON.parse(localStorage.getItem(LAST_POS_KEY) || "null");
+        if (p && typeof p.subject === "string" && Number.isInteger(p.index) && p.index >= 0) return p;
+      } catch (e) {}
+      return null;
+    }
+    // 真实题库（allQuestions.length > 20）就绪后调用：一次性恢复题号，随即作废
+    function restoreLastPosOnce() {
+      if (lastPosWritable) return;              // 已判定过，之后的搜索/筛选不再被拉回旧题号
+      if (allQuestions.length <= 20) return;    // 仍是内置兜底题，继续等
+      const pos = lastPosPending;
+      lastPosPending = null;
+      lastPosWritable = true;
+      const untouched = currentIndex === 0 && !searchQuery.trim()
+        && currentTypeFilter === "ALL" && currentDiffFilter === "ALL";
+      if (pos && untouched && pos.subject === currentSubject && filteredQuestions.length) {
+        let idx = (pos.qid !== undefined && pos.qid !== null)
+          ? filteredQuestions.findIndex((q) => String(q.id) === String(pos.qid))
+          : -1;
+        if (idx < 0 && pos.index < filteredQuestions.length) idx = pos.index;
+        if (idx > 0) {
+          currentIndex = idx;
+          renderQuestion(currentIndex);   // 内部 persistLastPos 会写回最新位置
+          showToast(`已回到上次位置：第 ${idx + 1} 题`, "info");
+          return;
+        }
+      }
+      persistLastPos();
+    }
+
     function isDueForReview(qid) {
       const rec = userProgress[qid];
       if (!rec || !rec.answered) return false;
-      if (!rec.isCorrect) return true;
+      if (!isSubjectiveRecord(rec) && !rec.isCorrect) return true;
       const now = Date.now();
       return rec.nextReviewAt ? now >= rec.nextReviewAt : false;
     }
@@ -2200,7 +2289,9 @@ window.XS_AI = (function(){
 
       // 掌握状态显示
       const masteryEl = document.getElementById("qMasteryStatus");
-      if (record && record.answered) {
+      if (record && record.answered && isSubjectiveRecord(record)) {
+        masteryEl.innerHTML = `<span class="mastery-chip mastery-idle"><span class="mastery-dot"></span>主观题已作答 · ${record.attempts || 1} 次 · 请对照采分点自评</span>`;
+      } else if (record && record.answered) {
         masteryEl.innerHTML = record.isCorrect
           ? `<span class="mastery-chip mastery-ok"><span class="mastery-dot"></span>已掌握 · 作答 ${record.attempts || 1} 次</span>`
           : `<span class="mastery-chip mastery-bad"><span class="mastery-dot"></span>曾答错 · 建议复盘法条</span>`;
@@ -2277,6 +2368,7 @@ window.XS_AI = (function(){
       } else {
         expBox.classList.add("hidden");
       }
+      persistLastPos();   // P2-15：受 lastPosWritable 闸门控制，兜底题渲染不会写
     }
 
     function renderOptionsList(q, showJudgement) {
@@ -2351,12 +2443,20 @@ window.XS_AI = (function(){
       const q = filteredQuestions[currentIndex];
 
       if (q.type === "主观题" || !q.options || q.options.length === 0) {
-        const subjText = document.getElementById("subjectiveInput").value.trim();
+        const subjInputEl = document.getElementById("subjectiveInput");
+        const subjText = subjInputEl.value.trim();
+        // P2-13：空白作答直接拦截，不写进度、不计已答
+        if (!subjText) {
+          showToast("请先写下作答要点再提交（可对照采分点自评）", "warn");
+          try { subjInputEl.focus(); } catch (e) {}
+          return;
+        }
         const prev = userProgress[q.id] || { attempts: 0 };
         userProgress[q.id] = {
           ...prev,   // 保留已缓存的 gradeResult 等，避免「先批改再提交」丢失结果
           answered: true,
-          isCorrect: true,
+          subjective: true,   // P2-13：主观题无客观对错，不再记 isCorrect:true
+          isCorrect: null,
           userAnswer: ["主观已作答"],
           subjectiveText: subjText,
           attempts: (prev.attempts || 0) + 1,
@@ -2454,6 +2554,9 @@ window.XS_AI = (function(){
       if (studyMode === "recite" && (!record || !record.answered)) {
         verdictBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/15 text-blue-600 dark:text-blue-300";
         verdictBadge.textContent = "背题模式 · 直接展示解析";
+      } else if (record && record.answered && isSubjectiveRecord(record)) {
+        verdictBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400";
+        verdictBadge.textContent = "主观题已提交 · 请对照采分点自评";
       } else if (record && record.isCorrect) {
         verdictBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
         verdictBadge.textContent = "回答正确";
@@ -2535,8 +2638,9 @@ window.XS_AI = (function(){
     }
     function renderStudyReport() {
       const answeredIds = Object.keys(userProgress).filter((id) => userProgress[id] && userProgress[id].answered);
-      const correctCount = answeredIds.filter((id) => userProgress[id].isCorrect).length;
-      const accuracy = answeredIds.length ? Math.round((correctCount / answeredIds.length) * 100) : 0;
+      const objectiveIds = answeredIds.filter((id) => !isSubjectiveRecord(userProgress[id]));   // P2-13
+      const correctCount = objectiveIds.filter((id) => userProgress[id].isCorrect === true).length;
+      const accuracy = objectiveIds.length ? Math.round((correctCount / objectiveIds.length) * 100) : 0;
       const favCount = Object.keys(favorites).filter((id) => favorites[id]).length;
       const dueCount = allQuestions.filter((q) => isDueForReview(q.id)).length;
 
@@ -2559,10 +2663,13 @@ window.XS_AI = (function(){
       const subj = {};
       allQuestions.forEach((q) => {
         const s = q.subject || "其他";
-        if (!subj[s]) subj[s] = { total: 0, answered: 0, correct: 0 };
+        if (!subj[s]) subj[s] = { total: 0, answered: 0, objAnswered: 0, correct: 0 };
         subj[s].total++;
         const r = userProgress[q.id];
-        if (r && r.answered) { subj[s].answered++; if (r.isCorrect) subj[s].correct++; }
+        if (r && r.answered) {
+          subj[s].answered++;
+          if (!isSubjectiveRecord(r)) { subj[s].objAnswered++; if (r.isCorrect === true) subj[s].correct++; }   // P2-13
+        }
       });
       const rows = Object.entries(subj).filter(([, v]) => v.answered > 0).sort((a, b) => b[1].answered - a[1].answered);
       const sBox = document.getElementById("reportSubjects");
@@ -2571,12 +2678,13 @@ window.XS_AI = (function(){
         sBox.innerHTML = '<div class="text-xs theme-muted">还没有答题记录，先刷几题吧。</div>';
       } else {
         rows.forEach(([name, v]) => {
-          const acc = Math.round((v.correct / v.answered) * 100);
+          const acc = v.objAnswered ? Math.round((v.correct / v.objAnswered) * 100) : 0;
           const w = Math.max(2, acc);
+          const subjCnt = v.answered - v.objAnswered;
           const d = document.createElement("div");
           d.innerHTML =
             '<div class="flex justify-between text-[11px] mb-0.5"><span>' + escapeHtml(name) + "</span>" +
-            '<span class="theme-muted">' + v.correct + "/" + v.answered + " · " + acc + "%</span></div>" +
+            '<span class="theme-muted">' + (v.objAnswered ? v.correct + "/" + v.objAnswered + " · " + acc + "%" : "—") + (subjCnt ? " · 主观 " + subjCnt + " 题" : "") + "</span></div>" +
             '<div class="h-2 rounded-full bg-slate-200/70 dark:bg-slate-700/60 overflow-hidden">' +
             '<div class="h-full rounded-full" style="width:' + w + "%;background:linear-gradient(90deg,#34d399,#059669)\"></div></div>";
           sBox.appendChild(d);
@@ -2644,8 +2752,10 @@ window.XS_AI = (function(){
 
     function updateStats() {
       const answeredIds = Object.keys(userProgress).filter((id) => userProgress[id] && userProgress[id].answered);
-      const correctIds = answeredIds.filter((id) => userProgress[id].isCorrect);
-      const accuracy = answeredIds.length > 0 ? Math.round((correctIds.length / answeredIds.length) * 100) : 0;
+      // P2-13：正确率只统计客观题；主观题计入「已答」，不进正确率分母
+      const objectiveIds = answeredIds.filter((id) => !isSubjectiveRecord(userProgress[id]));
+      const correctIds = objectiveIds.filter((id) => userProgress[id].isCorrect === true);
+      const accuracy = objectiveIds.length > 0 ? Math.round((correctIds.length / objectiveIds.length) * 100) : 0;
       const favCount = Object.keys(favorites).filter((id) => favorites[id]).length;
       const dueCount = allQuestions.filter((q) => isDueForReview(q.id)).length;
 
@@ -2757,14 +2867,16 @@ window.XS_AI = (function(){
       const total = filteredQuestions.length;
       let correct = 0;
       let wrong = 0;
+      let subjDone = 0;   // P2-13：主观题算已答，但不计对/错
       filteredQuestions.forEach((q) => {
         const rec = userProgress[q.id];
         if (rec && rec.answered) {
-          if (rec.isCorrect) correct++;
+          if (isSubjectiveRecord(rec)) subjDone++;
+          else if (rec.isCorrect) correct++;
           else wrong++;
         }
       });
-      const answered = correct + wrong;
+      const answered = correct + wrong + subjDone;
       const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
       document.getElementById("sheetCorrectCount").textContent = String(correct);
       document.getElementById("sheetWrongCount").textContent = String(wrong);
@@ -2804,7 +2916,11 @@ window.XS_AI = (function(){
 
           let colorCls = "theme-subtle border";
           let mark = "";
-          if (rec && rec.answered) {
+          const isSubjRec = !!(rec && rec.answered && isSubjectiveRecord(rec));   // P2-13
+          if (isSubjRec) {
+            colorCls = "bg-blue-500/10 border-blue-400";
+            mark = "✎";
+          } else if (rec && rec.answered) {
             colorCls = rec.isCorrect ? "sheet-correct border-emerald-600" : "sheet-wrong border-rose-600";
             mark = rec.isCorrect ? "✓" : "✕";
           }
@@ -2812,7 +2928,7 @@ window.XS_AI = (function(){
           const favRing = isFav ? "ring-2 ring-amber-400" : "";
 
           btn.className = `rounded-lg text-xs font-bold flex flex-col items-center justify-center relative transition ${colorCls} ${activeRing} ${favRing}`;
-          btn.setAttribute("aria-label", `第 ${idx + 1} 题${rec && rec.answered ? (rec.isCorrect ? "，已答对" : "，已答错") : "，未作答"}${isFav ? "，已收藏" : ""}`);
+          btn.setAttribute("aria-label", `第 ${idx + 1} 题${isSubjRec ? "，主观题已作答" : (rec && rec.answered ? (rec.isCorrect ? "，已答对" : "，已答错") : "，未作答")}${isFav ? "，已收藏" : ""}`);
           btn.innerHTML = `
             ${mark ? `<span class="absolute top-0.5 right-1 text-[10px] leading-none font-bold opacity-90">${mark}</span>` : ""}
             <span>${idx + 1}</span>
@@ -3479,6 +3595,15 @@ window.XS_AI = (function(){
       }
 
       // 3. 渲染科目栏与初始题目
+      // P2-15：恢复上次科目；题号等真实题库就绪后由 restoreLastPosOnce() 一次性恢复
+      try {
+        const savedSubject = localStorage.getItem(LAST_SUBJECT_KEY);
+        if (savedSubject && SUBJECT_LIST.some((s) => s.key === savedSubject)) {
+          currentSubject = savedSubject;
+          const pos = readLastPos();
+          if (pos && pos.subject === savedSubject) lastPosPending = pos;
+        }
+      } catch (e) {}
       renderSubjectBar();
       applyFilters(true);
       // 首屏已完成真实渲染：解除启动期隐藏（display:none → 显示不产生 layout-shift），
@@ -4247,11 +4372,37 @@ window.XS_AI = (function(){
       if (reduce) {
         draw(0.8);
       } else {
+        // P2-10：仅当 Hero 在视口内且页面可见时跑 rAF；不可见时 cancelAnimationFrame 停帧，恢复时接续相位
         var t0 = performance.now();
-        (function loop() {
+        var rafId = 0;
+        var pausedAt = 0;
+        var inView = true;   // IO 首次回调前按可见处理，避免首屏空白
+        var loop = function () {
+          rafId = 0;
           draw(((performance.now() - t0) / 1000) % CYCLE);
-          requestAnimationFrame(loop);
-        })();
+          rafId = requestAnimationFrame(loop);
+        };
+        var syncHeroLoop = function () {
+          var shouldRun = inView && document.visibilityState !== 'hidden';
+          if (shouldRun && !rafId) {
+            if (pausedAt) { t0 += performance.now() - pausedAt; pausedAt = 0; }
+            rafId = requestAnimationFrame(loop);
+          } else if (!shouldRun && rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = 0;
+            pausedAt = performance.now();
+          }
+        };
+        if ('IntersectionObserver' in window) {
+          new IntersectionObserver(function (entries) {
+            for (var i = 0; i < entries.length; i++) {
+              if (entries[i].target === section) inView = entries[i].isIntersecting;
+            }
+            syncHeroLoop();
+          }, { threshold: 0 }).observe(section);
+        }
+        document.addEventListener('visibilitychange', syncHeroLoop);
+        syncHeroLoop();
       }
 
       var rt;
