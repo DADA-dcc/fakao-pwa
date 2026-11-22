@@ -12,9 +12,9 @@
  * activate 会清理非当前 SHELL/DATA 的旧缓存。
  */
 
-// v42：题库规范化结果缓存（避免每次合并全量重算）、后台补齐不再重建错题列表、全量加载后释放原始数组；
-// CSP 放行 Cloudflare Insights 信标。改动 index.html 必须同步升 CACHE_VERSION。
-const CACHE_VERSION = 'fakao-v42';
+// v43：省流量模式三态化（自动/强制开/强制关），iOS/Firefox 无网络 API 时保守省流量；
+// 预缓存移除 questions/index.json 与 case_library.json，消除首访重复下载。
+const CACHE_VERSION = 'fakao-v43';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
@@ -37,8 +37,9 @@ const CORE_SHELL = [
 
 const OPTIONAL_ASSETS = [
   './cover.html',
-  './questions/index.json',
-  './case_library.json',
+  // 注意：不再预缓存 ./questions/index.json 与 ./case_library.json。
+  // 它们首次访问时会被页面的 fetch 处理器按 JSON 策略缓存；若这里也 add 一次，
+  // 首访就会重复下载一遍（P1-13 记录的"首访重复下载"即由此产生）。
   // 体积较大、仅 3D 开屏用到，失败不影响刷题
   './vendor/three.r128.min.js',
   './vendor/GLTFLoader.js',

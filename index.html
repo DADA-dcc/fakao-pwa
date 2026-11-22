@@ -863,6 +863,15 @@ window.XS_AI = (function(){
         <p class="text-[10px] theme-muted">密钥仅保存在本机浏览器（localStorage 明文），不会上传到任何服务器，也不会镜像进 IndexedDB；公共电脑请用完即清除。</p>
       </div>
       <a href="/question-studio/" class="block text-[11px] font-semibold text-[#1a3a6b] underline">🧪 内容工坊：把网页链接转成题目 →</a>
+      <div class="space-y-1.5">
+        <label for="frugalModeSelect" class="block text-xs font-semibold">省流量模式</label>
+        <select id="frugalModeSelect" class="w-full px-3 py-2 rounded-lg theme-subtle border text-xs">
+          <option value="auto">自动（按网络状态判断）</option>
+          <option value="on">始终开启（只加载当前科目，切科目再加载）</option>
+          <option value="off">始终关闭（后台预加载全部题库，耗流量）</option>
+        </select>
+        <p class="text-[10px] theme-muted">iOS Safari / Firefox 无法读取网络类型，自动模式下默认按省流量处理，避免误耗 20MB+ 流量。修改后下次打开生效。</p>
+      </div>
       <div class="flex justify-end gap-2 pt-1">
         <button id="saveAiConfigBtn" type="button" class="px-4 py-2 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold">保存设置</button>
       </div>
@@ -1643,6 +1652,7 @@ window.XS_AI = (function(){
       let indexData = null;
       try {
         indexData = await fetchJsonViaWorker([".", "questions", "index.json"].join("/"));
+        try { window.__fkIndexData = indexData; } catch (e) {}
         questionsVersion = (indexData && indexData.version) ? String(indexData.version) : "";
       } catch (e) {}
 
@@ -1665,13 +1675,25 @@ window.XS_AI = (function(){
       };
 
       // 网络预算：省流量/慢网/移动蜂窝下不后台拉全部题库，只加载当前科目
-      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+      // P1-13：iOS Safari / Firefox 没有 navigator.connection，此前会被误判成"不限流量"从而后台全量拉 23MB。
+      // 现改为三态偏好（自动 / 强制开 / 强制关）；自动模式下若读不到网络 API，保守按省流量处理。
+      const FRUGAL_KEY = "fk_frugal_mode";
+      const readFrugalPref = () => { try { return localStorage.getItem(FRUGAL_KEY) || "auto"; } catch (e) { return "auto"; } };
+      const connApi = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+      const conn = connApi || {};
       const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
       const rtt = Number(conn.rtt) || 0;
-      const frugal = !!conn.saveData
-        || /^(slow-2g|2g)$/.test(conn.effectiveType || "")
-        || (conn.effectiveType === "3g" && rtt >= 600)
-        || (isMobile && conn.type === "cellular");
+      const frugalPref = readFrugalPref();
+      let frugal;
+      if (frugalPref === "on") frugal = true;
+      else if (frugalPref === "off") frugal = false;
+      else if (!connApi) frugal = true;                                  // 读不到网络 API（iOS / Firefox）→ 保守省流量
+      else if (conn.saveData) frugal = true;
+      else if (/^(slow-2g|2g)$/.test(conn.effectiveType || "")) frugal = true;
+      else if (conn.effectiveType === "3g" && rtt >= 600) frugal = true;
+      else if (isMobile && conn.type === "cellular") frugal = true;
+      else frugal = false;
+      window.__fkFrugal = { pref: frugalPref, frugal: frugal, hasConnApi: !!connApi, effectiveType: conn.effectiveType || null };
 
       // P1-14：规范化结果按「原始对象」缓存，避免每次合并都把全部题目重新规范化
       // 只有带稳定 id 的题目才缓存（无 id 时 normalizeQuestion 依赖下标生成 id）
@@ -3768,6 +3790,8 @@ window.XS_AI = (function(){
       document.getElementById("openAiModalBtn").addEventListener("click", () => {
         try {
           document.getElementById("deepseekApiKeyInput").value = localStorage.getItem(STORAGE_KEYS.DEEPSEEK_KEY) || "";
+          const fm = document.getElementById("frugalModeSelect");
+          if (fm) fm.value = readFrugalPref();
         } catch (e) {}
         document.getElementById("aiConfigModal").classList.remove("hidden");
       });
@@ -3779,8 +3803,12 @@ window.XS_AI = (function(){
         try {
           localStorage.setItem(STORAGE_KEYS.DEEPSEEK_KEY, key);
         } catch (e) {}
+        try {
+          const fm = document.getElementById("frugalModeSelect");
+          if (fm) localStorage.setItem("fk_frugal_mode", fm.value);
+        } catch (e) {}
         document.getElementById("aiConfigModal").classList.add("hidden");
-        showToast("DeepSeek API 设置已保存", "success");
+        showToast("设置已保存（省流量模式下次打开生效）", "success");
       });
 
       // 备份与同步中心弹窗
@@ -4028,13 +4056,33 @@ window.XS_AI = (function(){
       try {
         navigator.serviceWorker.ready.then(async (reg) => {
           try {
-            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+            // 与启动时同一套省流量判定（P1-13）：省流量模式 / 读不到网络 API 时一律不做后台预缓存
+            const connApi = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+            const conn = connApi || {};
             const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+            let pref = "auto";
+            try { pref = localStorage.getItem("fk_frugal_mode") || "auto"; } catch (e) {}
+            const frugalNow = pref === "on" ? true
+              : pref === "off" ? false
+              : (!connApi ? true
+                : (!!conn.saveData
+                  || /^(slow-2g|2g)$/.test(conn.effectiveType || "")
+                  || conn.effectiveType === "3g"
+                  || (isMobile && conn.type === "cellular")));
+            if (frugalNow) return;
             const wifi = conn.type === "wifi" || (!isMobile && !conn.saveData);
             if (!wifi) return;
-            const res = await fetch([".", "questions", "index.json"].join("/"));
-            if (!res.ok) return;
-            const data = await res.json();
+            // 复用已加载的 indexData（预缓存可能先于主加载完成，最多等 5 秒），避免重复下载 index.json
+            let data = window.__fkIndexData || null;
+            for (let w = 0; !data && w < 20; w++) {
+              await new Promise((r) => setTimeout(r, 250));
+              data = window.__fkIndexData || null;
+            }
+            if (!data) {
+              const res = await fetch([".", "questions", "index.json"].join("/"));
+              if (!res.ok) return;
+              data = await res.json();
+            }
             // 预缓存键必须与实际请求一致：页面取数统一附加 ?v=<version>（见 withQVersion），
             // 否则裸 URL 缓存永远不会命中，还会把整份题库重复下载一遍。
             const ver = data && data.version ? String(data.version) : "";
