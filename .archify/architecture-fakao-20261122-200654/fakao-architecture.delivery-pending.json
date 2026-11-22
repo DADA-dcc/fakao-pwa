@@ -1,8 +1,0 @@
-{
-  "schemaVersion": 1,
-  "command": "deliver",
-  "status": "pending",
-  "receiptId": "37f6fb6d-69d0-4b2a-bb14-fb5283d3971b",
-  "input": "C:\\Users\\Krilenxs\\Desktop\\fakao-pwa\\.archify\\architecture-fakao-20261122-200654\\candidate.json",
-  "output": "C:\\Users\\Krilenxs\\Desktop\\fakao-pwa\\.archify\\architecture-fakao-20261122-200654\\fakao-architecture.html"
-}
