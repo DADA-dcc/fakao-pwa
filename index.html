@@ -7,7 +7,7 @@
 -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://api.deepseek.com https://api.github.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://api.deepseek.com https://api.github.com https://cloudflareinsights.com https://static.cloudflareinsights.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="theme-color" content="#1a3a6b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -1672,10 +1672,31 @@ window.XS_AI = (function(){
         || (conn.effectiveType === "3g" && rtt >= 600)
         || (isMobile && conn.type === "cellular");
 
+      // P1-14：规范化结果按「原始对象」缓存，避免每次合并都把全部题目重新规范化
+      // 只有带稳定 id 的题目才缓存（无 id 时 normalizeQuestion 依赖下标生成 id）
+      const __normCache = new WeakMap();
+      const __normStats = { computed: 0, reused: 0, items: 0 };
+      const __normOne = (q, idx) => {
+        const cacheable = q && q.id !== undefined && q.id !== null && String(q.id) !== "";
+        if (cacheable) {
+          const hit = __normCache.get(q);
+          if (hit) { __normStats.reused++; return hit; }
+          const made = normalizeQuestion(q, idx);
+          __normCache.set(q, made);
+          __normStats.computed++;
+          return made;
+        }
+        __normStats.computed++;
+        return normalizeQuestion(q, idx);
+      };
       const normalizeAll = (raw) => {
         const skipped = raw.filter((q) => q.incomplete).length;
         const playable = raw.filter((q) => !q.incomplete);
-        return { list: playable.map((q, idx) => normalizeQuestion(q, idx)), skipped };
+        const out = new Array(playable.length);
+        for (let i = 0; i < playable.length; i++) out[i] = __normOne(playable[i], i);
+        __normStats.items = out.length;
+        window.__fkNormStats = { computed: __normStats.computed, reused: __normStats.reused, items: out.length };
+        return { list: out, skipped };
       };
 
       // 已加载 / 已入队 的科目记录，供按需加载复用
@@ -1810,6 +1831,12 @@ window.XS_AI = (function(){
 
       const finalNorm = normalizeAll(loaded);
       allQuestions = finalNorm.list;
+      // P1-14：全部科目加载完毕后释放原始 JSON 数组（归一化结果已足够），降低常驻内存。
+      // 先取消可能仍挂起的后台重绘定时器，避免它读到已清空的 loaded。
+      if (loadedSubjects.size >= subjectNames.length) {
+        if (rerenderTimer) { clearTimeout(rerenderTimer); rerenderTimer = null; }
+        try { loaded.length = 0; } catch (e) {}
+      }
       {
         // 收尾同样保持当前题与作答状态，用户手动切题时才重绘
         const cur = filteredQuestions[currentIndex];
@@ -2000,12 +2027,12 @@ window.XS_AI = (function(){
       } else if (resetIndex || currentIndex >= filteredQuestions.length) {
         currentIndex = 0;
       }
-      // skipRender=true 用于后台题库补齐：只更新列表与统计，不重绘当前题，避免打断作答
+      // skipRender=true 用于后台题库补齐：只更新列表与统计，不重绘当前题、也不重建错题列表（避免打断作答与 DOM 抖动）
       if (!skipRender) {
         renderQuestion(currentIndex);
+        renderWrongList();
       }
       updateStats();
-      renderWrongList();
     }
 
     // =========================================================================
