@@ -123,10 +123,62 @@ index ae99e81..addb112 100644
    if (await isRateLimited(env, ip)) {
      return jsonResponse({ error: "请求过于频繁，请稍后再试。" }, 429);
 diff --git a/index.html b/index.html
-index 9270cfe..11075a1 100644
+index 9270cfe..0c5049c 100644
 --- a/index.html
 +++ b/index.html
-@@ -1211,15 +1211,36 @@ window.XS_AI = (function(){
+@@ -835,6 +835,7 @@ window.XS_AI = (function(){
+         <div class="space-y-2">
+           <input id="gistTokenInput" type="password" aria-label="GitHub 个人访问令牌" placeholder="GitHub Personal Access Token（需 gist 权限）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
+           <input id="gistIdInput" type="text" aria-label="Gist ID" placeholder="Gist ID（留空则首次推送自动创建）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
++          <p class="text-[10px] theme-muted">令牌仅存本机浏览器（明文），不会镜像进 IndexedDB；建议使用仅勾选 gist 权限的 fine-grained token。</p>
+         </div>
+         <div class="flex flex-wrap items-center gap-2 pt-2">
+           <button id="saveGistConfigBtn" type="button" class="sync-btn sync-btn-primary">保存配置</button>
+@@ -885,7 +886,7 @@ window.XS_AI = (function(){
+       <div class="space-y-1.5">
+         <label for="deepseekApiKeyInput" class="block text-xs font-semibold">DeepSeek API Key</label>
+         <input id="deepseekApiKeyInput" type="password" placeholder="sk-..." autocomplete="off" class="w-full px-3 py-2 rounded-lg theme-subtle border text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+-        <p class="text-[10px] theme-muted">密钥仅保存在本机浏览器，不会上传到任何服务器。</p>
++        <p class="text-[10px] theme-muted">密钥仅保存在本机浏览器（localStorage 明文），不会上传到任何服务器，也不会镜像进 IndexedDB；公共电脑请用完即清除。</p>
+       </div>
+       <div class="flex justify-end gap-2 pt-1">
+         <button id="saveAiConfigBtn" type="button" class="px-4 py-2 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold">保存设置</button>
+@@ -1198,9 +1199,34 @@ window.XS_AI = (function(){
+             resolve(null);
+           }
+         });
++      },
++      async del(key) {
++        const db = await this.open();
++        if (!db) return;
++        return new Promise((resolve) => {
++          try {
++            const tx = db.transaction(this.storeName, "readwrite");
++            tx.objectStore(this.storeName).delete(key);
++            tx.oncomplete = () => resolve(true);
++            tx.onerror = () => resolve(false);
++          } catch (e) {
++            resolve(false);
++          }
++        });
+       }
+     };
+ 
++    // 凭据类键：只留在 localStorage 供本机使用，绝不镜像进 IndexedDB（少一份可被读取的副本）
++    const SECRET_STORAGE_KEYS = new Set([STORAGE_KEYS.GIST, STORAGE_KEYS.DEEPSEEK_KEY]);
++    // 一次性清理：把历史版本镜像进 IndexedDB 的凭据副本删掉
++    try {
++      setTimeout(() => {
++        SECRET_STORAGE_KEYS.forEach((k) => {
++          try { IDBEngine.del(k).catch(() => {}); } catch (e) {}
++        });
++      }, 1500);
++    } catch (e) {}
++
+     function safeLoadJSON(key, fallback) {
+       try {
+         const raw = localStorage.getItem(key);
+@@ -1211,15 +1237,38 @@ window.XS_AI = (function(){
      }
  
      function safeSaveJSON(key, data) {
@@ -141,17 +193,20 @@ index 9270cfe..11075a1 100644
        try {
 -        const raw = JSON.stringify(data);
          localStorage.setItem(key, raw);
-+      } catch (e) {
-+        ok = false;
-+      }
-+      try {
-         IDBEngine.write(key, raw);
+-        IDBEngine.write(key, raw);
 -        const nowStr = new Date().toLocaleTimeString();
 -        const el = document.getElementById("idbSyncTimeText");
 -        if (el) el.textContent = "IndexedDB 已双写 (" + nowStr + ")";
 -      } catch (e) {}
 +      } catch (e) {
 +        ok = false;
++      }
++      if (!SECRET_STORAGE_KEYS.has(key)) {
++        try {
++          IDBEngine.write(key, raw);
++        } catch (e) {
++          ok = false;
++        }
 +      }
 +      if (!ok && typeof showToast === "function") {
 +        showToast("本地存储写入失败（可能是空间不足），数据未丢失，请尽快导出备份", "error");
@@ -168,7 +223,7 @@ index 9270cfe..11075a1 100644
  
      // =========================================================================
      // 3. 全局应用状态
-@@ -1660,7 +1681,24 @@ window.XS_AI = (function(){
+@@ -1660,7 +1709,24 @@ window.XS_AI = (function(){
        const inflightSubjects = new Map();
        const loaded = [];
  
@@ -194,7 +249,7 @@ index 9270cfe..11075a1 100644
  
        const fetchSubject = async (name) => {
          const parts = filesOf(name);
-@@ -1750,10 +1788,13 @@ window.XS_AI = (function(){
+@@ -1750,10 +1816,13 @@ window.XS_AI = (function(){
          rerenderTimer = setTimeout(() => {
            rerenderTimer = null;
            try {
@@ -210,7 +265,7 @@ index 9270cfe..11075a1 100644
            } catch (e) {}
          }, 400);
        };
-@@ -1767,7 +1808,11 @@ window.XS_AI = (function(){
+@@ -1767,7 +1836,11 @@ window.XS_AI = (function(){
  
        const finalNorm = normalizeAll(loaded);
        allQuestions = finalNorm.list;
@@ -223,7 +278,7 @@ index 9270cfe..11075a1 100644
        if (finalNorm.list.length) {
          setSubtitle(`已加载仓库完整题库：共 ${finalNorm.list.length} 题${finalNorm.skipped ? `（已排除 ${finalNorm.skipped} 道缺共享案情的题）` : ""}`);
        } else if (total) {
-@@ -1849,7 +1894,7 @@ window.XS_AI = (function(){
+@@ -1849,7 +1922,7 @@ window.XS_AI = (function(){
  
        let rawDiff = String(raw.difficulty || raw.diff || raw.level || "中");
        let normalizedDiff = "中";
@@ -232,7 +287,7 @@ index 9270cfe..11075a1 100644
        else if (rawDiff.includes("难") || rawDiff.includes("困") || rawDiff === "3" || rawDiff.toLowerCase() === "hard") normalizedDiff = "难";
  
        return {
-@@ -1902,7 +1947,7 @@ window.XS_AI = (function(){
+@@ -1902,7 +1975,7 @@ window.XS_AI = (function(){
        return rec.nextReviewAt ? now >= rec.nextReviewAt : false;
      }
  
@@ -241,7 +296,7 @@ index 9270cfe..11075a1 100644
        const qLower = searchQuery.trim().toLowerCase();
        filteredQuestions = allQuestions.filter((q) => {
          // 1. 科目或专项模式筛选
-@@ -1943,10 +1988,20 @@ window.XS_AI = (function(){
+@@ -1943,10 +2016,20 @@ window.XS_AI = (function(){
          return true;
        });
  
@@ -264,7 +319,7 @@ index 9270cfe..11075a1 100644
        updateStats();
        renderWrongList();
      }
-@@ -2884,25 +2939,51 @@ window.XS_AI = (function(){
+@@ -2884,25 +2967,51 @@ window.XS_AI = (function(){
          showToast("备份格式无效，请检查 JSON 内容", "error");
          return;
        }
@@ -321,7 +376,7 @@ index 9270cfe..11075a1 100644
          safeSaveJSON(STORAGE_KEYS.WRONG_REASONS, wrongReasons);
        }
        renderQuestion(currentIndex);
-@@ -3726,6 +3807,25 @@ window.XS_AI = (function(){
+@@ -3726,6 +3835,25 @@ window.XS_AI = (function(){
        });
  
        document.getElementById("clearAllProgressBtn").addEventListener("click", () => {
@@ -347,7 +402,7 @@ index 9270cfe..11075a1 100644
          resetSubjectiveDraftState();   // 先断掉草稿写回，否则清空后旧文本会被写回
          userProgress = {};
          wrongQuestions = [];
-@@ -3740,7 +3840,7 @@ window.XS_AI = (function(){
+@@ -3740,7 +3868,7 @@ window.XS_AI = (function(){
          renderQuestion(currentIndex);
          updateStats();
          renderWrongList();
@@ -356,6 +411,88 @@ index 9270cfe..11075a1 100644
        });
  
        // GitHub Gist 云同步操作
+diff --git a/scripts/build-questions.mjs b/scripts/build-questions.mjs
+index f75265c..0ae4938 100644
+--- a/scripts/build-questions.mjs
++++ b/scripts/build-questions.mjs
+@@ -14,6 +14,7 @@
+ 
+ import { readFile, writeFile, mkdir, rm, stat } from "node:fs/promises";
+ import { existsSync } from "node:fs";
++import { createHash } from "node:crypto";
+ import path from "node:path";
+ import { fileURLToPath } from "node:url";
+ 
+@@ -39,7 +40,11 @@ const SUBJECTS = [
+ ];
+ 
+ const CHUNK_SIZE = 200;
+-const version = process.env.QUESTIONS_VERSION || "v12";
++// 版本号默认由「题库内容哈希」生成：内容不变 → 版本不变（不会白白让用户重下 23MB），
++// 内容一变 → 版本必变（缓存键随之更换）。这样可以根除「手写 v12 覆盖线上 v13」的回退事故。
++// 确需人工指定时用 QUESTIONS_VERSION=v14 覆盖。
++const explicitVersion = process.env.QUESTIONS_VERSION || null;
++const contentHash = createHash("sha1");
+ 
+ const mb = (bytes) => Math.round((bytes / 1024 / 1024) * 100) / 100;
+ 
+@@ -49,7 +54,7 @@ async function main() {
+   await rm(PARTS, { recursive: true, force: true });
+   await mkdir(PARTS, { recursive: true });
+ 
+-  const index = { version, total: 0, subjects: {} };
++  const index = { version: null, total: 0, subjects: {} };
+ 
+   for (const { name, prefix, chunked } of SUBJECTS) {
+     const file = path.join(SRC, `${name}.json`);
+@@ -66,6 +71,8 @@ async function main() {
+         const rel = `parts/${prefix}-${String(c).padStart(2, "0")}.json`;
+         const body = JSON.stringify(slice);
+         await writeFile(path.join(OUT, rel), body, "utf8");
++        contentHash.update(`${name}/${rel}\n`);
++        contentHash.update(body);
+         parts.push(rel);
+       }
+       const bytes = list.reduce((s, q) => s + Buffer.byteLength(JSON.stringify(q), "utf8"), 0);
+@@ -79,6 +86,8 @@ async function main() {
+       // 与线上保持一致：小科目单文件使用 1 空格缩进，便于 diff 与人工核对
+       const body = JSON.stringify(list, null, 1) + "\n";
+       await writeFile(path.join(OUT, `${name}.json`), body, "utf8");
++      contentHash.update(`${name}/${name}.json\n`);
++      contentHash.update(body);
+       index.subjects[name] = {
+         file: `${name}.json`,
+         count: list.length,
+@@ -88,6 +97,29 @@ async function main() {
+     console.log(`  ${name.padEnd(18, " ")} ${String(list.length).padStart(5)} 题  ${chunked ? `分 ${index.subjects[name].chunks} 块` : "单文件"}`);
+   }
+ 
++  const version = explicitVersion || `v${contentHash.digest("hex").slice(0, 8)}`;
++  index.version = version;
++
++  // 防回退：现有 index.json 若为 vN 形式，且新版本号小于旧版本号，直接拒绝
++  try {
++    const prevRaw = await readFile(path.join(OUT, "index.json"), "utf8");
++    const prev = JSON.parse(prevRaw);
++    const pv = String(prev.version || "");
++    const mPrev = pv.match(/^v(\d+)$/);
++    const mNew = version.match(/^v(\d+)$/);
++    if (mPrev && mNew && Number(mNew[1]) < Number(mPrev[1])) {
++      throw new Error(
++        `版本回退被拒绝：现有 ${pv}，本次 ${version}。如确需回退，请显式设置 QUESTIONS_VERSION=${version} 并说明原因。`
++      );
++    }
++  } catch (e) {
++    if (!String(e.message).includes("版本回退被拒绝")) {
++      // 无既有 index.json / 解析失败，视为首次构建，放行
++    } else {
++      throw e;
++    }
++  }
++
+   await writeFile(path.join(OUT, "index.json"), JSON.stringify(index, null, 1) + "\n", "utf8");
+   console.log(`\n索引已生成：version=${version} total=${index.total}`);
+ }
 diff --git a/sw.js b/sw.js
 index 8ed661a..3241e4c 100644
 --- a/sw.js

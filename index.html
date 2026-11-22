@@ -835,6 +835,7 @@ window.XS_AI = (function(){
         <div class="space-y-2">
           <input id="gistTokenInput" type="password" aria-label="GitHub 个人访问令牌" placeholder="GitHub Personal Access Token（需 gist 权限）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
           <input id="gistIdInput" type="text" aria-label="Gist ID" placeholder="Gist ID（留空则首次推送自动创建）" class="w-full px-3 py-2 rounded-lg theme-card border text-xs" />
+          <p class="text-[10px] theme-muted">令牌仅存本机浏览器（明文），不会镜像进 IndexedDB；建议使用仅勾选 gist 权限的 fine-grained token。</p>
         </div>
         <div class="flex flex-wrap items-center gap-2 pt-2">
           <button id="saveGistConfigBtn" type="button" class="sync-btn sync-btn-primary">保存配置</button>
@@ -885,7 +886,7 @@ window.XS_AI = (function(){
       <div class="space-y-1.5">
         <label for="deepseekApiKeyInput" class="block text-xs font-semibold">DeepSeek API Key</label>
         <input id="deepseekApiKeyInput" type="password" placeholder="sk-..." autocomplete="off" class="w-full px-3 py-2 rounded-lg theme-subtle border text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <p class="text-[10px] theme-muted">密钥仅保存在本机浏览器，不会上传到任何服务器。</p>
+        <p class="text-[10px] theme-muted">密钥仅保存在本机浏览器（localStorage 明文），不会上传到任何服务器，也不会镜像进 IndexedDB；公共电脑请用完即清除。</p>
       </div>
       <div class="flex justify-end gap-2 pt-1">
         <button id="saveAiConfigBtn" type="button" class="px-4 py-2 rounded-lg bg-[#1a3a6b] text-white text-xs font-semibold">保存设置</button>
@@ -1198,8 +1199,33 @@ window.XS_AI = (function(){
             resolve(null);
           }
         });
+      },
+      async del(key) {
+        const db = await this.open();
+        if (!db) return;
+        return new Promise((resolve) => {
+          try {
+            const tx = db.transaction(this.storeName, "readwrite");
+            tx.objectStore(this.storeName).delete(key);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+          } catch (e) {
+            resolve(false);
+          }
+        });
       }
     };
+
+    // 凭据类键：只留在 localStorage 供本机使用，绝不镜像进 IndexedDB（少一份可被读取的副本）
+    const SECRET_STORAGE_KEYS = new Set([STORAGE_KEYS.GIST, STORAGE_KEYS.DEEPSEEK_KEY]);
+    // 一次性清理：把历史版本镜像进 IndexedDB 的凭据副本删掉
+    try {
+      setTimeout(() => {
+        SECRET_STORAGE_KEYS.forEach((k) => {
+          try { IDBEngine.del(k).catch(() => {}); } catch (e) {}
+        });
+      }, 1500);
+    } catch (e) {}
 
     function safeLoadJSON(key, fallback) {
       try {
@@ -1224,10 +1250,12 @@ window.XS_AI = (function(){
       } catch (e) {
         ok = false;
       }
-      try {
-        IDBEngine.write(key, raw);
-      } catch (e) {
-        ok = false;
+      if (!SECRET_STORAGE_KEYS.has(key)) {
+        try {
+          IDBEngine.write(key, raw);
+        } catch (e) {
+          ok = false;
+        }
       }
       if (!ok && typeof showToast === "function") {
         showToast("本地存储写入失败（可能是空间不足），数据未丢失，请尽快导出备份", "error");

@@ -14,6 +14,7 @@
 
 import { readFile, writeFile, mkdir, rm, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,7 +40,11 @@ const SUBJECTS = [
 ];
 
 const CHUNK_SIZE = 200;
-const version = process.env.QUESTIONS_VERSION || "v12";
+// 版本号默认由「题库内容哈希」生成：内容不变 → 版本不变（不会白白让用户重下 23MB），
+// 内容一变 → 版本必变（缓存键随之更换）。这样可以根除「手写 v12 覆盖线上 v13」的回退事故。
+// 确需人工指定时用 QUESTIONS_VERSION=v14 覆盖。
+const explicitVersion = process.env.QUESTIONS_VERSION || null;
+const contentHash = createHash("sha1");
 
 const mb = (bytes) => Math.round((bytes / 1024 / 1024) * 100) / 100;
 
@@ -49,7 +54,7 @@ async function main() {
   await rm(PARTS, { recursive: true, force: true });
   await mkdir(PARTS, { recursive: true });
 
-  const index = { version, total: 0, subjects: {} };
+  const index = { version: null, total: 0, subjects: {} };
 
   for (const { name, prefix, chunked } of SUBJECTS) {
     const file = path.join(SRC, `${name}.json`);
@@ -66,6 +71,8 @@ async function main() {
         const rel = `parts/${prefix}-${String(c).padStart(2, "0")}.json`;
         const body = JSON.stringify(slice);
         await writeFile(path.join(OUT, rel), body, "utf8");
+        contentHash.update(`${name}/${rel}\n`);
+        contentHash.update(body);
         parts.push(rel);
       }
       const bytes = list.reduce((s, q) => s + Buffer.byteLength(JSON.stringify(q), "utf8"), 0);
@@ -79,6 +86,8 @@ async function main() {
       // 与线上保持一致：小科目单文件使用 1 空格缩进，便于 diff 与人工核对
       const body = JSON.stringify(list, null, 1) + "\n";
       await writeFile(path.join(OUT, `${name}.json`), body, "utf8");
+      contentHash.update(`${name}/${name}.json\n`);
+      contentHash.update(body);
       index.subjects[name] = {
         file: `${name}.json`,
         count: list.length,
@@ -86,6 +95,29 @@ async function main() {
       };
     }
     console.log(`  ${name.padEnd(18, " ")} ${String(list.length).padStart(5)} 题  ${chunked ? `分 ${index.subjects[name].chunks} 块` : "单文件"}`);
+  }
+
+  const version = explicitVersion || `v${contentHash.digest("hex").slice(0, 8)}`;
+  index.version = version;
+
+  // 防回退：现有 index.json 若为 vN 形式，且新版本号小于旧版本号，直接拒绝
+  try {
+    const prevRaw = await readFile(path.join(OUT, "index.json"), "utf8");
+    const prev = JSON.parse(prevRaw);
+    const pv = String(prev.version || "");
+    const mPrev = pv.match(/^v(\d+)$/);
+    const mNew = version.match(/^v(\d+)$/);
+    if (mPrev && mNew && Number(mNew[1]) < Number(mPrev[1])) {
+      throw new Error(
+        `版本回退被拒绝：现有 ${pv}，本次 ${version}。如确需回退，请显式设置 QUESTIONS_VERSION=${version} 并说明原因。`
+      );
+    }
+  } catch (e) {
+    if (!String(e.message).includes("版本回退被拒绝")) {
+      // 无既有 index.json / 解析失败，视为首次构建，放行
+    } else {
+      throw e;
+    }
   }
 
   await writeFile(path.join(OUT, "index.json"), JSON.stringify(index, null, 1) + "\n", "utf8");
