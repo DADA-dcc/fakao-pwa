@@ -12,9 +12,8 @@
  * activate 会清理非当前 SHELL/DATA 的旧缓存。
  */
 
-// v39：主应用 AI 改走同源 /api/*、题库勘误（index v13）、预缓存键与实际请求对齐。
-// 外壳与数据缓存一并升版：activate 清掉旧缓存，题库按新的 ?v=v13 键重新下载一次。
-const CACHE_VERSION = 'fakao-v39';
+// v40：首访即可离线——把样式表、题库 Worker 纳入 install 预缓存；vendor/模型改为可选预缓存。
+const CACHE_VERSION = 'fakao-v40';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
@@ -26,13 +25,23 @@ const CORE_SHELL = [
   './icon-192.png',
   './icon-512.png',
   './icon-maskable-192.png',
-  './icon-maskable-512.png'
+  './icon-maskable-512.png',
+  // 首屏样式：缺任何一个都会白屏/错版，必须随 install 预缓存
+  './assets/app.d409dcc7.css',
+  './assets/tailwind.build.css',
+  './assets/ai-analysis.css',
+  // 题库解析 Worker：缺了它离线时题目加载会失败
+  './workers/questions-worker.js'
 ];
 
 const OPTIONAL_ASSETS = [
   './cover.html',
   './questions/index.json',
-  './case_library.json'
+  './case_library.json',
+  // 体积较大、仅 3D 开屏用到，失败不影响刷题
+  './vendor/three.r128.min.js',
+  './vendor/GLTFLoader.js',
+  './assets/models/legal.glb'
 ];
 
 // 只缓存缺失项：SW 自身更新时不会重复下载已有的题库

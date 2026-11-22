@@ -20,12 +20,24 @@
   Cache-Control: public, max-age=0, must-revalidate
 
 # 内容哈希命名的资源：一年 immutable（改内容即改文件名）
-/assets/*
+# 只有文件名里带内容哈希的才敢 immutable，否则改版后用户一年拿不到新版
+/assets/app.*.css
   Cache-Control: public, max-age=31536000, immutable
 
-# 第三方库：一年 immutable
-/vendor/*
+# 未哈希的样式与模型：1 小时新鲜期 + 过期先给旧的再后台更新
+/assets/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+
+# 第三方库：文件名含版本号的（three.r128）可长期缓存，其余短缓存
+/vendor/three.r128.min.js
   Cache-Control: public, max-age=31536000, immutable
+
+/vendor/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# 题库解析 Worker：不能长缓存，否则逻辑更新无法下发（SW 会另存一份）
+/workers/*
+  Cache-Control: public, max-age=0, must-revalidate
 
 # 题库分块：1 小时新鲜期 + 过期先给旧的再后台更新
 /questions/*

@@ -50,6 +50,18 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+// 同源校验：阻止第三方站点把这个接口当免费批改代理调用
+function isAllowedOrigin(request) {
+  const origin = request.headers.get("origin") || request.headers.get("referer");
+  if (!origin) return true;
+  try {
+    const selfHost = new URL(request.url).host;
+    return new URL(origin).host === selfHost;
+  } catch (e) {
+    return false;
+  }
+}
+
 function getClientIp(request) {
   return (
     request.headers.get("cf-connecting-ip") ||
@@ -175,6 +187,9 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: "服务端未配置 DEEPSEEK_API_KEY，AI 批改暂不可用。" }, 503);
   }
 
+  if (!isAllowedOrigin(request)) {
+    return jsonResponse({ error: "非法来源。" }, 403);
+  }
   const ip = getClientIp(request);
   if (await isRateLimited(env, ip)) {
     return jsonResponse({ error: "请求过于频繁，请稍后再试。" }, 429);

@@ -1211,15 +1211,36 @@ window.XS_AI = (function(){
     }
 
     function safeSaveJSON(key, data) {
+      let raw;
       try {
-        const raw = JSON.stringify(data);
+        raw = JSON.stringify(data);
+      } catch (e) {
+        if (typeof showToast === "function") showToast("保存失败：数据序列化异常", "error");
+        return false;
+      }
+      let ok = true;
+      try {
         localStorage.setItem(key, raw);
+      } catch (e) {
+        ok = false;
+      }
+      try {
         IDBEngine.write(key, raw);
-        const nowStr = new Date().toLocaleTimeString();
-        const el = document.getElementById("idbSyncTimeText");
-        if (el) el.textContent = "IndexedDB 已双写 (" + nowStr + ")";
-      } catch (e) {}
+      } catch (e) {
+        ok = false;
+      }
+      if (!ok && typeof showToast === "function") {
+        showToast("本地存储写入失败（可能是空间不足），数据未丢失，请尽快导出备份", "error");
+      }
+      const nowStr = new Date().toLocaleTimeString();
+      const el = document.getElementById("idbSyncTimeText");
+      if (el) el.textContent = (ok ? "IndexedDB 已双写 (" : "写入异常 (") + nowStr + ")";
+      return ok;
     }
+    // 申请持久化存储，降低浏览器在磁盘紧张时回收答题数据的概率
+    try {
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+    } catch (e) {}
 
     // =========================================================================
     // 3. 全局应用状态
@@ -1660,7 +1681,24 @@ window.XS_AI = (function(){
       const inflightSubjects = new Map();
       const loaded = [];
 
-      const merge = (raw) => { if (raw && raw.length) loaded.push(...raw); };
+      // 合并去重：后台补齐与按需加载可能并发拉同一科，重复入队会导致题目重复
+      const seenQuestionKeys = new Set();
+      const questionKey = (q) => {
+        if (!q || typeof q !== "object") return null;
+        if (q.id !== undefined && q.id !== null && String(q.id) !== "") return "id:" + String(q.id);
+        const t = q.title || q.question || q.content || q.q || "";
+        return "txt:" + String(q.subject || "") + "|" + String(t).slice(0, 120);
+      };
+      const merge = (raw) => {
+        if (!raw || !raw.length) return;
+        for (const q of raw) {
+          const key = questionKey(q);
+          if (key === null) continue;
+          if (seenQuestionKeys.has(key)) continue;
+          seenQuestionKeys.add(key);
+          loaded.push(q);
+        }
+      };
 
       const fetchSubject = async (name) => {
         const parts = filesOf(name);
@@ -1750,10 +1788,13 @@ window.XS_AI = (function(){
         rerenderTimer = setTimeout(() => {
           rerenderTimer = null;
           try {
+            const cur = filteredQuestions[currentIndex];
+            const anchorId = cur ? cur.id : null;
             const norm = normalizeAll(loaded);
             allQuestions = norm.list;
-            if (typeof currentIndex === "number" && currentIndex >= allQuestions.length) currentIndex = 0;
-            applyFilters(false);
+            // 保持用户当前这道题不变，且不重绘题干（后台补齐不应打断作答）；
+            // 若首屏尚未渲染出任何题（anchorId 为空），则正常渲染
+            applyFilters(false, anchorId, !!anchorId);
           } catch (e) {}
         }, 400);
       };
@@ -1767,7 +1808,11 @@ window.XS_AI = (function(){
 
       const finalNorm = normalizeAll(loaded);
       allQuestions = finalNorm.list;
-      applyFilters(false);
+      {
+        // 收尾同样保持当前题与作答状态，用户手动切题时才重绘
+        const cur = filteredQuestions[currentIndex];
+        applyFilters(false, cur ? cur.id : null, !!(cur && cur.id));
+      }
       if (finalNorm.list.length) {
         setSubtitle(`已加载仓库完整题库：共 ${finalNorm.list.length} 题${finalNorm.skipped ? `（已排除 ${finalNorm.skipped} 道缺共享案情的题）` : ""}`);
       } else if (total) {
@@ -1849,7 +1894,7 @@ window.XS_AI = (function(){
 
       let rawDiff = String(raw.difficulty || raw.diff || raw.level || "中");
       let normalizedDiff = "中";
-      if (rawDiff.includes("易") || rawDiff.includes("简") || rawDiff === "1" || rawDiff.toLowerCase() === "easy") normalizedDiff = "易";
+      if (rawDiff.includes("易") || rawDiff.includes("简") || rawDiff.includes("基础") || rawDiff === "1" || rawDiff.toLowerCase() === "easy") normalizedDiff = "易";
       else if (rawDiff.includes("难") || rawDiff.includes("困") || rawDiff === "3" || rawDiff.toLowerCase() === "hard") normalizedDiff = "难";
 
       return {
@@ -1902,7 +1947,7 @@ window.XS_AI = (function(){
       return rec.nextReviewAt ? now >= rec.nextReviewAt : false;
     }
 
-    function applyFilters(resetIndex = true) {
+    function applyFilters(resetIndex = true, preserveId = null, skipRender = false) {
       const qLower = searchQuery.trim().toLowerCase();
       filteredQuestions = allQuestions.filter((q) => {
         // 1. 科目或专项模式筛选
@@ -1943,10 +1988,20 @@ window.XS_AI = (function(){
         return true;
       });
 
-      if (resetIndex || currentIndex >= filteredQuestions.length) {
+      if (preserveId !== null && preserveId !== undefined) {
+        const keptIdx = filteredQuestions.findIndex((q) => q.id === preserveId);
+        if (keptIdx >= 0) {
+          currentIndex = keptIdx;
+        } else if (resetIndex || currentIndex >= filteredQuestions.length) {
+          currentIndex = 0;
+        }
+      } else if (resetIndex || currentIndex >= filteredQuestions.length) {
         currentIndex = 0;
       }
-      renderQuestion(currentIndex);
+      // skipRender=true 用于后台题库补齐：只更新列表与统计，不重绘当前题，避免打断作答
+      if (!skipRender) {
+        renderQuestion(currentIndex);
+      }
       updateStats();
       renderWrongList();
     }
@@ -2884,25 +2939,51 @@ window.XS_AI = (function(){
         showToast("备份格式无效，请检查 JSON 内容", "error");
         return;
       }
+      // 结构校验：只接受预期类型，避免把任意对象/HTML 注入到本地存储
+      const isPlainObj = (v) => v && typeof v === "object" && !Array.isArray(v);
+      const cleanMap = (v) => {
+        if (!isPlainObj(v)) return null;
+        const out = {};
+        Object.keys(v).forEach((k) => {
+          const val = v[k];
+          if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") out[k] = val;
+          else if (val && typeof val === "object") out[k] = val; // 记录本体（含 subjectiveText 等）保留原结构
+        });
+        return out;
+      };
+      if (data.fakao_progress !== undefined && !isPlainObj(data.fakao_progress)) {
+        showToast("备份中的 fakao_progress 结构不合法，已拒绝导入", "error");
+        return;
+      }
+      if (data.fakao_wrong_questions !== undefined && !Array.isArray(data.fakao_wrong_questions)) {
+        showToast("备份中的 fakao_wrong_questions 结构不合法，已拒绝导入", "error");
+        return;
+      }
+      for (const k of ["fakao_favorites_v1", "fakao_notes_v1", "fakao_wrong_reasons_v1"]) {
+        if (data[k] !== undefined && !isPlainObj(data[k])) {
+          showToast("备份中的 " + k + " 结构不合法，已拒绝导入", "error");
+          return;
+        }
+      }
       resetSubjectiveDraftState();   // 防止旧草稿覆盖即将恢复的备份数据
       if (data.fakao_progress) {
-        userProgress = { ...userProgress, ...data.fakao_progress };
+        userProgress = { ...userProgress, ...cleanMap(data.fakao_progress) };
         safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress);
       }
       if (Array.isArray(data.fakao_wrong_questions)) {
-        wrongQuestions = Array.from(new Set([...data.fakao_wrong_questions, ...wrongQuestions]));
+        wrongQuestions = Array.from(new Set([...data.fakao_wrong_questions.filter((x) => typeof x === "number" || typeof x === "string"), ...wrongQuestions]));
         safeSaveJSON(STORAGE_KEYS.WRONG, wrongQuestions);
       }
       if (data.fakao_favorites_v1) {
-        favorites = { ...favorites, ...data.fakao_favorites_v1 };
+        favorites = { ...favorites, ...cleanMap(data.fakao_favorites_v1) };
         safeSaveJSON(STORAGE_KEYS.FAVORITES, favorites);
       }
       if (data.fakao_notes_v1) {
-        userNotes = { ...userNotes, ...data.fakao_notes_v1 };
+        userNotes = { ...userNotes, ...cleanMap(data.fakao_notes_v1) };
         safeSaveJSON(STORAGE_KEYS.NOTES, userNotes);
       }
       if (data.fakao_wrong_reasons_v1) {
-        wrongReasons = { ...wrongReasons, ...data.fakao_wrong_reasons_v1 };
+        wrongReasons = { ...wrongReasons, ...cleanMap(data.fakao_wrong_reasons_v1) };
         safeSaveJSON(STORAGE_KEYS.WRONG_REASONS, wrongReasons);
       }
       renderQuestion(currentIndex);
@@ -3726,6 +3807,25 @@ window.XS_AI = (function(){
       });
 
       document.getElementById("clearAllProgressBtn").addEventListener("click", () => {
+        const snapshot = {
+          fakao_progress: userProgress,
+          fakao_wrong_questions: wrongQuestions,
+          fakao_favorites_v1: favorites,
+          fakao_notes_v1: userNotes,
+          fakao_wrong_reasons_v1: wrongReasons
+        };
+        const affected =
+          Object.keys(userProgress || {}).length +
+          (wrongQuestions || []).length +
+          Object.keys(favorites || {}).length +
+          Object.keys(userNotes || {}).length +
+          Object.keys(wrongReasons || {}).length;
+        if (!window.confirm("将清空本机全部答题记录、错题、收藏与笔记（约 " + affected + " 项），且无法撤销。\n\n清空前会自动留一份快照，确定继续？")) {
+          return;
+        }
+        try {
+          localStorage.setItem("fakao_auto_snapshot_before_clear", JSON.stringify({ at: new Date().toISOString(), data: snapshot }));
+        } catch (e) {}
         resetSubjectiveDraftState();   // 先断掉草稿写回，否则清空后旧文本会被写回
         userProgress = {};
         wrongQuestions = [];
@@ -3740,7 +3840,7 @@ window.XS_AI = (function(){
         renderQuestion(currentIndex);
         updateStats();
         renderWrongList();
-        showToast("已清空并重置本地做题记录", "info");
+        showToast("已清空并重置本地做题记录（清空前快照已保存）", "info");
       });
 
       // GitHub Gist 云同步操作

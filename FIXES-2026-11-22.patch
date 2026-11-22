@@ -1,0 +1,400 @@
+diff --git a/_headers b/_headers
+index 3985af9..ea59796 100644
+--- a/_headers
++++ b/_headers
+@@ -20,12 +20,24 @@
+   Cache-Control: public, max-age=0, must-revalidate
+ 
+ # 内容哈希命名的资源：一年 immutable（改内容即改文件名）
++# 只有文件名里带内容哈希的才敢 immutable，否则改版后用户一年拿不到新版
++/assets/app.*.css
++  Cache-Control: public, max-age=31536000, immutable
++
++# 未哈希的样式与模型：1 小时新鲜期 + 过期先给旧的再后台更新
+ /assets/*
++  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
++
++# 第三方库：文件名含版本号的（three.r128）可长期缓存，其余短缓存
++/vendor/three.r128.min.js
+   Cache-Control: public, max-age=31536000, immutable
+ 
+-# 第三方库：一年 immutable
+ /vendor/*
+-  Cache-Control: public, max-age=31536000, immutable
++  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
++
++# 题库解析 Worker：不能长缓存，否则逻辑更新无法下发（SW 会另存一份）
++/workers/*
++  Cache-Control: public, max-age=0, must-revalidate
+ 
+ # 题库分块：1 小时新鲜期 + 过期先给旧的再后台更新
+ /questions/*
+diff --git a/functions/api/ai.js b/functions/api/ai.js
+index d4b8365..902182d 100644
+--- a/functions/api/ai.js
++++ b/functions/api/ai.js
+@@ -39,6 +39,18 @@ function jsonResponse(data, status = 200) {
+   });
+ }
+ 
++// 同源校验：阻止第三方站点把这个接口当免费 LLM 代理调用
++function isAllowedOrigin(request) {
++  const origin = request.headers.get("origin") || request.headers.get("referer");
++  if (!origin) return true; // 无 Origin/Referer 的直连请求仍受 IP 限流约束
++  try {
++    const selfHost = new URL(request.url).host;
++    return new URL(origin).host === selfHost;
++  } catch (e) {
++    return false;
++  }
++}
++
+ function getClientIp(request) {
+   return (
+     request.headers.get("cf-connecting-ip") ||
+@@ -92,6 +104,9 @@ export async function onRequestPost(context) {
+     );
+   }
+ 
++  if (!isAllowedOrigin(request)) {
++    return jsonResponse({ error: "非法来源。" }, 403);
++  }
+   const ip = getClientIp(request);
+   if (await isRateLimited(env, ip)) {
+     return jsonResponse({ error: "请求过于频繁，请稍后再试。" }, 429);
+@@ -111,13 +126,14 @@ export async function onRequestPost(context) {
+   const prompt = typeof payload?.prompt === "string" ? payload.prompt.trim() : "";
+   const followup = typeof payload?.followup === "string" ? payload.followup.trim() : "";
+ 
+-  // 两种模式：多轮答疑（messages 数组）或单题解析（prompt + 可选 followup）
++  // 多轮答疑：只接受 user/assistant，禁止客户端注入 system 角色（防提示词劫持/当免费通用代理）
+   let messages;
+   if (Array.isArray(payload?.messages) && payload.messages.length) {
+-    const allowedRoles = new Set(["system", "user", "assistant"]);
++    const allowedRoles = new Set(["user", "assistant"]);
+     const cleaned = [];
+     let totalChars = 0;
+-    for (const m of payload.messages.slice(0, 24)) {
++    // 取最近 24 条（滑动窗口），而不是最早的 24 条，否则长对话必然 413
++    for (const m of payload.messages.slice(-24)) {
+       if (!m || typeof m !== "object") continue;
+       const content = typeof m.content === "string" ? m.content : "";
+       if (!content.trim()) continue;
+@@ -130,7 +146,7 @@ export async function onRequestPost(context) {
+     if (totalChars > MAX_PROMPT_CHARS) {
+       return jsonResponse({ error: "对话内容过长。" }, 413);
+     }
+-    messages = cleaned;
++    messages = [{ role: "system", content: SYSTEM_PROMPT }, ...cleaned];
+   } else {
+     if (!prompt) {
+       return jsonResponse({ error: "缺少 prompt 字段。" }, 400);
+diff --git a/functions/api/grade.js b/functions/api/grade.js
+index ae99e81..addb112 100644
+--- a/functions/api/grade.js
++++ b/functions/api/grade.js
+@@ -50,6 +50,18 @@ function jsonResponse(data, status = 200) {
+   });
+ }
+ 
++// 同源校验：阻止第三方站点把这个接口当免费批改代理调用
++function isAllowedOrigin(request) {
++  const origin = request.headers.get("origin") || request.headers.get("referer");
++  if (!origin) return true;
++  try {
++    const selfHost = new URL(request.url).host;
++    return new URL(origin).host === selfHost;
++  } catch (e) {
++    return false;
++  }
++}
++
+ function getClientIp(request) {
+   return (
+     request.headers.get("cf-connecting-ip") ||
+@@ -175,6 +187,9 @@ export async function onRequestPost(context) {
+     return jsonResponse({ error: "服务端未配置 DEEPSEEK_API_KEY，AI 批改暂不可用。" }, 503);
+   }
+ 
++  if (!isAllowedOrigin(request)) {
++    return jsonResponse({ error: "非法来源。" }, 403);
++  }
+   const ip = getClientIp(request);
+   if (await isRateLimited(env, ip)) {
+     return jsonResponse({ error: "请求过于频繁，请稍后再试。" }, 429);
+diff --git a/index.html b/index.html
+index 9270cfe..11075a1 100644
+--- a/index.html
++++ b/index.html
+@@ -1211,15 +1211,36 @@ window.XS_AI = (function(){
+     }
+ 
+     function safeSaveJSON(key, data) {
++      let raw;
++      try {
++        raw = JSON.stringify(data);
++      } catch (e) {
++        if (typeof showToast === "function") showToast("保存失败：数据序列化异常", "error");
++        return false;
++      }
++      let ok = true;
+       try {
+-        const raw = JSON.stringify(data);
+         localStorage.setItem(key, raw);
++      } catch (e) {
++        ok = false;
++      }
++      try {
+         IDBEngine.write(key, raw);
+-        const nowStr = new Date().toLocaleTimeString();
+-        const el = document.getElementById("idbSyncTimeText");
+-        if (el) el.textContent = "IndexedDB 已双写 (" + nowStr + ")";
+-      } catch (e) {}
++      } catch (e) {
++        ok = false;
++      }
++      if (!ok && typeof showToast === "function") {
++        showToast("本地存储写入失败（可能是空间不足），数据未丢失，请尽快导出备份", "error");
++      }
++      const nowStr = new Date().toLocaleTimeString();
++      const el = document.getElementById("idbSyncTimeText");
++      if (el) el.textContent = (ok ? "IndexedDB 已双写 (" : "写入异常 (") + nowStr + ")";
++      return ok;
+     }
++    // 申请持久化存储，降低浏览器在磁盘紧张时回收答题数据的概率
++    try {
++      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
++    } catch (e) {}
+ 
+     // =========================================================================
+     // 3. 全局应用状态
+@@ -1660,7 +1681,24 @@ window.XS_AI = (function(){
+       const inflightSubjects = new Map();
+       const loaded = [];
+ 
+-      const merge = (raw) => { if (raw && raw.length) loaded.push(...raw); };
++      // 合并去重：后台补齐与按需加载可能并发拉同一科，重复入队会导致题目重复
++      const seenQuestionKeys = new Set();
++      const questionKey = (q) => {
++        if (!q || typeof q !== "object") return null;
++        if (q.id !== undefined && q.id !== null && String(q.id) !== "") return "id:" + String(q.id);
++        const t = q.title || q.question || q.content || q.q || "";
++        return "txt:" + String(q.subject || "") + "|" + String(t).slice(0, 120);
++      };
++      const merge = (raw) => {
++        if (!raw || !raw.length) return;
++        for (const q of raw) {
++          const key = questionKey(q);
++          if (key === null) continue;
++          if (seenQuestionKeys.has(key)) continue;
++          seenQuestionKeys.add(key);
++          loaded.push(q);
++        }
++      };
+ 
+       const fetchSubject = async (name) => {
+         const parts = filesOf(name);
+@@ -1750,10 +1788,13 @@ window.XS_AI = (function(){
+         rerenderTimer = setTimeout(() => {
+           rerenderTimer = null;
+           try {
++            const cur = filteredQuestions[currentIndex];
++            const anchorId = cur ? cur.id : null;
+             const norm = normalizeAll(loaded);
+             allQuestions = norm.list;
+-            if (typeof currentIndex === "number" && currentIndex >= allQuestions.length) currentIndex = 0;
+-            applyFilters(false);
++            // 保持用户当前这道题不变，且不重绘题干（后台补齐不应打断作答）；
++            // 若首屏尚未渲染出任何题（anchorId 为空），则正常渲染
++            applyFilters(false, anchorId, !!anchorId);
+           } catch (e) {}
+         }, 400);
+       };
+@@ -1767,7 +1808,11 @@ window.XS_AI = (function(){
+ 
+       const finalNorm = normalizeAll(loaded);
+       allQuestions = finalNorm.list;
+-      applyFilters(false);
++      {
++        // 收尾同样保持当前题与作答状态，用户手动切题时才重绘
++        const cur = filteredQuestions[currentIndex];
++        applyFilters(false, cur ? cur.id : null, !!(cur && cur.id));
++      }
+       if (finalNorm.list.length) {
+         setSubtitle(`已加载仓库完整题库：共 ${finalNorm.list.length} 题${finalNorm.skipped ? `（已排除 ${finalNorm.skipped} 道缺共享案情的题）` : ""}`);
+       } else if (total) {
+@@ -1849,7 +1894,7 @@ window.XS_AI = (function(){
+ 
+       let rawDiff = String(raw.difficulty || raw.diff || raw.level || "中");
+       let normalizedDiff = "中";
+-      if (rawDiff.includes("易") || rawDiff.includes("简") || rawDiff === "1" || rawDiff.toLowerCase() === "easy") normalizedDiff = "易";
++      if (rawDiff.includes("易") || rawDiff.includes("简") || rawDiff.includes("基础") || rawDiff === "1" || rawDiff.toLowerCase() === "easy") normalizedDiff = "易";
+       else if (rawDiff.includes("难") || rawDiff.includes("困") || rawDiff === "3" || rawDiff.toLowerCase() === "hard") normalizedDiff = "难";
+ 
+       return {
+@@ -1902,7 +1947,7 @@ window.XS_AI = (function(){
+       return rec.nextReviewAt ? now >= rec.nextReviewAt : false;
+     }
+ 
+-    function applyFilters(resetIndex = true) {
++    function applyFilters(resetIndex = true, preserveId = null, skipRender = false) {
+       const qLower = searchQuery.trim().toLowerCase();
+       filteredQuestions = allQuestions.filter((q) => {
+         // 1. 科目或专项模式筛选
+@@ -1943,10 +1988,20 @@ window.XS_AI = (function(){
+         return true;
+       });
+ 
+-      if (resetIndex || currentIndex >= filteredQuestions.length) {
++      if (preserveId !== null && preserveId !== undefined) {
++        const keptIdx = filteredQuestions.findIndex((q) => q.id === preserveId);
++        if (keptIdx >= 0) {
++          currentIndex = keptIdx;
++        } else if (resetIndex || currentIndex >= filteredQuestions.length) {
++          currentIndex = 0;
++        }
++      } else if (resetIndex || currentIndex >= filteredQuestions.length) {
+         currentIndex = 0;
+       }
+-      renderQuestion(currentIndex);
++      // skipRender=true 用于后台题库补齐：只更新列表与统计，不重绘当前题，避免打断作答
++      if (!skipRender) {
++        renderQuestion(currentIndex);
++      }
+       updateStats();
+       renderWrongList();
+     }
+@@ -2884,25 +2939,51 @@ window.XS_AI = (function(){
+         showToast("备份格式无效，请检查 JSON 内容", "error");
+         return;
+       }
++      // 结构校验：只接受预期类型，避免把任意对象/HTML 注入到本地存储
++      const isPlainObj = (v) => v && typeof v === "object" && !Array.isArray(v);
++      const cleanMap = (v) => {
++        if (!isPlainObj(v)) return null;
++        const out = {};
++        Object.keys(v).forEach((k) => {
++          const val = v[k];
++          if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") out[k] = val;
++          else if (val && typeof val === "object") out[k] = val; // 记录本体（含 subjectiveText 等）保留原结构
++        });
++        return out;
++      };
++      if (data.fakao_progress !== undefined && !isPlainObj(data.fakao_progress)) {
++        showToast("备份中的 fakao_progress 结构不合法，已拒绝导入", "error");
++        return;
++      }
++      if (data.fakao_wrong_questions !== undefined && !Array.isArray(data.fakao_wrong_questions)) {
++        showToast("备份中的 fakao_wrong_questions 结构不合法，已拒绝导入", "error");
++        return;
++      }
++      for (const k of ["fakao_favorites_v1", "fakao_notes_v1", "fakao_wrong_reasons_v1"]) {
++        if (data[k] !== undefined && !isPlainObj(data[k])) {
++          showToast("备份中的 " + k + " 结构不合法，已拒绝导入", "error");
++          return;
++        }
++      }
+       resetSubjectiveDraftState();   // 防止旧草稿覆盖即将恢复的备份数据
+       if (data.fakao_progress) {
+-        userProgress = { ...userProgress, ...data.fakao_progress };
++        userProgress = { ...userProgress, ...cleanMap(data.fakao_progress) };
+         safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress);
+       }
+       if (Array.isArray(data.fakao_wrong_questions)) {
+-        wrongQuestions = Array.from(new Set([...data.fakao_wrong_questions, ...wrongQuestions]));
++        wrongQuestions = Array.from(new Set([...data.fakao_wrong_questions.filter((x) => typeof x === "number" || typeof x === "string"), ...wrongQuestions]));
+         safeSaveJSON(STORAGE_KEYS.WRONG, wrongQuestions);
+       }
+       if (data.fakao_favorites_v1) {
+-        favorites = { ...favorites, ...data.fakao_favorites_v1 };
++        favorites = { ...favorites, ...cleanMap(data.fakao_favorites_v1) };
+         safeSaveJSON(STORAGE_KEYS.FAVORITES, favorites);
+       }
+       if (data.fakao_notes_v1) {
+-        userNotes = { ...userNotes, ...data.fakao_notes_v1 };
++        userNotes = { ...userNotes, ...cleanMap(data.fakao_notes_v1) };
+         safeSaveJSON(STORAGE_KEYS.NOTES, userNotes);
+       }
+       if (data.fakao_wrong_reasons_v1) {
+-        wrongReasons = { ...wrongReasons, ...data.fakao_wrong_reasons_v1 };
++        wrongReasons = { ...wrongReasons, ...cleanMap(data.fakao_wrong_reasons_v1) };
+         safeSaveJSON(STORAGE_KEYS.WRONG_REASONS, wrongReasons);
+       }
+       renderQuestion(currentIndex);
+@@ -3726,6 +3807,25 @@ window.XS_AI = (function(){
+       });
+ 
+       document.getElementById("clearAllProgressBtn").addEventListener("click", () => {
++        const snapshot = {
++          fakao_progress: userProgress,
++          fakao_wrong_questions: wrongQuestions,
++          fakao_favorites_v1: favorites,
++          fakao_notes_v1: userNotes,
++          fakao_wrong_reasons_v1: wrongReasons
++        };
++        const affected =
++          Object.keys(userProgress || {}).length +
++          (wrongQuestions || []).length +
++          Object.keys(favorites || {}).length +
++          Object.keys(userNotes || {}).length +
++          Object.keys(wrongReasons || {}).length;
++        if (!window.confirm("将清空本机全部答题记录、错题、收藏与笔记（约 " + affected + " 项），且无法撤销。\n\n清空前会自动留一份快照，确定继续？")) {
++          return;
++        }
++        try {
++          localStorage.setItem("fakao_auto_snapshot_before_clear", JSON.stringify({ at: new Date().toISOString(), data: snapshot }));
++        } catch (e) {}
+         resetSubjectiveDraftState();   // 先断掉草稿写回，否则清空后旧文本会被写回
+         userProgress = {};
+         wrongQuestions = [];
+@@ -3740,7 +3840,7 @@ window.XS_AI = (function(){
+         renderQuestion(currentIndex);
+         updateStats();
+         renderWrongList();
+-        showToast("已清空并重置本地做题记录", "info");
++        showToast("已清空并重置本地做题记录（清空前快照已保存）", "info");
+       });
+ 
+       // GitHub Gist 云同步操作
+diff --git a/sw.js b/sw.js
+index 8ed661a..3241e4c 100644
+--- a/sw.js
++++ b/sw.js
+@@ -12,9 +12,8 @@
+  * activate 会清理非当前 SHELL/DATA 的旧缓存。
+  */
+ 
+-// v39：主应用 AI 改走同源 /api/*、题库勘误（index v13）、预缓存键与实际请求对齐。
+-// 外壳与数据缓存一并升版：activate 清掉旧缓存，题库按新的 ?v=v13 键重新下载一次。
+-const CACHE_VERSION = 'fakao-v39';
++// v40：首访即可离线——把样式表、题库 Worker 纳入 install 预缓存；vendor/模型改为可选预缓存。
++const CACHE_VERSION = 'fakao-v40';
+ const SHELL_CACHE = `${CACHE_VERSION}-shell`;
+ const DATA_CACHE = `${CACHE_VERSION}-data`;
+ const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
+@@ -26,13 +25,23 @@ const CORE_SHELL = [
+   './icon-192.png',
+   './icon-512.png',
+   './icon-maskable-192.png',
+-  './icon-maskable-512.png'
++  './icon-maskable-512.png',
++  // 首屏样式：缺任何一个都会白屏/错版，必须随 install 预缓存
++  './assets/app.d409dcc7.css',
++  './assets/tailwind.build.css',
++  './assets/ai-analysis.css',
++  // 题库解析 Worker：缺了它离线时题目加载会失败
++  './workers/questions-worker.js'
+ ];
+ 
+ const OPTIONAL_ASSETS = [
+   './cover.html',
+   './questions/index.json',
+-  './case_library.json'
++  './case_library.json',
++  // 体积较大、仅 3D 开屏用到，失败不影响刷题
++  './vendor/three.r128.min.js',
++  './vendor/GLTFLoader.js',
++  './assets/models/legal.glb'
+ ];
+ 
+ // 只缓存缺失项：SW 自身更新时不会重复下载已有的题库
