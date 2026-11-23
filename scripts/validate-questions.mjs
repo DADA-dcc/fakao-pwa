@@ -94,7 +94,7 @@ async function main() {
 
   const errors = [];
   const subjectCounts = new Map();
-  const seenIds = new Map(); // subject -> Map(id -> 首次出现的文件)
+  const seenIds = new Map(); // id -> { subject, path }（全局唯一：前端 getQById 用全局 Map 按 String(id) 查找）
   let total = 0;
   let fileCount = 0;
 
@@ -111,8 +111,6 @@ async function main() {
       addError("索引缺少文件", "questions/index.json", "-", `科目「${subjectName}」没有 parts 或 file`);
       continue;
     }
-
-    if (!seenIds.has(subjectName)) seenIds.set(subjectName, new Map());
 
     for (const entry of entries) {
       const relPath = path.posix.join("questions", entry);
@@ -141,6 +139,13 @@ async function main() {
         // 1) 必有字段
         if (!hasField(q, "id") && !hasField(q, "qid") && !hasField(q, "no") && !hasField(q, "number")) {
           addError("缺少字段:题号", relPath, qidText, "缺少题号字段");
+        }
+        // P2-21：题号必须是正整数 —— 前端缺 id 会兜底成 Q_<合并后位置>，随加载顺序漂移，导致进度错位
+        if (qid !== undefined && qid !== null) {
+          const idNum = Number(qid);
+          if (!Number.isInteger(idNum) || idNum <= 0) {
+            addError("题号非法", relPath, qidText, `题号必须是正整数，实际为 "${qid}"`);
+          }
         }
         if (!hasField(q, "subject") || isBlank(q.subject)) {
           addError("缺少字段:科目", relPath, qidText, "缺少科目或为空");
@@ -209,16 +214,14 @@ async function main() {
           }
         }
 
-        // 3) 同一科目内题号重复
-        if (qid !== undefined && qid !== null && hasField(q, "subject") && !isBlank(q.subject)) {
+        // 3) 题号全局唯一（前端 getQById 用 String(id) 建全局 Map，跨科目重复会导致跳题/进度错位）
+        if (qid !== undefined && qid !== null) {
           const idKey = String(qid);
-          const mapKey = String(q.subject);
-          if (!seenIds.has(mapKey)) seenIds.set(mapKey, new Map());
-          const seen = seenIds.get(mapKey);
-          if (seen.has(idKey)) {
-            addError("题号重复", relPath, qidText, `科目「${mapKey}」题号重复，首次出现于 ${seen.get(idKey)}`);
+          const prev = seenIds.get(idKey);
+          if (prev) {
+            addError("题号重复", relPath, qidText, `题号 ${idKey} 与「${prev.subject}」的 ${prev.path} 重复；id 必须全局唯一`);
           } else {
-            seen.set(idKey, relPath);
+            seenIds.set(idKey, { subject: subjectName, path: relPath });
           }
         }
 
