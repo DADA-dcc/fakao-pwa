@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="法考刷题" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>法考刷题助手 Pro — 刷题·背诵·错题·离线守护</title>
+  <title>法考智练 — 刷题·背诵·错题·离线守护</title>
   <link rel="canonical" href="https://xs06.de5.net/" />
   <meta name="description" content="法考备考刷题练习助手，覆盖民法、刑法、行政法等 12 个科目近万道真题；支持错题本、模拟考试、智能复习与离线使用。" />
   <link rel="manifest" href="./manifest.json" />
@@ -21,11 +21,11 @@
   <link rel="apple-touch-icon" href="./icon-192.png" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://xs06.de5.net/" />
-  <meta property="og:title" content="法考刷题助手 Pro — 刷题·背诵·错题·离线守护" />
+  <meta property="og:title" content="法考智练 — 刷题·背诵·错题·离线守护" />
   <meta property="og:description" content="法考备考刷题练习助手，支持民法、刑法、行政法等多科目；近万道真题，离线可用，可添加到主屏幕当 App 用。" />
   <meta property="og:image" content="https://xs06.de5.net/preview/cover.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="法考刷题助手 Pro" />
+  <meta name="twitter:title" content="法考智练" />
   <meta name="twitter:description" content="民法·刑法·行政法……近万道真题，陪你稳过法考。" />
   <meta name="twitter:image" content="https://xs06.de5.net/preview/cover.jpg" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -33,28 +33,15 @@
   <!-- P2-11：app.d409dcc7 + 裁剪后的 tailwind.build + ai-analysis 合并为单个样式表（约 303KB -> 132KB），放 head 阻塞加载 -->
   <link rel="stylesheet" href="./assets/app.bundle.css">
 
-  <!-- ===== UI 美化层（精致质感升级）· 纯视觉，不改任何逻辑 ===== -->
-  
-
-  <!-- ===== v11 精修层：弹窗体系 / 答题卡分页 / 知识点检索 / 移动端密度 / 专注模式 ===== -->
-  
-
-  <!-- ===== v12 编辑化视觉层：深色法务 Hero / 数据 bento / 阅读卡 / 玻璃底栏 ===== -->
-  
-
-  <!-- ===== v13 精修层：解析判决书 / 答题卡统计条 / 知识点卡脊 / 操作按钮胶囊 ===== -->
-  
-  
-  
-  <script src="./assets/inline-2.js"></script>
+<script src="./assets/inline-2.js"></script>
 </head>
 <body class="min-h-screen flex flex-col">
 
   <!-- ===== 开屏封面：Motion Prompt #095 动态渐变 · 酒红+金（启动即显示，点按/3 秒后淡出） ===== -->
-  <div id="splashCover" role="dialog" aria-label="法考刷题助手 Pro 开屏">
+  <div id="splashCover" role="dialog" aria-label="法考智练 开屏">
     <canvas id="splashCoverCanvas" aria-hidden="true"></canvas>
     <div class="sc-veil" aria-hidden="true"></div>
-    <div class="sc-top"><span class="sc-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2.5 6h5z"/><path d="M19 7l-2.5 6h5z"/><path d="M8 21h8"/></svg></span><span>FAKAO · 法考刷题助手 Pro</span></div>
+    <div class="sc-top"><span class="sc-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2.5 6h5z"/><path d="M19 7l-2.5 6h5z"/><path d="M8 21h8"/></svg></span><span>FAKAO · 法考智练</span></div>
     <div class="sc-inner">
       <div class="sc-model" id="scModel" aria-hidden="true"><canvas id="scModelCanvas"></canvas></div>
       <span class="sc-kicker">✦ 法考 · 稳过计划</span>
@@ -102,7 +89,7 @@
         </div>
         <div class=" truncate">
           <div class="flex items-center gap-2">
-            <h1 class="font-bold text-base sm:text-lg tracking-tight truncate">法考刷题助手 Pro</h1>
+            <h1 class="font-bold text-base sm:text-lg tracking-tight truncate">法考智练</h1>
             <span id="idbStatusBadge" class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/20 text-emerald-200 border border-emerald-400/30" title="LocalStorage + IndexedDB 双写防丢保护运行中">
               <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
               双写守护
@@ -191,13 +178,13 @@
   <main class="flex-1 max-w-4xl w-full mx-auto px-3 sm:px-5 pt-3 space-y-3">
 
     <!-- 首页动态渐变 Hero（移植自 Motion Prompt #095 · 动画渐变，文案改为法考主题） -->
-    <section id="heroGlow" aria-label="法考刷题助手 · 以法律为剑">
+    <section id="heroGlow" aria-label="法考智练 · 以法律为剑">
       <canvas id="heroGlowCanvas" aria-hidden="true"></canvas>
       <div class="hero-glow-inner">
         <div class="hero-glow-panel">
           <div class="hero-glow-kicker">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2.5 6h5z"/><path d="M19 7l-2.5 6h5z"/><path d="M8 21h8"/></svg>
-            <span>法考刷题助手 Pro</span>
+            <span>法考智练</span>
             <span class="hero-kicker-en" id="heroKickerYear">LAW EXAM</span>
           </div>
           <h2 class="hero-glow-title"><span class="hero-title-main">以法律为剑</span><span class="hero-title-comma">，</span><span class="hero-title-accent">稳过法考</span></h2>

@@ -115,7 +115,7 @@ export async function onRequestPost(context) {
   let payload;
   try {
     const raw = await request.text();
-    if (raw.length > MAX_BODY_BYTES) {
+    if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) {
       return jsonResponse({ error: "请求内容过大。" }, 413);
     }
     payload = JSON.parse(raw);

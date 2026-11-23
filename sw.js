@@ -1,5 +1,5 @@
 /**
- * 法考刷题助手 (fakao-pwa) Service Worker
+ * 法考智练 (fakao-pwa) Service Worker
  * 缓存策略：
  * - 核心外壳 CORE_SHELL：install 时逐个容错预缓存；导航/HTML 命中缓存后后台静默更新。
  * - 题库 JSON：questions/index.json 走 Stale-While-Revalidate（有缓存立即返回；后台 3s 超时重验证，
@@ -25,7 +25,7 @@
 // v51：P2-18 Gist 同步补传错因标签、拉取改「较新优先」合并；P2-19 备份恢复逐字段类型清洗。
 // v52：P2-30 无障碍语义（弹窗 dialog + 标题关联、模式按钮 aria-pressed、输入框 aria-label、选项 radio/checkbox）。
 // v53：P2-20 错题本提示「未加载科目」中的错题数，并提供按钮按需加载（省流量默认行为不变）。
-const CACHE_VERSION = 'fakao-v54';
+const CACHE_VERSION = 'fakao-v55';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;   // 兜底外壳键：无元数据记录时使用
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;

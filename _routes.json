@@ -7,7 +7,6 @@
     "/questions/*",
     "/workers/*",
     "/preview/*",
-    "/privacy/*",
-    "/subjective-grading/*"
+    "/privacy/*"
   ]
 }

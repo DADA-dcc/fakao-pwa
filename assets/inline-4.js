@@ -358,7 +358,7 @@
       }
       return __qByIdMap.get(String(id));
     }
-  // ── 按需加载知识点数据（首屏不拉 207KB 的 knowledge.json）──
+  // ── 按需加载知识点数据（首屏不拉 590KB 的 knowledge.json）──
   window.__loadKnowledgeBase = async function(){
     if (window.__kbLoaded || window.__kbLoading) return;
     window.__kbLoading = true;
@@ -479,7 +479,8 @@
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     }
 
     function formatLegalHighlight(rawText) {
@@ -1106,7 +1107,7 @@
         answer: ans,
         explanation: raw.explanation || raw.analysis || raw.exp || raw.parse || raw.detail || raw.solution || "暂无详细解析",
         lawBasis: Array.isArray(raw.lawBasis) ? raw.lawBasis : (raw.law ? [String(raw.law)] : []),
-      // 三段式结构化解析（由 scripts/gen-analysis.mjs 批量生成）
+      // 三段式结构化解析（构建期批量生成；生成脚本未随仓库提供）
       analysisAI: (raw.analysis_ai && raw.analysis_ai.point)
         ? { point: raw.analysis_ai.point, trap: raw.analysis_ai.trap || "", law: raw.analysis_ai.law || "" }
         : null
@@ -2674,7 +2675,8 @@
 
     // 主观题 AI 批改（统一走自建网关，采分点结构化返回）
     function escapeHtmlLocal(s) {
-      return String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      // P3-1：统一复用 escapeHtml（已补单引号转义），避免两套实现行为不一致
+      return escapeHtml(String(s || ""));
     }
     function fillGradeList(ulId, wrapId, arr) {
       const ul = document.getElementById(ulId);
@@ -3575,7 +3577,7 @@
               "Content-Type": "application/json"
             },
             body: JSON.stringify({
-              description: "法考刷题助手 Pro 云同步备份",
+              description: "法考智练 云同步备份",
               public: false,
               files: { "fakao_sync_data.json": { content: contentStr } }
             })
