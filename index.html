@@ -81,7 +81,7 @@ window.XS_AI = (function(){
       <span class="sc-kicker">✦ 法考 · 稳过计划</span>
       <h1 class="sc-title">以法律，塑<span class="sc-grad">正义公正之剑</span></h1>
       <p class="sc-sub">民法 · 刑法 · 行政法 · 宪法 · 民诉 · 刑诉 · 商经 · 法理 ——<br><b>近万道真题</b>与<b>遗忘曲线复习</b>，陪你稳过法考。</p>
-      <div class="sc-count"><span class="sc-spark" aria-hidden="true">✦</span><span>距离 2028 法考还有 <b id="scCdDays">—</b> 天</span></div>
+      <div class="sc-count"><span class="sc-spark" aria-hidden="true">✦</span><span>距离<span id="scCdYear"></span>法考还有 <b id="scCdDays">—</b> 天</span></div>
       <button id="splashEnter" type="button" class="sc-btn">进入刷题 <span aria-hidden="true">→</span></button>
       <div class="sc-hint">轻触任意处进入</div>
     </div>
@@ -89,6 +89,23 @@ window.XS_AI = (function(){
   </div>
   
   <script>
+  // P2-22：法考客观题按「9 月第三个周六 09:00」推算（具体以司法部官方公告为准）。
+  // 全局函数声明：开屏脚本与主脚本（renderHeroCountdown）共用，不硬编码年份。
+  function getThirdSaturdayOfSeptember(year){
+    var first=new Date(year,8,1,9,0,0,0);
+    var offset=(6-first.getDay()+7)%7;           // 9 月 1 日到第一个周六的天数
+    return new Date(year,8,1+offset+14,9,0,0,0);  // 第一个周六 + 14 天 = 第三个周六
+  }
+  function getNextExamDate(now){
+    var ref=(now instanceof Date)?now:new Date(typeof now==='number'?now:Date.now());
+    var exam=getThirdSaturdayOfSeptember(ref.getFullYear());
+    if(ref.getTime()>=exam.getTime()) exam=getThirdSaturdayOfSeptember(ref.getFullYear()+1); // 今年已开考 → 取次年
+    return exam;
+  }
+  function getPrevExamDate(next){
+    var n=(next instanceof Date)?next:getNextExamDate();
+    return getThirdSaturdayOfSeptember(n.getFullYear()-1);
+  }
   (function(){
     // 开屏：每次完整打开 index.html（含 Electron 启动 / 刷新）都会显示；点按任意处或 3 秒后淡出。
     var overlay=document.getElementById('splashCover');
@@ -108,9 +125,12 @@ window.XS_AI = (function(){
     resize();
     if(reduce){ draw(0.9); } else { var t0=performance.now(); (function loop(){ if(!document.body.contains(overlay)) return; draw(((performance.now()-t0)/1000)%CYCLE); requestAnimationFrame(loop); })(); }
     var rt; window.addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(function(){ resize(); if(reduce) draw(0.9); },120); });
-    // 倒计时（2028 法考：9 月第三个周六，具体以官方公告为准）
+    // 倒计时（P2-22：下一次 9 月第三个周六 09:00，具体以官方公告为准）
     var cdD=document.getElementById('scCdDays');
-    if(cdD){ var target=new Date(2028,8,16,9,0,0).getTime(); cdD.textContent=Math.max(0,Math.ceil((target-Date.now())/86400000)); }
+    var examNext=getNextExamDate();
+    var cdY=document.getElementById('scCdYear');
+    if(cdY){ cdY.textContent=' '+examNext.getFullYear()+' '; }
+    if(cdD){ var target=examNext.getTime(); cdD.textContent=Math.max(0,Math.ceil((target-Date.now())/86400000)); }
     // 关闭：淡出 600ms 后移除节点，并释放开屏 3D 的 WebGL 资源（P2-9）
     var closed=false;
     var releaseSplash3D=null; // initSplash3D 创建 renderer 后注册释放函数
@@ -317,7 +337,7 @@ window.XS_AI = (function(){
           <div class="hero-glow-kicker">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2.5 6h5z"/><path d="M19 7l-2.5 6h5z"/><path d="M8 21h8"/></svg>
             <span>法考刷题助手 Pro</span>
-            <span class="hero-kicker-en">LAW EXAM · 2028</span>
+            <span class="hero-kicker-en" id="heroKickerYear">LAW EXAM</span>
           </div>
           <h2 class="hero-glow-title"><span class="hero-title-main">以法律为剑</span><span class="hero-title-comma">，</span><span class="hero-title-accent">稳过法考</span></h2>
           <p class="hero-glow-sub"><span class="hero-subjects">民法 · 刑法 · 行政法 · 宪法 · 民诉 · 刑诉</span> ——<br class="hero-sub-br"> 近万道真题陪你上岸</p>
@@ -334,12 +354,12 @@ window.XS_AI = (function(){
           </div>
         </div>
       </div>
-      <div class="hero-countdown" aria-hidden="true" title="距离 2028 年法考客观题考试">
+      <div class="hero-countdown" id="heroCountdown" aria-hidden="true" title="距离下一次法考客观题考试">
         <span class="hero-cd-ring" id="heroCdRing"></span>
         <span class="hero-cd-inner">
           <span class="hero-cd-num" id="heroCdDays">—</span>
           <span class="hero-cd-label">天后开考</span>
-          <span class="hero-cd-cap">2028 · 9 · 16</span>
+          <span class="hero-cd-cap" id="heroCdCap">— · — · —</span>
         </span>
       </div>
     </section>
@@ -3525,9 +3545,29 @@ window.XS_AI = (function(){
     }
 
     // DeepSeek AI 解析生成（支持真实 API 调用与本地结构化法理拆解兜底）
+    // P2-26：请求期间禁用触发按钮并拒绝重入；直连 DeepSeek 20s 超时 abort 后回退本地解析
+    let aiExplainInFlight = false;
+    const DEEPSEEK_DIRECT_TIMEOUT_MS = 20000;
     async function triggerAiExplain(customFollowup = "") {
       if (filteredQuestions.length === 0) return;
+      if (aiExplainInFlight) return;
+      aiExplainInFlight = true;
+      const aiBtns = ["askAiExplainBtn", "sendAiFollowupBtn"]
+        .map((id) => document.getElementById(id))
+        .filter(Boolean)
+        .map((el) => ({ el, was: el.disabled }));
+      aiBtns.forEach((b) => { b.el.disabled = true; });
+      try {
+        await runAiExplain(customFollowup);
+      } finally {
+        aiBtns.forEach((b) => { b.el.disabled = b.was; });
+        aiExplainInFlight = false;
+      }
+    }
+
+    async function runAiExplain(customFollowup = "") {
       const q = filteredQuestions[currentIndex];
+      if (!q) return;
       const box = document.getElementById("aiResponseBox");
       const textEl = document.getElementById("aiResponseText");
       box.classList.remove("hidden");
@@ -3559,10 +3599,17 @@ window.XS_AI = (function(){
         // 后端不可用时继续走下面的回退（自备 Key / 本地结构化拆解）
       }
 
-      // 回退一：用户自备 DeepSeek Key，浏览器直连
+      // 回退一：用户自备 DeepSeek Key，浏览器直连（P2-26：20s 超时 abort，finally 清定时器）
+      let directTimedOut = false;
       if (apiKey) {
+        const ctrl = typeof AbortController === "function" ? new AbortController() : null;
+        const directTimer = setTimeout(() => {
+          directTimedOut = true;
+          if (ctrl) { try { ctrl.abort(); } catch (e) {} }
+        }, DEEPSEEK_DIRECT_TIMEOUT_MS);
         try {
           const res = await fetch("https://api.deepseek.com/chat/completions", {
+            signal: ctrl ? ctrl.signal : undefined,
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -3578,17 +3625,21 @@ window.XS_AI = (function(){
             })
           });
           const data = await res.json();
+          if (directTimedOut) throw new Error("timeout");   // 无 AbortController 的环境：超时后到达的结果也作废
           if (data.choices && data.choices[0] && data.choices[0].message) {
             textEl.textContent = data.choices[0].message.content;
             return;
           }
         } catch (err) {
-          // 落到本地提示
+          // 落到本地提示（超时 abort 时 err.name === "AbortError"）
+          if (err && err.name === "AbortError") directTimedOut = true;
+        } finally {
+          clearTimeout(directTimer);
         }
       }
 
       // 回退二：本地结构化考点拆解
-      textEl.textContent = buildLocalFallback();
+      textEl.textContent = buildLocalFallback() + (directTimedOut ? "\n（直连超时，已回退本地解析）" : "");
     }
 
     // =========================================================================
@@ -3679,13 +3730,21 @@ window.XS_AI = (function(){
         .catch(() => {});
     }
 
-    // Hero 桌面倒计时环：距 2028 年法考客观题开考
+    // Hero 桌面倒计时环：距下一次法考客观题开考（P2-22：9 月第三个周六 09:00 动态推算）
     function renderHeroCountdown() {
       const daysEl = document.getElementById("heroCdDays");
       const ringEl = document.getElementById("heroCdRing");
       if (!daysEl || !ringEl) return;
-      const target = new Date(2028, 8, 16, 9, 0, 0).getTime();
-      const cycleStart = new Date(2025, 8, 16, 9, 0, 0).getTime();
+      const nextExam = getNextExamDate();
+      const target = nextExam.getTime();
+      const cycleStart = getPrevExamDate(nextExam).getTime();
+      const examYear = nextExam.getFullYear();
+      const kickerEl = document.getElementById("heroKickerYear");
+      if (kickerEl) kickerEl.textContent = `LAW EXAM · ${examYear}`;
+      const capEl = document.getElementById("heroCdCap");
+      if (capEl) capEl.textContent = `${examYear} · ${nextExam.getMonth() + 1} · ${nextExam.getDate()}`;
+      const cdBox = document.getElementById("heroCountdown");
+      if (cdBox) cdBox.title = `距离 ${examYear} 年法考客观题考试（${examYear}-${nextExam.getMonth() + 1}-${nextExam.getDate()} 09:00，以官方公告为准）`;
       const now = Date.now();
       const days = Math.max(0, Math.ceil((target - now) / 86400000));
       const pct = Math.max(0, Math.min(100, ((now - cycleStart) / (target - cycleStart)) * 100));
@@ -4361,14 +4420,67 @@ window.XS_AI = (function(){
       }, { passive: true });
 
       // 7. 电脑端键盘快捷键支持
+      // P2-17：开屏未移除 / 长按自动重复 / 输入法组字 / 组合键一律不响应；
+      // 有弹窗时只响应 Escape（关闭最上层弹窗）；焦点在按钮、链接、可编辑区域时不抢键。
+      const MODAL_CLOSE_BTN = {
+        answerSheetModal: "closeSheetModalBtn",
+        knowledgeModal: "closeKnowledgeModalBtn",
+        syncModal: "closeSyncModalBtn",
+        aiConfigModal: "closeAiModalBtn",
+        reportModal: "closeReportModalBtn"
+      };
+      const getOpenModals = () => {
+        const list = Array.from(document.querySelectorAll(".fixed.inset-0")).filter((m) => !m.classList.contains("hidden"));
+        const exam = document.getElementById("examOverlay");   // 模拟考试遮罩（行内样式，不带 .fixed.inset-0）
+        if (exam && document.body.contains(exam)) list.push(exam);
+        return list;
+      };
+      const getTopModal = (list) => {
+        let top = null, topZ = -Infinity;
+        list.forEach((m) => {   // z-index 大者在上；相同则 DOM 靠后者在上
+          const z = Number.parseInt(getComputedStyle(m).zIndex, 10);
+          const zz = Number.isFinite(z) ? z : 0;
+          if (zz >= topZ) { topZ = zz; top = m; }
+        });
+        return top;
+      };
+      const closeModalEl = (m) => {
+        if (!m) return;
+        if (m.id === "examOverlay") {
+          // 复用 × 按钮：保留"考试进行中确认关闭"的逻辑
+          const x = m.querySelector("button");
+          if (x) x.click();
+          return;
+        }
+        const btnId = MODAL_CLOSE_BTN[m.id];
+        const btn = btnId ? document.getElementById(btnId) : null;
+        if (btn) btn.click();
+        else m.classList.add("hidden");
+      };
       document.addEventListener("keydown", (e) => {
-        const tag = (e.target && e.target.tagName) || "";
-        if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
-        if (e.key === "ArrowLeft") prevQuestion();
-        else if (e.key === "ArrowRight") nextQuestion();
-        else if (e.key.toLowerCase() === "f") toggleFavoriteCurrent();
-        else if (e.key.toLowerCase() === "b") setStudyMode(studyMode === "recite" ? "practice" : "recite");
-        else if (e.key === "Enter") submitAnswer();
+        if (document.getElementById("splashCover")) return;   // 开屏遮罩仍在（含 600ms 淡出期）
+        if (e.repeat || e.isComposing) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;        // 不劫持 Ctrl+F 等浏览器 / 系统快捷键
+        const key = e.key || "";
+        const t = e.target && e.target.nodeType === 1 ? e.target : null;
+        const tag = (t && t.tagName) || "";
+        const inField = ["INPUT", "TEXTAREA", "SELECT"].includes(tag) || !!(t && t.isContentEditable);
+        const openModals = getOpenModals();
+        if (openModals.length) {
+          // 输入框内的 Escape 留给控件自身（如收起下拉），避免误关弹窗丢失正在填写的内容
+          if (key === "Escape" && !inField) {
+            e.preventDefault();
+            closeModalEl(getTopModal(openModals));
+          }
+          return;
+        }
+        if (inField) return;
+        if (tag === "BUTTON" || tag === "A" || (t && t.closest && t.closest("button,a"))) return;
+        if (key === "ArrowLeft") prevQuestion();
+        else if (key === "ArrowRight") nextQuestion();
+        else if (key.toLowerCase() === "f") toggleFavoriteCurrent();
+        else if (key.toLowerCase() === "b") setStudyMode(studyMode === "recite" ? "practice" : "recite");
+        else if (key === "Enter") submitAnswer();
       });
 
       // 8. 注册 Service Worker 与版本更新提示 (仅在同源 HTTP/HTTPS 部署环境下启用)
