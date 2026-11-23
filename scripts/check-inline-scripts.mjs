@@ -138,8 +138,30 @@ function main() {
   }
 
   if (!inline.length) {
-    console.error("未找到任何内联 <script>，抽取逻辑可能已失效。");
-    return 1;
+    // P2-24：index.html 的内联脚本已外置为 assets/inline-*.js，此时转为校验这些外置文件的语法。
+    let externals = [];
+    try {
+      const html = readFileSync(target, "utf8");
+      externals = [...html.matchAll(/<script[^>]*\bsrc="([^"]*inline-[^"]*\.js)"/g)].map((m) => m[1]);
+    } catch (e) {
+      externals = [];
+    }
+    if (!externals.length) {
+      console.error("未找到任何内联 <script>，也没有找到 assets/inline-*.js 外置引用，抽取逻辑可能已失效。");
+      return 1;
+    }
+    let externalsFail = 0;
+    for (const rel of externals) {
+      const abs = path.resolve(path.dirname(target), rel);
+      const res = spawnSync(process.execPath, ["--check", abs], { encoding: "utf8" });
+      if (res.error || res.status !== 0) {
+        externalsFail++;
+        console.error(`✗ ${rel} 语法错误：\n${String(res.stderr || res.stdout || res.error || "").trim()}`);
+      }
+    }
+    if (externalsFail) return 1;
+    console.log(`✓ 已无内联 <script>（P2-24 已外置），${externals.length} 个外置脚本语法全部通过`);
+    return 0;
   }
   if (failures.length) {
     console.error(`\n失败 ${failures.length} 个：`);

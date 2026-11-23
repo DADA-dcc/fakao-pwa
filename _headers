@@ -4,10 +4,14 @@
 
 /*
   X-Content-Type-Options: nosniff
-  X-Frame-Options: SAMEORIGIN
+  # P2-24：X-Frame-Options 与 frame-ancestors 语义统一为「禁止嵌入」（原 SAMEORIGIN 与 none 冲突）
+  X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://api.deepseek.com https://api.github.com https://cloudflareinsights.com https://static.cloudflareinsights.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  # P2-24：CSP 资源策略统一在 index.html 的 <meta> 维护（GH Pages 也生效）；此处只保留 meta 无法表达的 frame-ancestors
+  Content-Security-Policy: frame-ancestors 'none'
+  # P2-24：补充 HSTS（仅 Cloudflare Pages 生效）
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 # Service Worker 必须不被长缓存，否则热更新会卡住
 /sw.js
