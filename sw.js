@@ -23,7 +23,8 @@
 //      P2-22 倒计时改为动态「下一次 9 月第三个周六 09:00」；P2-26 DeepSeek 直连 20s 超时 + 按钮防重复。
 // v50：P2-28 移除「不定项」题型筛选项（题库 0 题），题型筛选非法值初始化时回落「全部题型」。
 // v51：P2-18 Gist 同步补传错因标签、拉取改「较新优先」合并；P2-19 备份恢复逐字段类型清洗。
-const CACHE_VERSION = 'fakao-v51';
+// v52：P2-30 无障碍语义（弹窗 dialog + 标题关联、模式按钮 aria-pressed、输入框 aria-label、选项 radio/checkbox）。
+const CACHE_VERSION = 'fakao-v52';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;   // 兜底外壳键：无元数据记录时使用
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;

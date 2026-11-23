@@ -289,13 +289,13 @@ window.XS_AI = (function(){
     <div class="bg-[#132c52] border-t border-white/10">
       <div class="max-w-4xl mx-auto px-3 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2">
         <div class="inline-flex rounded-lg bg-slate-900/40 p-0.5 border border-white/10">
-          <button id="modePracticeBtn" type="button" class="px-3 py-1 rounded-md text-xs font-semibold transition bg-blue-500 text-white">
+          <button id="modePracticeBtn" type="button" aria-pressed="true" class="px-3 py-1 rounded-md text-xs font-semibold transition bg-blue-500 text-white">
             <span class="inline-flex items-center gap-1"><svg class="nav-ico nav-ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>刷题模式</span>
           </button>
-          <button id="modeReciteBtn" type="button" class="px-3 py-1 rounded-md text-xs font-semibold transition text-blue-200 hover:text-white">
+          <button id="modeReciteBtn" type="button" aria-pressed="false" class="px-3 py-1 rounded-md text-xs font-semibold transition text-blue-200 hover:text-white">
             <span class="inline-flex items-center gap-1"><svg class="nav-ico nav-ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>背题模式</span>
           </button>
-          <button id="modeExamBtn" type="button" class="px-3 py-1 rounded-md text-xs font-semibold transition text-blue-200 hover:text-white">
+          <button id="modeExamBtn" type="button" aria-pressed="false" class="px-3 py-1 rounded-md text-xs font-semibold transition text-blue-200 hover:text-white">
             <span class="inline-flex items-center gap-1"><svg class="nav-ico nav-ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>模拟计时</span>
           </button>
         </div>
@@ -481,7 +481,7 @@ window.XS_AI = (function(){
       <!-- 主观题作答输入框容器 -->
       <div id="subjectiveContainer" class="hidden space-y-2.5 mt-3">
         <label for="subjectiveInput" class="block text-xs font-semibold theme-muted inline-flex items-center gap-1.5"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>主观分析作答区（支持对照采分点自评）：</label>
-        <textarea id="subjectiveInput" rows="5" placeholder="在此输入你的法理分析结论、请求权基础或构成要件分析..." class="w-full p-3 rounded-xl theme-subtle border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        <textarea id="subjectiveInput" aria-label="主观题作答" rows="5" placeholder="在此输入你的法理分析结论、请求权基础或构成要件分析..." class="w-full p-3 rounded-xl theme-subtle border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
         <div class="flex items-center justify-between gap-2 text-[11px] theme-muted">
           <span class="inline-flex items-center gap-2 min-w-0">
             <span id="subjectiveCharCount" class="shrink-0">0 字</span>
@@ -588,7 +588,7 @@ window.XS_AI = (function(){
             + 插入三段式法考笔记模板
           </button>
         </div>
-        <textarea id="questionNoteInput" rows="2" placeholder="记录本题易错陷阱、关联法条或背诵口诀（输入后自动保存至本地与 IndexedDB）..." class="w-full p-2.5 rounded-xl theme-subtle border text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        <textarea id="questionNoteInput" aria-label="本题笔记" rows="2" placeholder="记录本题易错陷阱、关联法条或背诵口诀（输入后自动保存至本地与 IndexedDB）..." class="w-full p-2.5 rounded-xl theme-subtle border text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
       </div>
     </section>
 
@@ -681,13 +681,13 @@ window.XS_AI = (function(){
   </nav>
 
   <!-- 弹窗 1：可视化答题卡抽屉 -->
-  <div id="answerSheetModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div id="answerSheetModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="answerSheetModalTitle">
     <div class="theme-card w-full max-w-2xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[82vh] flex flex-col shadow-2xl">
       <div class="modal-head">
         <div class="modal-head-main">
           <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
           <div class="min-w-0">
-            <h3 class="modal-title">可视化答题卡</h3>
+            <h3 class="modal-title" id="answerSheetModalTitle">可视化答题卡</h3>
             <p id="sheetModalSub" class="modal-sub">点击题号直接跳转 · 颜色代表掌握状态</p>
           </div>
         </div>
@@ -743,13 +743,13 @@ window.XS_AI = (function(){
   </div>
 
   <!-- 弹窗 2：知识点速记与笔记汇总中心 -->
-  <div id="knowledgeModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div id="knowledgeModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="knowledgeModalTitle">
     <div class="theme-card w-full max-w-3xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[88vh] flex flex-col shadow-2xl">
       <div class="modal-head">
         <div class="modal-head-main">
           <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span>
           <div class="min-w-0">
-            <h3 class="modal-title">知识点与笔记中心</h3>
+            <h3 class="modal-title" id="knowledgeModalTitle">知识点与笔记中心</h3>
             <p class="modal-sub">按科目检索核心考点 · 随手笔记自动汇总</p>
           </div>
         </div>
@@ -802,13 +802,13 @@ window.XS_AI = (function(){
   </div>
 
   <!-- 弹窗 3：数据安全备份、导入恢复与 GitHub Gist 云同步 -->
-  <div id="syncModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div id="syncModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
     <div class="theme-card w-full max-w-xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[88vh] overflow-y-auto shadow-2xl space-y-3">
       <div class="modal-head">
         <div class="modal-head-main">
           <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>
           <div class="min-w-0">
-            <h3 class="modal-title">数据守护与云同步</h3>
+            <h3 class="modal-title" id="syncModalTitle">数据守护与云同步</h3>
             <p class="modal-sub">本地双写 · JSON 备份 · GitHub Gist 跨设备同步</p>
           </div>
         </div>
@@ -885,13 +885,13 @@ window.XS_AI = (function(){
   </div>
 
   <!-- 弹窗 4：DeepSeek AI 密钥配置弹窗 -->
-  <div id="aiConfigModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div id="aiConfigModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="aiConfigModalTitle">
     <div class="theme-card w-full max-w-md rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xl">
       <div class="modal-head">
         <div class="modal-head-main">
           <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1" fill="currentColor" stroke="none"/></svg></span>
           <div class="min-w-0">
-            <h3 class="modal-title">DeepSeek 法考助教</h3>
+            <h3 class="modal-title" id="aiConfigModalTitle">DeepSeek 法考助教</h3>
             <p class="modal-sub">AI 深度拆解 · 易混选项对比 · 请求权基础</p>
           </div>
         </div>
@@ -924,12 +924,12 @@ window.XS_AI = (function(){
   </div>
 
   <!-- 弹窗 5：学习报告看板 -->
-  <div id="reportModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div id="reportModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
     <div class="theme-card w-full max-w-xl rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 max-h-[88vh] overflow-y-auto shadow-2xl space-y-4">
       <div class="modal-head">
         <div class="modal-head-main">
           <span class="modal-head-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="7"/><rect x="13" y="7" width="3" height="11"/></svg></span>
-          <div class="min-w-0"><h3 class="modal-title">学习报告</h3><p class="modal-sub">正确率 · 科目强弱 · 近 7 天学习节奏</p></div>
+          <div class="min-w-0"><h3 class="modal-title" id="reportModalTitle">学习报告</h3><p class="modal-sub">正确率 · 科目强弱 · 近 7 天学习节奏</p></div>
         </div>
         <button id="closeReportModalBtn" type="button" class="modal-close" aria-label="关闭学习报告">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -2323,6 +2323,7 @@ window.XS_AI = (function(){
         titleEl.innerHTML = `<div class="empty-illust"><div class="empty-ico">${eIcon}</div><div class="empty-title">${eTitle}</div><div class="empty-desc">${eDesc}</div></div>`;
         ["qSubjectBadge", "qTypeBadge", "qDiffBadge", "qYearBadge"].forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
         optsContainer.innerHTML = "";
+        optsContainer.removeAttribute("role");   // P2-30：空容器不宣告为选项组
         subjContainer.classList.add("hidden");
         expBox.classList.add("hidden");
         document.getElementById("dockSheetProgress").textContent = "0/0";
@@ -2403,6 +2404,7 @@ window.XS_AI = (function(){
 
       if (q.type === "主观题" || !q.options || q.options.length === 0) {
         optsContainer.innerHTML = "";
+        optsContainer.removeAttribute("role");   // P2-30：主观题无选项，不宣告为选项组
         subjContainer.classList.remove("hidden");
         const subjInput = document.getElementById("subjectiveInput");
         subjInput.value = (record && record.subjectiveText) || "";
@@ -2445,6 +2447,9 @@ window.XS_AI = (function(){
       const optsContainer = document.getElementById("optionsContainer");
       optsContainer.innerHTML = "";
       const correctSet = new Set(q.answer);
+      // P2-30：与 handleOptionClick 的行为一致——只有「单选」是单选，其余（多选/不定项）可多选
+      const isSingleChoice = q.type === "单选";
+      optsContainer.setAttribute("role", isSingleChoice ? "radiogroup" : "group");
 
       q.options.forEach((opt) => {
         const row = document.createElement("button");
@@ -2472,6 +2477,9 @@ window.XS_AI = (function(){
         }
 
         row.className = `option-row w-full text-left p-3 sm:p-3.5 rounded-xl flex items-start gap-3 ${stateClass}`;
+        // P2-30：选项语义；每次点击都会整列重渲染，aria-checked 随之更新
+        row.setAttribute("role", isSingleChoice ? "radio" : "checkbox");
+        row.setAttribute("aria-checked", String(isSelected));
         row.innerHTML = `
           ${badgeHtml}
           <span class="text-sm sm:text-base leading-relaxed flex-1">${formatLegalHighlight(opt.text)}</span>
@@ -3776,6 +3784,10 @@ window.XS_AI = (function(){
       [pBtn, rBtn, eBtn].forEach((b) => {
         b.className = "px-3 py-1 rounded-md text-xs font-semibold transition text-blue-200 hover:text-white";
       });
+      // P2-30：同步模式按钮的 aria-pressed（当前模式 = true）
+      pBtn.setAttribute("aria-pressed", String(mode === "practice"));
+      rBtn.setAttribute("aria-pressed", String(mode === "recite"));
+      eBtn.setAttribute("aria-pressed", String(mode === "exam"));
 
       if (mode === "practice") {
         pBtn.className = "px-3 py-1 rounded-md text-xs font-semibold transition bg-blue-500 text-white";
