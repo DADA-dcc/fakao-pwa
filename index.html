@@ -307,6 +307,8 @@
             <span id="favStarIcon">☆</span>
             <span id="favBtnText">收藏</span>
           </button>
+          <!-- P3-16：已答题目显示「重做」按钮，避免点选项直接重复提交 -->
+          <button id="redoQuestionBtn" type="button" class="hidden px-2.5 py-1 rounded-lg border theme-subtle text-xs font-semibold flex items-center gap-1 hover:border-blue-400 transition" title="重做本题（清除本题作答记录后重新作答）">↻ 重做</button>
         </div>
       </div>
 
@@ -803,7 +805,7 @@
   <!-- 全局轻提示 Toast -->
   <div id="toastContainer" class="fixed left-1/2 -translate-x-1/2 z-50 pointer-events-none space-y-2" role="status" aria-live="polite"></div>
 
-  <script src="./assets/inline-4.56a9715e.js"></script>
+  <script src="./assets/inline-4.f0fbb838.js"></script>
 
   <!-- 首页动态渐变 Hero：移植自 Motion Prompt #095（动画渐变），仅保留渐变流动，文案见上方 section -->
   <!-- Motion Prompt #095 · MIT License (c) 2026 Shohei Ohtaki · https://github.com/showheyohtaki/motion-prompt -->
@@ -811,7 +813,7 @@
 
 
 <div id="verBadge" title="当前前端缓存版本（用于确认是否已更新到最新）">v…</div>
-<script src="./assets/inline-6.d729338c.js"></script>
+<script src="./assets/inline-6.7a1ef604.js"></script>
 <button id="aiqa-btn" type="button">AI 答疑</button>
 <div id="aiqa-panel" role="dialog" aria-label="AI 答疑">
   <div id="aiqa-head"><span>AI 答疑 · 法考</span><button id="aiqa-close" type="button" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer">×</button></div>

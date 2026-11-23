@@ -412,6 +412,33 @@
     let isKeywordHighlight = true;
     let isInstantSingleCheck = true;
     let autoRemoveWrong = true;
+// P3-3：开关状态持久化到 localStorage.fakao_settings（题眼高亮 / 单选即判 / 自动移出错题）
+// P3-7：sw.js 版本只拉一次（verBadge 角标与更新横幅共用，避免各拉一次）
+let __swVerPromise = null;
+window.__fkSwVersion = function () {
+  if (!__swVerPromise) {
+    __swVerPromise = fetch([".", "sw.js"].join("/"), { cache: "no-store" })
+      .then((r) => r.text())
+      .then((t) => { const m = t.match(/CACHE_VERSION\s*=\s*["']([^"']+)["']/); return m ? m[1] : null; })
+      .catch(() => null);
+  }
+  return __swVerPromise;
+};
+const SETTINGS_KEY = "fakao_settings";
+function loadSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") || {}; } catch (e) { return {}; } }
+function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st, patch); localStorage.setItem(SETTINGS_KEY, JSON.stringify(st)); } catch (e) {} }
+(function initToggleSettings() {
+  const st = loadSettings();
+  if (typeof st.keywordHighlight === "boolean") isKeywordHighlight = st.keywordHighlight;
+  if (typeof st.instantCheck === "boolean") isInstantSingleCheck = st.instantCheck;
+  if (typeof st.autoRemoveWrong === "boolean") autoRemoveWrong = st.autoRemoveWrong;
+  const apply = () => {
+    const hb = document.getElementById("toggleHighlightBtn"); if (hb) { hb.classList.toggle("is-on", isKeywordHighlight); hb.classList.toggle("is-off", !isKeywordHighlight); hb.setAttribute("aria-pressed", String(isKeywordHighlight)); const t = document.getElementById("highlightStateText"); if (t) t.textContent = isKeywordHighlight ? "开" : "关"; }
+    const ib = document.getElementById("toggleInstantCheckBtn"); if (ib) { ib.classList.toggle("is-on", isInstantSingleCheck); ib.classList.toggle("is-off", !isInstantSingleCheck); ib.setAttribute("aria-pressed", String(isInstantSingleCheck)); const t = document.getElementById("instantCheckText"); if (t) t.textContent = isInstantSingleCheck ? "开" : "关"; }
+    const cb = document.getElementById("autoRemoveWrongCheckbox"); if (cb) cb.checked = autoRemoveWrong;
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply); else apply();
+})();
     let currentSelectedOptions = new Set();
 
     // 答题卡分页 / 知识点检索状态
@@ -1386,6 +1413,8 @@
 
       // 恢复已答状态
       const record = userProgress[q.id];
+  const __redoEl = document.getElementById("redoQuestionBtn");
+  if (__redoEl) __redoEl.classList.toggle("hidden", !(record && record.answered && q.type !== "主观题"));
       if (record && Array.isArray(record.userAnswer)) {
         record.userAnswer.forEach((optId) => currentSelectedOptions.add(optId));
       }
@@ -1547,6 +1576,10 @@
         showToast("当前为背题模式，点击顶部“刷题模式”可重新作答", "info");
         return;
       }
+  if (userProgress[q.id] && userProgress[q.id].answered) {
+    showToast("本题已作答，点上方「重做」可重新作答", "info");
+    return;
+  }
 
       if (q.type === "单选") {
         currentSelectedOptions.clear();
@@ -1648,6 +1681,7 @@
       document.getElementById("explanationBox").classList.remove("hidden");
       updateStats();
       renderWrongList();
+    const __rb = document.getElementById("redoQuestionBtn"); if (__rb) __rb.classList.toggle("hidden", !(userProgress[q.id] && userProgress[q.id].answered && q.type !== "主观题"));
     }
 
     // 渲染三段式 AI 解析：考点 / 易错陷阱 / 法条定位
@@ -2588,30 +2622,26 @@
         return;
       }
 
-      // P2-25：防 CSV 公式注入（Excel 会把 = + - @ 开头的单元格当公式执行）
-      const csvCell = (value) => {
-        let s = value == null ? "" : String(value);
-        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
-        return '"' + s.replace(/"/g, '""') + '"';
-      };
-      const csvContent = "\uFEFF" + rows.map((r) => r.map(csvCell).join(",")).join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `法考错题与笔记汇总_${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      downloadCsv(rows, `法考错题与笔记汇总_${new Date().toISOString().slice(0, 10)}.csv`);
       showToast("错题与笔记 CSV 已导出（Excel 可直接打开）", "success");
     }
 
     // 导出错题本明细 CSV：序号 / 科目 / 题干 / 我的答案 / 正确答案 / 是否已掌握 / 最近作答 / 作答次数
     // 错题键只存题目 id，其余列从 allQuestions 与 userProgress 关联；缺失字段留空，不补造。
     function csvEscapeCell(value) {
-      const s = value == null ? "" : String(value);
-      return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      let s = value == null ? "" : String(value);
+      // P2-25/P3-2：统一防 CSV 公式注入，并对每个单元格加引号
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    function downloadCsv(rows, filename) {
+      const csvContent = "\uFEFF" + rows.map((r) => r.map(csvEscapeCell).join(",")).join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function formatCsvTime(ts) {
@@ -2658,18 +2688,9 @@
         ]);
       });
 
-      const csvContent = "\uFEFF" + rows.map((r) => r.map(csvEscapeCell).join(",")).join("\r\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
       const now = new Date();
       const p = (v) => String(v).padStart(2, "0");
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `错题本_${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      downloadCsv(rows, `错题本_${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}.csv`);
       showToast(`已导出 ${wrongQuestions.length} 道错题`, "success");
     }
 
@@ -3080,6 +3101,7 @@
         hb.classList.toggle("is-off", !isKeywordHighlight);
         hb.setAttribute("aria-pressed", String(isKeywordHighlight));
         document.getElementById("highlightStateText").textContent = isKeywordHighlight ? "开" : "关";
+  saveSettings({ keywordHighlight: isKeywordHighlight });
         renderQuestion(currentIndex);
       });
 
@@ -3090,6 +3112,7 @@
         ib.classList.toggle("is-off", !isInstantSingleCheck);
         ib.setAttribute("aria-pressed", String(isInstantSingleCheck));
         document.getElementById("instantCheckText").textContent = isInstantSingleCheck ? "开" : "关";
+  saveSettings({ instantCheck: isInstantSingleCheck });
       });
 
       // 统计卡片快捷筛选
@@ -3176,6 +3199,14 @@
       });
 
       document.getElementById("favToggleBtn").addEventListener("click", toggleFavoriteCurrent);
+document.getElementById("redoQuestionBtn") && document.getElementById("redoQuestionBtn").addEventListener("click", () => {
+  const q = filteredQuestions[currentIndex];
+  if (!q) return;
+  if (userProgress[q.id]) { delete userProgress[q.id]; safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress); }
+  currentSelectedOptions.clear();
+  showToast("已进入本题重做，可重新作答", "info");
+  renderQuestion(currentIndex);
+});
       document.getElementById("dockFavBtn").addEventListener("click", toggleFavoriteCurrent);
 
       document.getElementById("removeWrongBtn").addEventListener("click", () => {
@@ -3240,6 +3271,7 @@
 
       document.getElementById("autoRemoveWrongCheckbox").addEventListener("change", (e) => {
         autoRemoveWrong = e.target.checked;
+  saveSettings({ autoRemoveWrong: autoRemoveWrong });
       });
 
       // 随手笔记自动保存（P2-12：500ms 防抖，失焦立即落盘，避免逐字双写）
@@ -3718,16 +3750,12 @@
       // 8. 注册 Service Worker 与版本更新提示 (仅在同源 HTTP/HTTPS 部署环境下启用)
       let waitingWorker = null;
       const revealSwBanner = async () => {
-        document.getElementById("swUpdateBanner").classList.remove("hidden");
-        try {
-          const res = await fetch([".", "sw.js"].join("/"), { cache: "no-store" });
-          const txt = await res.text();
-          const matched = txt.match(/CACHE_VERSION\s*=\s*["']([^"']+)["']/);
-          if (matched && matched[1]) {
-            document.getElementById("swUpdateVersion").textContent = `离线缓存 ${matched[1]} 已就绪`;
-          }
-        } catch (e) {}
-      };
+    document.getElementById("swUpdateBanner").classList.remove("hidden");
+    try {
+      const v = await window.__fkSwVersion();
+      if (v) document.getElementById("swUpdateVersion").textContent = "离线缓存 " + v + " 已就绪";
+    } catch (e) {}
+  };
       if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
         // P2-3：SW 后台重验证 index.json 发现新版本 → 提示刷新（与当前题库版本相同或已提示过则忽略）
         let notifiedIndexVersion = "";

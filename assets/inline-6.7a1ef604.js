@@ -10,8 +10,6 @@
     }).catch(function(){ paint('?'); });
   }
   // 以线上 sw.js 为准，避免旧缓存把角标误显示成旧版本；离线时再回退到本地缓存。
-  fetch('./sw.js',{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
-    var m=t.match(/CACHE_VERSION\s*=\s*['"]fakao-(v\d+)['"]/);
-    if(m){ paint(m[1]); } else { fromCache(); }
-  }).catch(fromCache);
+  (window.__fkSwVersion ? window.__fkSwVersion() : fetch('./sw.js',{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){var m=t.match(/CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/);return m?m[1]:null;}))
+      .then(function(v){ var mm=v&&String(v).match(/fakao-(v\d+)/); if(mm){ paint(mm[1]); } else { fromCache(); } }).catch(fromCache);
 })();
