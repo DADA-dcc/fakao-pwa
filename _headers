@@ -4,7 +4,8 @@
 
 /*
   X-Content-Type-Options: nosniff
-  # P2-24：X-Frame-Options 与 frame-ancestors 语义统一为「禁止嵌入」（原 SAMEORIGIN 与 none 冲突）
+  # P2-24：目标是禁止嵌入。注意 Cloudflare 边缘的 Managed Transform 会强制 X-Frame-Options: SAMEORIGIN
+  # 覆盖此处的 DENY；实际嵌入防护由下方 CSP frame-ancestors 'none' 提供（浏览器优先 CSP，且比 SAMEORIGIN 更严格）
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
