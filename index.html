@@ -624,8 +624,10 @@ window.XS_AI = (function(){
       </div>
 
       <div id="wrongQuestionsList" class="space-y-2 max-h-60 overflow-y-auto pr-1">
-        <!-- 动态渲染错题卡片 -->
+        <!-- 动态渲染错题卡片（P2-8：每页 50 条，事件委托） -->
       </div>
+      <!-- P2-8：错题分页条（仅 1 页时隐藏） -->
+      <div id="wrongListPager" class="k-pager mt-2" role="navigation" aria-label="错题分页" style="display:none"></div>
     </section>
   </main>
 
@@ -1377,6 +1379,11 @@ window.XS_AI = (function(){
     // 错题本筛选状态；wrongPracticeIds 非空时「错题重做」只刷这一批题
     let wrongFilterSubject = "ALL";
     let wrongFilterReason = "ALL";
+    // P2-8：错题列表分页状态。wrongListIds = 当前筛选下有效题目 id；卡片 data-wrong-idx 即其下标
+    const WRONG_PAGE_SIZE = 50;
+    let wrongListPage = 0;
+    let wrongListIds = [];
+    let wrongListDelegated = false;
     let wrongPracticeIds = null;
 
     // 模拟考场计时器
@@ -2846,6 +2853,8 @@ window.XS_AI = (function(){
       });
     }
 
+    // P2-8：错题列表分页 + 事件委托。
+    // renderWrongList：重算筛选 / 计数（badge 仍为总数）并渲染当前页；切页只走 renderWrongListPage。
     function renderWrongList() {
       const container = document.getElementById("wrongQuestionsList");
       const badge = document.getElementById("wrongListCountBadge");
@@ -2858,24 +2867,43 @@ window.XS_AI = (function(){
       const practiceBtn = document.getElementById("wrongFilterPracticeBtn");
       if (practiceBtn) practiceBtn.disabled = filtered.length === 0;
       updateWrongCsvButtonState();
-      container.innerHTML = "";
+      bindWrongListDelegation();
 
       if (wrongQuestions.length === 0) {
+        wrongListIds = [];
+        wrongListPage = 0;
         container.innerHTML = `<div class="empty-illust"><div class="empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h6M9 11h6"/></svg></div><div class="empty-title">错题本空空如也</div><div class="empty-desc">答错的题目会自动收录于此，考前集中攻克薄弱点。</div></div>`;
+        renderWrongPager(0, 0);
         return;
       }
       if (filtered.length === 0) {
+        wrongListIds = [];
+        wrongListPage = 0;
         container.innerHTML = '<div class="text-center py-6 text-xs theme-muted">当前筛选条件下没有错题<br><span class="opacity-70">可点击「清除筛选」查看全部 ' + wrongQuestions.length + ' 道</span></div>';
+        renderWrongPager(0, 0);
         return;
       }
 
-      filtered.forEach((qid) => {
+      wrongListIds = filtered.filter((qid) => !!getQById(qid));
+      renderWrongListPage(false);
+    }
+
+    // 只重绘当前页（最多 WRONG_PAGE_SIZE 张卡片）与分页条；页码越界自动夹紧
+    function renderWrongListPage(resetScroll) {
+      const container = document.getElementById("wrongQuestionsList");
+      if (!container) return;
+      const total = wrongListIds.length;
+      const totalPages = Math.max(1, Math.ceil(total / WRONG_PAGE_SIZE));
+      wrongListPage = Math.max(0, Math.min(wrongListPage, totalPages - 1));
+      const start = wrongListPage * WRONG_PAGE_SIZE;
+      const end = Math.min(start + WRONG_PAGE_SIZE, total);
+      const parts = [];
+      for (let i = start; i < end; i++) {
+        const qid = wrongListIds[i];
         const q = getQById(qid);
-        if (!q) return;
+        if (!q) continue;
         const reason = wrongReasons[qid] || "";
-        const itemDiv = document.createElement("div");
-        itemDiv.className = "wrong-card p-2.5 rounded-xl theme-subtle border flex items-center justify-between gap-2 text-xs transition";
-        itemDiv.innerHTML = `
+        parts.push(`<div class="wrong-card p-2.5 rounded-xl theme-subtle border flex items-center justify-between gap-2 text-xs transition" data-wrong-idx="${i}">
           <div class="min-w-0 flex-1 cursor-pointer">
             <div class="flex items-center gap-1.5 mb-0.5">
               <span class="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold">${escapeHtml(q.subject)}</span>
@@ -2885,26 +2913,87 @@ window.XS_AI = (function(){
             <div class="truncate theme-muted">${escapeHtml(q.title)}</div>
           </div>
           <button type="button" class="wrong-redo-btn px-2.5 py-1 rounded-lg text-white font-semibold shrink-0">去重做</button>
-        `;
-        itemDiv.addEventListener("click", () => {
-          const idxInFiltered = filteredQuestions.findIndex((f) => f.id === q.id);
-          if (idxInFiltered !== -1) {
-            jumpToQuestion(idxInFiltered);
-          } else {
-            currentSubject = "全部";
-            currentTypeFilter = "ALL";
-            currentDiffFilter = "ALL";
-            searchQuery = "";
-            document.getElementById("searchInput").value = "";
-            renderSubjectBar();
-            applyFilters(false);
-            const newIdx = filteredQuestions.findIndex((f) => f.id === q.id);
-            if (newIdx !== -1) jumpToQuestion(newIdx);
-          }
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        });
-        container.appendChild(itemDiv);
+        </div>`);
+      }
+      container.innerHTML = parts.join("");
+      if (resetScroll) container.scrollTop = 0;
+      renderWrongPager(totalPages, total);
+    }
+
+    // 页码序列：首页、末页、当前页 ±1，断档处用 -1 表示省略号
+    function getWrongPagerItems(cur, totalPages) {
+      const pages = Array.from(new Set([0, cur - 1, cur, cur + 1, totalPages - 1]))
+        .filter((p) => p >= 0 && p < totalPages)
+        .sort((a, b) => a - b);
+      const out = [];
+      pages.forEach((p, i) => {
+        if (i > 0 && p - pages[i - 1] > 1) out.push(-1);
+        out.push(p);
       });
+      return out;
+    }
+
+    function renderWrongPager(totalPages, total) {
+      const pager = document.getElementById("wrongListPager");
+      if (!pager) return;
+      if (!totalPages || totalPages <= 1) {
+        pager.style.display = "none";
+        pager.innerHTML = "";
+        return;
+      }
+      const cur = wrongListPage;
+      const nums = getWrongPagerItems(cur, totalPages).map((p) => (p === -1
+        ? '<span class="pager-info">…</span>'
+        : `<button type="button" class="pager-btn" data-wrong-page="${p}"${p === cur ? ' aria-current="page" style="background:#2563eb;border-color:#2563eb;color:#fff"' : ""}>${p + 1}</button>`
+      )).join("");
+      pager.innerHTML = `<button type="button" class="pager-btn" data-wrong-page="${cur - 1}"${cur <= 0 ? " disabled" : ""}>上一页</button>
+        <span class="inline-flex items-center gap-1 flex-wrap">${nums}</span>
+        <span class="pager-info">第 ${cur + 1} / ${totalPages} 页 · 共 ${total} 条</span>
+        <button type="button" class="pager-btn" data-wrong-page="${cur + 1}"${cur >= totalPages - 1 ? " disabled" : ""}>下一页</button>`;
+      pager.style.display = "";
+    }
+
+    function openWrongQuestion(q) {
+      const idxInFiltered = filteredQuestions.findIndex((f) => f.id === q.id);
+      if (idxInFiltered !== -1) {
+        jumpToQuestion(idxInFiltered);
+      } else {
+        currentSubject = "全部";
+        currentTypeFilter = "ALL";
+        currentDiffFilter = "ALL";
+        searchQuery = "";
+        document.getElementById("searchInput").value = "";
+        renderSubjectBar();
+        applyFilters(false);
+        const newIdx = filteredQuestions.findIndex((f) => f.id === q.id);
+        if (newIdx !== -1) jumpToQuestion(newIdx);
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    // 事件委托：列表容器与分页条各绑一次，重绘不再逐卡 addEventListener
+    function bindWrongListDelegation() {
+      if (wrongListDelegated) return;
+      const container = document.getElementById("wrongQuestionsList");
+      const pager = document.getElementById("wrongListPager");
+      if (!container) return;
+      wrongListDelegated = true;
+      container.addEventListener("click", (e) => {
+        const card = e.target && e.target.closest ? e.target.closest("[data-wrong-idx]") : null;
+        if (!card || !container.contains(card)) return;
+        const q = getQById(wrongListIds[Number(card.getAttribute("data-wrong-idx"))]);
+        if (q) openWrongQuestion(q);
+      });
+      if (pager) {
+        pager.addEventListener("click", (e) => {
+          const btn = e.target && e.target.closest ? e.target.closest("button[data-wrong-page]") : null;
+          if (!btn || btn.disabled || !pager.contains(btn)) return;
+          const p = Number(btn.getAttribute("data-wrong-page"));
+          if (!Number.isFinite(p) || p === wrongListPage) return;
+          wrongListPage = p;
+          renderWrongListPage(true);
+        });
+      }
     }
 
     // =========================================================================
@@ -3828,16 +3917,19 @@ window.XS_AI = (function(){
       // 错题本筛选（科目 / 错因 / 清除 / 按筛选重做）
       document.getElementById("wrongFilterSubject").addEventListener("change", (e) => {
         wrongFilterSubject = e.target.value;
+        wrongListPage = 0;   // P2-8：筛选变化回到第 1 页
         renderWrongList();
       });
       document.getElementById("wrongFilterReason").addEventListener("change", (e) => {
         wrongFilterReason = e.target.value;
+        wrongListPage = 0;
         renderWrongList();
       });
       document.getElementById("wrongFilterResetBtn").addEventListener("click", () => {
         wrongFilterSubject = "ALL";
         wrongFilterReason = "ALL";
         wrongPracticeIds = null;
+        wrongListPage = 0;
         document.getElementById("wrongFilterSubject").value = "ALL";
         document.getElementById("wrongFilterReason").value = "ALL";
         renderWrongList();
@@ -4293,6 +4385,16 @@ window.XS_AI = (function(){
         } catch (e) {}
       };
       if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
+        // P2-3：SW 后台重验证 index.json 发现新版本 → 提示刷新（与当前题库版本相同或已提示过则忽略）
+        let notifiedIndexVersion = "";
+        navigator.serviceWorker.addEventListener("message", (ev) => {
+          const d = ev && ev.data;
+          if (!d || d.type !== "QUESTION_INDEX_UPDATED") return;
+          const v = d.version != null ? String(d.version) : "";
+          if (!v || v === questionsVersion || v === notifiedIndexVersion) return;
+          notifiedIndexVersion = v;
+          showToast("题库已更新，刷新后生效", "info");
+        });
         const swPath = [".", "sw.js"].join("/");
         navigator.serviceWorker.register(swPath).then((reg) => {
           if (reg.waiting) {
