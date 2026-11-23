@@ -760,7 +760,12 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
           clearTimeout(p.timer);
           p.resolve(d.ok ? d.json : null);
         };
-        w.onerror = () => { __qWorker = null; };
+        w.onerror = () => {
+        try { w.terminate(); } catch (e) {}
+        __qPending.forEach((pp) => { try { clearTimeout(pp.timer); } catch (e) {} pp.resolve(null); });
+        __qPending.clear();
+        __qWorker = null;
+      };
         __qWorker = w;
       } catch (e) {
         __qWorker = null;
@@ -784,10 +789,11 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
       return new Promise((resolve) => {
         const id = ++__qSeq;
         const timer = setTimeout(() => {
-          __qPending.delete(id);
-          __qWorker = null;
-          resolve(null);
-        }, 15000);
+        __qPending.delete(id);
+        try { w.terminate(); } catch (e) {}
+        __qWorker = null;
+        resolve(null);
+      }, 15000);
         __qPending.set(id, { resolve: resolve, timer: timer });
         try { w.postMessage({ id: id, url: new URL(url, location.href).href }); } catch (e) { __qPending.delete(id); clearTimeout(timer); __qWorker = null; resolve(null); }
       });

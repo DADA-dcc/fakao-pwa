@@ -25,7 +25,7 @@
 // v51：P2-18 Gist 同步补传错因标签、拉取改「较新优先」合并；P2-19 备份恢复逐字段类型清洗。
 // v52：P2-30 无障碍语义（弹窗 dialog + 标题关联、模式按钮 aria-pressed、输入框 aria-label、选项 radio/checkbox）。
 // v53：P2-20 错题本提示「未加载科目」中的错题数，并提供按钮按需加载（省流量默认行为不变）。
-const CACHE_VERSION = 'fakao-v58';
+const CACHE_VERSION = 'fakao-v59';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;   // 兜底外壳键：无元数据记录时使用
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
@@ -176,7 +176,7 @@ const CORE_SHELL = [
   './assets/inline-1.4b59655a.js',
   './assets/inline-2.abd17655.js',
   './assets/inline-3.00db6ccc.js',
-  './assets/inline-4.f0fbb838.js',
+  './assets/inline-4.788eeb34.js',
   './assets/inline-5.f33b3e21.js',
   './assets/inline-6.7a1ef604.js',
   './assets/inline-7.f33721a9.js',
@@ -186,7 +186,7 @@ const CORE_SHELL = [
 ];
 
 const OPTIONAL_ASSETS = [
-  './cover.html',
+  // P3-8：移除孤儿 cover.html（页面未引用，无需预缓存）；case_library.json 早在 P1-13 已不再预缓存
   // 注意：不再预缓存 ./questions/index.json 与 ./case_library.json。
   // 它们首次访问时会被页面的 fetch 处理器按 JSON 策略缓存；若这里也 add 一次，
   // 首访就会重复下载一遍（P1-13 记录的"首访重复下载"即由此产生）。
