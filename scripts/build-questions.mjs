@@ -7,6 +7,9 @@
  *                  + 索引 questions/index.json
  *   源题库（完整单文件）不入库，只在本地维护，避免公开仓库体积膨胀。
  *
+ * 输出规整（P2-28，只改输出、不动源文件、不改题目顺序与 id）：
+ *   选择题 answer 统一为「大写、去重、排序」的字母数组："A,C" / "ca" / ["c","A","A"] → ["A","C"]。
+ *
  * 用法：
  *   node scripts/build-questions.mjs                    # 默认源目录 ./source/questions
  *   SOURCE_DIR=/path/to/src node scripts/build-questions.mjs
@@ -48,6 +51,36 @@ const contentHash = createHash("sha1");
 
 const mb = (bytes) => Math.round((bytes / 1024 / 1024) * 100) / 100;
 
+/**
+ * P2-28：把选择题 answer 规整为大写字母数组（去重 + 排序）。
+ * - 字符串：取 /[A-Fa-f]/g 的全部匹配；数组：逐项同样提取（兼容 ["A,C"] 这类混写）。
+ * - 主观题（题型含「主观」或没有选项）的 answer 是文字参考答案，原样保留，避免被抽成字母。
+ * - 提取不到任何 A–F 字母时原样保留，交给 validate-questions 报「答案无效」，不在构建时吞掉问题。
+ * 返回浅拷贝（answer 保持原字段位置），不修改读入的源对象。
+ */
+function normalizeAnswerField(q) {
+  if (!q || typeof q !== "object" || !Object.prototype.hasOwnProperty.call(q, "answer")) return q;
+  const type = String(q.type ?? "");
+  const opts = q.options;
+  const hasOptions = Array.isArray(opts)
+    ? opts.length > 0
+    : !!(opts && typeof opts === "object" && Object.keys(opts).length > 0);
+  if (type.includes("主观") || !hasOptions) return q;
+
+  const raw = q.answer;
+  let letters;
+  if (typeof raw === "string") {
+    letters = raw.match(/[A-Fa-f]/g) || [];
+  } else if (Array.isArray(raw)) {
+    letters = raw.flatMap((a) => String(a ?? "").match(/[A-Fa-f]/g) || []);
+  } else {
+    return q;
+  }
+  const answer = [...new Set(letters.map((c) => c.toUpperCase()))].sort();
+  if (!answer.length) return q;
+  return { ...q, answer };
+}
+
 async function main() {
   if (!existsSync(SRC)) throw new Error(`缺少源题库目录：${SRC}`);
 
@@ -67,7 +100,8 @@ async function main() {
     if (chunked) {
       const parts = [];
       for (let i = 0, c = 0; i < list.length; i += CHUNK_SIZE, c++) {
-        const slice = list.slice(i, i + CHUNK_SIZE);
+        // P2-28：写盘前规整答案格式（逐题浅拷贝，顺序与 id 不变）
+        const slice = list.slice(i, i + CHUNK_SIZE).map(normalizeAnswerField);
         const rel = `parts/${prefix}-${String(c).padStart(2, "0")}.json`;
         const body = JSON.stringify(slice);
         await writeFile(path.join(OUT, rel), body, "utf8");
@@ -75,7 +109,7 @@ async function main() {
         contentHash.update(body);
         parts.push(rel);
       }
-      const bytes = list.reduce((s, q) => s + Buffer.byteLength(JSON.stringify(q), "utf8"), 0);
+      const bytes = list.reduce((s, q) => s + Buffer.byteLength(JSON.stringify(normalizeAnswerField(q)), "utf8"), 0);
       index.subjects[name] = {
         count: list.length,
         size_mb: mb(bytes),
@@ -84,7 +118,8 @@ async function main() {
       };
     } else {
       // 与线上保持一致：小科目单文件使用 1 空格缩进，便于 diff 与人工核对
-      const body = JSON.stringify(list, null, 1) + "\n";
+      // P2-28：小科目同样在写盘前规整答案格式
+      const body = JSON.stringify(list.map(normalizeAnswerField), null, 1) + "\n";
       await writeFile(path.join(OUT, `${name}.json`), body, "utf8");
       contentHash.update(`${name}/${name}.json\n`);
       contentHash.update(body);

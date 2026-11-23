@@ -5,6 +5,12 @@
  *   node scripts/validate-questions.mjs
  *
  * 校验范围：questions/index.json 中登记的全部分片（大科目 parts/NN-MM.json + 小科目单文件）
+ * 检查项：
+ *   1) 必有字段：题号、科目、题型、题干（非空）、解析（非空）、答案
+ *   2) 选择题（单选/多选/不定项）：有 options、选项 ≥ 2、答案含有效字母、答案字母都在选项内
+ *      + 答案个数与题型一致（P2-28，type = "answer-count"）：单选 === 1；多选/不定项 ≥ 2；主观题跳过
+ *   3) 同一科目内题号不重复
+ *   4) AI 解析（ai3 / analysis_ai）存在时四个子字段不得全空
  * 退出码：0 = 无错误；1 = 存在错误
  */
 import { readFile } from "node:fs/promises";
@@ -185,6 +191,19 @@ async function main() {
                   qidText,
                   `答案包含不存在的选项：${[...new Set(invalid)].join("、")}（现有 ${[...optionKeys].join("")}）`
                 );
+              }
+
+              // P2-28：答案个数与题型一致（按去重后的字母计；主观题不在 CHOICE_TYPES，不会进到这里）
+              const answerCount = new Set(answerLetters).size;
+              const answerText = [...new Set(answerLetters)].join("");
+              if (type.includes("多选") || type.includes("不定项")) {
+                if (answerCount < 2) {
+                  addError("answer-count", relPath, qidText, `「${type}」答案应 ≥ 2 个选项，实际 ${answerCount} 个（${answerText}）`);
+                }
+              } else if (type.includes("单选")) {
+                if (answerCount !== 1) {
+                  addError("answer-count", relPath, qidText, `「单选」答案应恰好 1 个选项，实际 ${answerCount} 个（${answerText}）`);
+                }
               }
             }
           }

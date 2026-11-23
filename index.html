@@ -405,7 +405,6 @@ window.XS_AI = (function(){
             <option value="ALL">全部题型</option>
             <option value="单选">单项选择题</option>
             <option value="多选">多项选择题</option>
-            <option value="不定项">不定项选择题</option>
             <option value="主观题">主观案例分析</option>
           </select>
 
@@ -3803,6 +3802,14 @@ window.XS_AI = (function(){
           const pos = readLastPos();
           if (pos && pos.subject === savedSubject) lastPosPending = pos;
         }
+      } catch (e) {}
+      // P2-28：题型筛选只允许题库实际存在的取值（已移除「不定项」，题库 0 题）；
+      // 异常值回落「全部题型」，并同步下拉框（防浏览器表单恢复出与状态不一致的旧值）
+      const VALID_TYPE_FILTERS = ["ALL", "单选", "多选", "主观题"];
+      if (!VALID_TYPE_FILTERS.includes(currentTypeFilter)) currentTypeFilter = "ALL";
+      try {
+        const typeSel = document.getElementById("typeFilterSelect");
+        if (typeSel) typeSel.value = currentTypeFilter;
       } catch (e) {}
       renderSubjectBar();
       applyFilters(true);
