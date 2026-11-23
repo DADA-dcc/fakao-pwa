@@ -24,7 +24,8 @@
 // v50：P2-28 移除「不定项」题型筛选项（题库 0 题），题型筛选非法值初始化时回落「全部题型」。
 // v51：P2-18 Gist 同步补传错因标签、拉取改「较新优先」合并；P2-19 备份恢复逐字段类型清洗。
 // v52：P2-30 无障碍语义（弹窗 dialog + 标题关联、模式按钮 aria-pressed、输入框 aria-label、选项 radio/checkbox）。
-const CACHE_VERSION = 'fakao-v52';
+// v53：P2-20 错题本提示「未加载科目」中的错题数，并提供按钮按需加载（省流量默认行为不变）。
+const CACHE_VERSION = 'fakao-v53';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;   // 兜底外壳键：无元数据记录时使用
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;

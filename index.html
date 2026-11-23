@@ -1870,6 +1870,8 @@ window.XS_AI = (function(){
         await p;
         inflightSubjects.delete(name);
       };
+      // P2-20：只读查询「尚未加载的科目」，供错题本提示使用（subjectNames / loadedSubjects 是本函数局部变量）
+      window.__fkMissingSubjects = () => subjectNames.filter((n) => !loadedSubjects.has(n));
 
       let priority = subjectNames[0];
       try {
@@ -1938,6 +1940,8 @@ window.XS_AI = (function(){
             // 保持用户当前这道题不变，且不重绘题干（后台补齐不应打断作答）；
             // 若首屏尚未渲染出任何题（anchorId 为空），则正常渲染
             applyFilters(false, anchorId, !!anchorId);
+            // P2-20：错题本正显示「未加载科目」提示时才重建错题列表，避免提示与计数过期
+            if (document.getElementById("wrongMissingHint")) renderWrongList();
           } catch (e) {}
         }, 400);
       };
@@ -1961,6 +1965,7 @@ window.XS_AI = (function(){
         // 收尾同样保持当前题与作答状态，用户手动切题时才重绘
         const cur = filteredQuestions[currentIndex];
         applyFilters(false, cur ? cur.id : null, !!(cur && cur.id));
+        if (document.getElementById("wrongMissingHint")) renderWrongList();   // P2-20：同上
       }
       if (finalNorm.list.length) {
         setSubtitle(`已加载仓库完整题库：共 ${finalNorm.list.length} 题${finalNorm.skipped ? `（已排除 ${finalNorm.skipped} 道缺共享案情的题）` : ""}`);
@@ -2888,9 +2893,19 @@ window.XS_AI = (function(){
       syncWrongFilterOptions();
       const filtered = getFilteredWrongIds();
       const isFiltering = wrongFilterSubject !== "ALL" || wrongFilterReason !== "ALL";
-      badge.textContent = isFiltering
-        ? `${filtered.length} / ${wrongQuestions.length} 题`
-        : `${wrongQuestions.length} 题`;
+      // P2-20：getFilteredWrongIds 已排除题库中查不到的错题，所以隐藏数直接从全部错题里统计；
+      // 只有确实存在未加载科目（省流量 / 后台补齐中）时才归因为「未加载科目」，
+      // 全部科目已加载仍查不到的（题目已从题库删除）不计入，避免出现点了也加载不出来的提示。
+      const missingSubjects = typeof window.__fkMissingSubjects === "function" ? window.__fkMissingSubjects() : [];
+      const visibleCount = filtered.length;
+      const hiddenCount = missingSubjects.length
+        ? wrongQuestions.reduce((n, qid) => (getQById(qid) ? n : n + 1), 0)
+        : 0;
+      badge.textContent = (isFiltering
+        ? `${visibleCount} / ${wrongQuestions.length} 题`
+        : `${wrongQuestions.length} 题`)
+        + (hiddenCount > 0 ? `（另有 ${hiddenCount} 道在未加载科目）` : "");
+      renderWrongMissingHint(hiddenCount);
       const practiceBtn = document.getElementById("wrongFilterPracticeBtn");
       if (practiceBtn) practiceBtn.disabled = filtered.length === 0;
       updateWrongCsvButtonState();
@@ -2913,6 +2928,50 @@ window.XS_AI = (function(){
 
       wrongListIds = filtered.filter((qid) => !!getQById(qid));
       renderWrongListPage(false);
+    }
+
+    // P2-20：未加载科目提示条。每次 renderWrongList 先移除旧元素，再按需插到 #wrongListPager 之后。
+    // 省流量默认行为不变：不自动下载，只在用户点击按钮后加载缺失科目。
+    let wrongMissingLoading = false;   // 加载期间 renderWrongList 会被多次触发，重建时保持「加载中…」状态
+    function renderWrongMissingHint(hiddenCount) {
+      const old = document.getElementById("wrongMissingHint");
+      if (old) old.remove();
+      if (!(hiddenCount > 0)) return;
+      const pager = document.getElementById("wrongListPager");
+      if (!pager) return;
+      const hint = document.createElement("div");
+      hint.id = "wrongMissingHint";
+      hint.className = "mt-2 p-2 rounded-lg theme-subtle border text-xs flex flex-wrap items-center justify-between gap-2";
+      const text = document.createElement("span");
+      text.className = "theme-muted";
+      text.textContent = `还有 ${hiddenCount} 道错题位于未加载的科目`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "wrongLoadMissingBtn";
+      btn.className = "px-2 py-1 rounded-lg theme-subtle border font-medium hover:border-blue-400 transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed";
+      btn.disabled = wrongMissingLoading;
+      btn.textContent = wrongMissingLoading ? "加载中…" : "加载这些科目";
+      btn.addEventListener("click", loadMissingWrongSubjects);
+      hint.appendChild(text);
+      hint.appendChild(btn);
+      pager.insertAdjacentElement("afterend", hint);
+    }
+
+    async function loadMissingWrongSubjects() {
+      if (wrongMissingLoading) return;
+      if (typeof window.__ensureSubject !== "function" || typeof window.__fkMissingSubjects !== "function") return;
+      const missing = window.__fkMissingSubjects();
+      if (!missing.length) { renderWrongList(); return; }
+      wrongMissingLoading = true;
+      const btn = document.getElementById("wrongLoadMissingBtn");
+      if (btn) { btn.disabled = true; btn.textContent = "加载中…"; }
+      try {
+        await Promise.all(missing.map((n) => window.__ensureSubject(n).catch(() => {})));
+      } finally {
+        wrongMissingLoading = false;
+        renderWrongList();
+        updateStats();
+      }
     }
 
     // 只重绘当前页（最多 WRONG_PAGE_SIZE 张卡片）与分页条；页码越界自动夹紧
