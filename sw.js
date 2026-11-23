@@ -21,7 +21,7 @@
 //      P2-4 install/activate 计算 index.html 内容哈希，HTML 变化时外壳缓存键追加 -<hash8>。
 // v48：P2-17 快捷键冲突（排除按钮/链接/可编辑、忽略 repeat、弹窗仅 Esc、开屏期间屏蔽）；
 //      P2-22 倒计时改为动态「下一次 9 月第三个周六 09:00」；P2-26 DeepSeek 直连 20s 超时 + 按钮防重复。
-const CACHE_VERSION = 'fakao-v48';
+const CACHE_VERSION = 'fakao-v49';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;   // 兜底外壳键：无元数据记录时使用
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
@@ -167,9 +167,7 @@ const CORE_SHELL = [
   './icon-maskable-192.png',
   './icon-maskable-512.png',
   // 首屏样式：缺任何一个都会白屏/错版，必须随 install 预缓存
-  './assets/app.d409dcc7.css',
-  './assets/tailwind.build.css',
-  './assets/ai-analysis.css',
+  './assets/app.bundle.css',
   // 题库解析 Worker：缺了它离线时题目加载会失败
   './workers/questions-worker.js'
 ];

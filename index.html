@@ -47,8 +47,8 @@ window.XS_AI = (function(){
   };
 })();
 </script>
-  <link rel="stylesheet" href="./assets/app.d409dcc7.css">
-  <link rel="stylesheet" href="./assets/ai-analysis.css">
+  <!-- P2-11：app.d409dcc7 + 裁剪后的 tailwind.build + ai-analysis 合并为单个样式表（约 303KB -> 132KB），放 head 阻塞加载 -->
+  <link rel="stylesheet" href="./assets/app.bundle.css">
 
   <!-- ===== UI 美化层（精致质感升级）· 纯视觉，不改任何逻辑 ===== -->
   
@@ -5200,6 +5200,5 @@ window.XS_AI = (function(){
     })();
 
 </script>
-<link rel="stylesheet" href="./assets/tailwind.build.css">
 </body>
 </html>
