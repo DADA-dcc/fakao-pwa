@@ -3290,62 +3290,164 @@ window.XS_AI = (function(){
     }
 
     // 从 JSON 对象恢复备份
-    function restoreBackupPayload(data) {
+    // P2-18：opts.strategy
+    //   "replace"（默认，JSON 文件 / 粘贴导入）：备份覆盖本机同名条目；错题取并集。行为与之前一致。
+    //   "newer"（Gist 拉取）：进度逐题按 lastAnsweredAt 取较新；收藏、错题取并集；
+    //            笔记与错因只补本机缺失的，本机已有的保留。
+    // P2-19：逐字段类型清洗，防止非字符串笔记等脏数据让 .trim() 抛错、整页渲染中断。
+    // 返回 { ok, strategy, notesKept }：notesKept = 本机保留、未被远端覆盖的非空笔记数（仅 newer）。
+    function restoreBackupPayload(data, opts = { strategy: "replace" }) {
+      const strategy = opts && opts.strategy === "newer" ? "newer" : "replace";
+      const result = { ok: false, strategy, notesKept: 0 };
       if (!data || typeof data !== "object") {
         showToast("备份格式无效，请检查 JSON 内容", "error");
-        return;
+        return result;
       }
       // 结构校验：只接受预期类型，避免把任意对象/HTML 注入到本地存储
-      const isPlainObj = (v) => v && typeof v === "object" && !Array.isArray(v);
-      const cleanMap = (v) => {
+      const isPlainObj = (v) => Object.prototype.toString.call(v) === "[object Object]";
+      const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+      const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);   // 防原型污染
+      // 值只保留 string / number / boolean 或 plain object（记录本体含 subjectiveText 等，保留原结构）
+      const cleanValMap = (v) => {
         if (!isPlainObj(v)) return null;
         const out = {};
         Object.keys(v).forEach((k) => {
+          if (UNSAFE_KEYS.has(k)) return;
           const val = v[k];
           if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") out[k] = val;
-          else if (val && typeof val === "object") out[k] = val; // 记录本体（含 subjectiveText 等）保留原结构
+          else if (isPlainObj(val)) out[k] = val;
         });
         return out;
       };
+      // 值必须是 string，其它一律丢弃（笔记、错因标签）
+      const cleanStringMap = (v) => {
+        if (!isPlainObj(v)) return null;
+        const out = {};
+        Object.keys(v).forEach((k) => {
+          if (UNSAFE_KEYS.has(k)) return;
+          if (typeof v[k] === "string") out[k] = v[k];
+        });
+        return out;
+      };
+      // 收藏：值统一转 boolean
+      const cleanBoolMap = (v) => {
+        const base = cleanValMap(v);
+        if (!base) return null;
+        const out = {};
+        Object.keys(base).forEach((k) => { out[k] = !!base[k]; });
+        return out;
+      };
+      // 进度：每条记录必须是 plain object；attempts 为字符串时转 Number（非有限数按 0）
+      const cleanProgressMap = (v) => {
+        const base = cleanValMap(v);
+        if (!base) return null;
+        const out = {};
+        Object.keys(base).forEach((k) => {
+          const rec = base[k];
+          if (!isPlainObj(rec)) return;
+          const r = { ...rec };
+          if (typeof r.attempts === "string") {
+            const n = Number(r.attempts);
+            r.attempts = Number.isFinite(n) ? n : 0;
+          }
+          out[k] = r;
+        });
+        return out;
+      };
+      const ts = (rec) => {
+        const n = Number(rec && rec.lastAnsweredAt);
+        return Number.isFinite(n) ? n : 0;
+      };
+
       if (data.fakao_progress !== undefined && !isPlainObj(data.fakao_progress)) {
         showToast("备份中的 fakao_progress 结构不合法，已拒绝导入", "error");
-        return;
+        return result;
       }
       if (data.fakao_wrong_questions !== undefined && !Array.isArray(data.fakao_wrong_questions)) {
         showToast("备份中的 fakao_wrong_questions 结构不合法，已拒绝导入", "error");
-        return;
+        return result;
       }
       for (const k of ["fakao_favorites_v1", "fakao_notes_v1", "fakao_wrong_reasons_v1"]) {
         if (data[k] !== undefined && !isPlainObj(data[k])) {
           showToast("备份中的 " + k + " 结构不合法，已拒绝导入", "error");
-          return;
+          return result;
         }
       }
       resetSubjectiveDraftState();   // 防止旧草稿覆盖即将恢复的备份数据
+
       if (data.fakao_progress) {
-        userProgress = { ...userProgress, ...cleanMap(data.fakao_progress) };
+        const remote = cleanProgressMap(data.fakao_progress);
+        if (strategy === "newer") {
+          const merged = { ...userProgress };
+          Object.keys(remote).forEach((id) => {
+            const local = merged[id];
+            // 本机没有该题，或远端作答时间更晚，才采用远端；相同时间保留本机
+            if (!isPlainObj(local) || ts(remote[id]) > ts(local)) merged[id] = remote[id];
+          });
+          userProgress = merged;
+        } else {
+          userProgress = { ...userProgress, ...remote };
+        }
         safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress);
       }
       if (Array.isArray(data.fakao_wrong_questions)) {
+        // 两种策略都取并集
         wrongQuestions = Array.from(new Set([...data.fakao_wrong_questions.filter((x) => typeof x === "number" || typeof x === "string"), ...wrongQuestions]));
         safeSaveJSON(STORAGE_KEYS.WRONG, wrongQuestions);
       }
       if (data.fakao_favorites_v1) {
-        favorites = { ...favorites, ...cleanMap(data.fakao_favorites_v1) };
+        const remote = cleanBoolMap(data.fakao_favorites_v1);
+        if (strategy === "newer") {
+          const merged = { ...favorites };
+          Object.keys(remote).forEach((id) => {
+            if (remote[id]) merged[id] = true;   // 并集：任一方为 true 即为 true
+          });
+          favorites = merged;
+        } else {
+          favorites = { ...favorites, ...remote };
+        }
         safeSaveJSON(STORAGE_KEYS.FAVORITES, favorites);
       }
       if (data.fakao_notes_v1) {
-        userNotes = { ...userNotes, ...cleanMap(data.fakao_notes_v1) };
+        const remote = cleanStringMap(data.fakao_notes_v1);
+        if (strategy === "newer") {
+          const merged = { ...userNotes };
+          Object.keys(remote).forEach((id) => {
+            const local = merged[id];
+            const localHas = typeof local === "string" && local.trim() !== "";
+            if (!localHas) {
+              merged[id] = remote[id];
+            } else if (remote[id].trim() !== "" && remote[id] !== local) {
+              result.notesKept++;   // 两边都有且内容不同：保留本机
+            }
+          });
+          userNotes = merged;
+        } else {
+          userNotes = { ...userNotes, ...remote };
+        }
         safeSaveJSON(STORAGE_KEYS.NOTES, userNotes);
       }
       if (data.fakao_wrong_reasons_v1) {
-        wrongReasons = { ...wrongReasons, ...cleanMap(data.fakao_wrong_reasons_v1) };
+        const remote = cleanStringMap(data.fakao_wrong_reasons_v1);
+        if (strategy === "newer") {
+          const merged = { ...wrongReasons };
+          Object.keys(remote).forEach((id) => {
+            if (!hasOwn(merged, id)) merged[id] = remote[id];   // 本机缺失才用远端
+          });
+          wrongReasons = merged;
+        } else {
+          wrongReasons = { ...wrongReasons, ...remote };
+        }
         safeSaveJSON(STORAGE_KEYS.WRONG_REASONS, wrongReasons);
       }
       renderQuestion(currentIndex);
       updateStats();
       renderWrongList();
-      showToast("刷题记录、错题、收藏与笔记已成功恢复！", "success");
+      showToast(strategy === "newer"
+        ? "已按「较新优先」合并云端刷题记录、错题、收藏、笔记与错因"
+        : "刷题记录、错题、收藏与笔记已成功恢复！", "success");
+      result.ok = true;
+      return result;
     }
 
     // 导出错题与笔记 CSV
@@ -4345,6 +4447,7 @@ window.XS_AI = (function(){
           fakao_wrong_questions: wrongQuestions,
           fakao_favorites_v1: favorites,
           fakao_notes_v1: userNotes,
+          fakao_wrong_reasons_v1: wrongReasons,   // P2-18：之前漏传，错因标签无法跨设备同步
           updatedAt: new Date().toISOString()
         }, null, 2);
 
@@ -4394,8 +4497,14 @@ window.XS_AI = (function(){
           const data = await res.json();
           const fileObj = data.files && (data.files["fakao_sync_data.json"] || Object.values(data.files)[0]);
           if (fileObj && fileObj.content) {
-            restoreBackupPayload(JSON.parse(fileObj.content));
-            statusEl.textContent = "已成功从 Gist 恢复最新刷题进度！";
+            // P2-18：云端拉取按「较新优先」合并，避免旧数据覆盖本机新进度
+            const r = restoreBackupPayload(JSON.parse(fileObj.content), { strategy: "newer" });
+            if (r && r.ok) {
+              statusEl.textContent = "已从 Gist 合并最新刷题进度（较新优先）！"
+                + (r.notesKept > 0 ? "（笔记保留本机，如需覆盖请用备份导入）" : "");
+            } else {
+              statusEl.textContent = "云端备份结构不合法，未导入";
+            }
           } else {
             statusEl.textContent = "未在目标 Gist 中找到备份数据";
           }
