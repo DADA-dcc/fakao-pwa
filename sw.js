@@ -25,7 +25,7 @@
 // v51：P2-18 Gist 同步补传错因标签、拉取改「较新优先」合并；P2-19 备份恢复逐字段类型清洗。
 // v52：P2-30 无障碍语义（弹窗 dialog + 标题关联、模式按钮 aria-pressed、输入框 aria-label、选项 radio/checkbox）。
 // v53：P2-20 错题本提示「未加载科目」中的错题数，并提供按钮按需加载（省流量默认行为不变）。
-const CACHE_VERSION = 'fakao-v55';
+const CACHE_VERSION = 'fakao-v56';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;   // 兜底外壳键：无元数据记录时使用
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
@@ -173,14 +173,14 @@ const CORE_SHELL = [
   // 首屏样式：缺任何一个都会白屏/错版，必须随 install 预缓存
   './assets/app.bundle.css',
   // P2-24：8 段内联脚本已外置为独立文件（去 script-src unsafe-inline），必须预缓存
-  './assets/inline-1.js',
-  './assets/inline-2.js',
-  './assets/inline-3.js',
-  './assets/inline-4.js',
-  './assets/inline-5.js',
-  './assets/inline-6.js',
-  './assets/inline-7.js',
-  './assets/inline-8.js',
+  './assets/inline-1.4b59655a.js',
+  './assets/inline-2.abd17655.js',
+  './assets/inline-3.00db6ccc.js',
+  './assets/inline-4.56a9715e.js',
+  './assets/inline-5.f33b3e21.js',
+  './assets/inline-6.d729338c.js',
+  './assets/inline-7.f33721a9.js',
+  './assets/inline-8.a316be4e.js',
   // 题库解析 Worker：缺了它离线时题目加载会失败
   './workers/questions-worker.js'
 ];
