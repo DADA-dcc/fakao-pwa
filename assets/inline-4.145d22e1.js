@@ -225,25 +225,29 @@
       storeName: "state_mirror",
       dbPromise: null,
       open() {
-        if (this.dbPromise) return this.dbPromise;
-        this.dbPromise = new Promise((resolve) => {
-          try {
-            if (!("indexedDB" in window)) return resolve(null);
-            const req = indexedDB.open(this.dbName, 1);
-            req.onupgradeneeded = (e) => {
-              const db = e.target.result;
-              if (!db.objectStoreNames.contains(this.storeName)) {
-                db.createObjectStore(this.storeName);
-              }
-            };
-            req.onsuccess = (e) => resolve(e.target.result);
-            req.onerror = () => resolve(null);
-          } catch (err) {
-            resolve(null);
+    if (this.dbPromise) return this.dbPromise;
+    this.dbPromise = new Promise((resolve) => {
+      let settled = false;
+      const done = (v) => { if (settled) return; settled = true; clearTimeout(timer); resolve(v); };
+      // P4-3：iOS Safari 升级后 indexedDB.open 偶发一直不返回，加 1.5s 超时视为不可用，避免启动卡死
+      const timer = setTimeout(() => { done(null); this.dbPromise = null; }, 1500);
+      try {
+        if (!("indexedDB" in window)) return done(null);
+        const req = indexedDB.open(this.dbName, 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(this.storeName)) {
+            db.createObjectStore(this.storeName);
           }
-        });
-        return this.dbPromise;
-      },
+        };
+        req.onsuccess = (e) => done(e.target.result);
+        req.onerror = () => done(null);
+      } catch (err) {
+        done(null);
+      }
+    });
+    return this.dbPromise;
+  },
       async write(key, rawString) {
         const db = await this.open();
         if (!db) return;
@@ -2746,6 +2750,7 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
     async function gradeSubjectiveAnswer() {
       if (filteredQuestions.length === 0) return;
       const q = filteredQuestions[currentIndex];
+  const gradeQid = q.id;   // P4-7：批改结果只回填到发起时的题
       const answer = (document.getElementById("subjectiveInput")?.value || "").trim();
       if (!answer) { showToast("请先输入你的主观分析作答", "warn"); return; }
       // 记录作答
@@ -2772,7 +2777,7 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
           { timeoutMs: 45000 }
         );
         data.maxScore = 10;
-        renderGradeResult(data);
+        if (filteredQuestions[currentIndex] && filteredQuestions[currentIndex].id === gradeQid) renderGradeResult(data);   // P4-7：切题后只缓存不回填
         // 缓存批改结果：切题回来直接展示，不必重复消耗 AI 接口
         rec.gradeResult = data;
         safeSaveJSON(STORAGE_KEYS.PROGRESS, userProgress);
@@ -2787,11 +2792,13 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
     // DeepSeek AI 解析生成（支持真实 API 调用与本地结构化法理拆解兜底）
     // P2-26：请求期间禁用触发按钮并拒绝重入；直连 DeepSeek 20s 超时 abort 后回退本地解析
     let aiExplainInFlight = false;
+let aiExplainQid = null;
     const DEEPSEEK_DIRECT_TIMEOUT_MS = 20000;
     async function triggerAiExplain(customFollowup = "") {
       if (filteredQuestions.length === 0) return;
-      if (aiExplainInFlight) return;
-      aiExplainInFlight = true;
+      const __curQ = filteredQuestions[currentIndex]; const __curQid = __curQ ? __curQ.id : null;
+  if (aiExplainInFlight && aiExplainQid === __curQid) return;
+  aiExplainInFlight = true; aiExplainQid = __curQid;
       const aiBtns = ["askAiExplainBtn", "sendAiFollowupBtn"]
         .map((id) => document.getElementById(id))
         .filter(Boolean)
@@ -2801,13 +2808,15 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
         await runAiExplain(customFollowup);
       } finally {
         aiBtns.forEach((b) => { b.el.disabled = b.was; });
-        aiExplainInFlight = false;
+    if (aiExplainQid === __curQid) aiExplainInFlight = false;
       }
     }
 
     async function runAiExplain(customFollowup = "") {
       const q = filteredQuestions[currentIndex];
       if (!q) return;
+  const explainQid = q.id;
+  const stillOnQ = () => !!(filteredQuestions[currentIndex] && filteredQuestions[currentIndex].id === explainQid);   // P4-7：结果只回填到原题
       const box = document.getElementById("aiResponseBox");
       const textEl = document.getElementById("aiResponseText");
       box.classList.remove("hidden");
@@ -2833,7 +2842,7 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
 
       // 优先走同源安全后端 /api/ai（密钥仅在服务端，用户无需自备 Key）
       try {
-        textEl.textContent = await window.XS_AI.explain(prompt, customFollowup);
+        const __aiAns = await window.XS_AI.explain(prompt, customFollowup); if (stillOnQ()) textEl.textContent = __aiAns;
         return;
       } catch (e) {
         // 后端不可用时继续走下面的回退（自备 Key / 本地结构化拆解）
@@ -2867,7 +2876,7 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
           const data = await res.json();
           if (directTimedOut) throw new Error("timeout");   // 无 AbortController 的环境：超时后到达的结果也作废
           if (data.choices && data.choices[0] && data.choices[0].message) {
-            textEl.textContent = data.choices[0].message.content;
+            if (stillOnQ()) textEl.textContent = data.choices[0].message.content;
             return;
           }
         } catch (err) {
@@ -2879,7 +2888,7 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
       }
 
       // 回退二：本地结构化考点拆解
-      textEl.textContent = buildLocalFallback() + (directTimedOut ? "\n（直连超时，已回退本地解析）" : "");
+      if (stillOnQ()) textEl.textContent = buildLocalFallback() + (directTimedOut ? "\n（直连超时，已回退本地解析）" : "");
     }
 
     // =========================================================================
@@ -3009,21 +3018,25 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
         }
       } catch (e) {}
       const keysToSync = Object.values(STORAGE_KEYS);
-      for (const k of keysToSync) {
-        try {
-          const localVal = localStorage.getItem(k);
-          if (localVal) {
-            await IDBEngine.write(k, localVal);
-          } else {
-            const idbVal = await IDBEngine.read(k);
-            if (idbVal) {
-              localStorage.setItem(k, idbVal);
-            }
-          }
-        } catch (e) {}
-      }
+    // P4-3：回写 IDB 改为后台异步（不阻塞启动）；仅当 localStorage 缺数据时才等待 IDB 恢复（open 已带 1.5s 超时）
+    const idbRestoreTasks = [];
+    for (const k of keysToSync) {
+      try {
+        const localVal = localStorage.getItem(k);
+        if (localVal) {
+          IDBEngine.write(k, localVal).catch(() => {});
+        } else {
+          idbRestoreTasks.push(
+            IDBEngine.read(k).then((idbVal) => { if (idbVal) localStorage.setItem(k, idbVal); }).catch(() => {})
+          );
+        }
+      } catch (e) {}
+    }
+    if (idbRestoreTasks.length) {
+      await Promise.race([Promise.all(idbRestoreTasks), new Promise((r) => setTimeout(r, 2000))]);
+    }
 
-      // 重新加载恢复后的数据
+    // 重新加载恢复后的数据
       userProgress = safeLoadJSON(STORAGE_KEYS.PROGRESS, userProgress);
       wrongQuestions = safeLoadJSON(STORAGE_KEYS.WRONG, wrongQuestions);
       favorites = safeLoadJSON(STORAGE_KEYS.FAVORITES, favorites);

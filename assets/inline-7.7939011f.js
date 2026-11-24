@@ -7,16 +7,25 @@
   var quickTexts=['讲一下当前这道题','总结一个法考知识点','给我出一道练习题','我的错题怎么做','还剩多久考试'];
   quickTexts.forEach(function(t){ var b=document.createElement('button'); b.type='button'; b.className='aiqa-chip'; b.textContent=t; b.addEventListener('click',function(){ inp.value=''; askWith(t); }); chips.appendChild(b); });
   function add(role,text,btnFn){ var d=document.createElement('div'); d.className='aiqa-m '+(role==='user'?'aiqa-u':'aiqa-a'); d.textContent=text; if(btnFn){ var b=document.createElement('button'); b.className='aiqa-save'; b.textContent='存成笔记'; b.type='button'; b.addEventListener('click',btnFn); d.appendChild(document.createElement('br')); d.appendChild(b); } msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
-  function saveToNote(ansText){
+  function saveToNote(ansText, askQid){
     try{
       var text=ansText||'';
       if(typeof userNotes!=='undefined' && typeof STORAGE_KEYS!=='undefined' && typeof safeSaveJSON!=='undefined'){
-        var q=(typeof filteredQuestions!=='undefined'&&typeof currentIndex!=='undefined')?filteredQuestions[currentIndex]:null;
+        var q=null;
+        try{ if(typeof filteredQuestions!=='undefined'&&typeof currentIndex!=='undefined') q=filteredQuestions[currentIndex]; }catch(e){}
+        var key = (askQid!=null) ? askQid : (q?q.id:'ai_general');
         var stamped='\n\n['+(new Date().toLocaleString())+' · AI答疑]\n'+text;
-        var key=q?q.id:'ai_general';
         userNotes[key]=(userNotes[key]?userNotes[key]:'')+stamped;
         safeSaveJSON(STORAGE_KEYS.NOTES,userNotes);
-        if (typeof showToast === "function") showToast(q ? "已保存到本页题目笔记" : '已保存到"AI答疑"通用笔记', "success");
+        try{
+          if(q && String(q.id)===String(key)){
+            var ni=document.getElementById('questionNoteInput');
+            if(ni) ni.value=userNotes[key];
+            var st=document.getElementById('noteSavedStatus');
+            if(st) st.textContent='✓ 已同步 AI 内容到笔记';
+          }
+        }catch(e){}
+        if (typeof showToast === "function") showToast(key==='ai_general' ? '已保存到"AI答疑"通用笔记' : "已保存到题目笔记", "success");
       } else { if (typeof showToast === "function") showToast("笔记系统未就绪", "warn"); }
     }catch(e){ if (typeof showToast === "function") showToast("保存失败: " + e.message, "error"); }
   }
@@ -51,7 +60,7 @@
     }catch(e){ return ''; }
   }
   function askWith(q){
-    if(!q||!q.trim()||send.disabled) return;
+    if(!q||!q.trim()||send.disabled) return; var askQid=null; try{ if(typeof filteredQuestions!=='undefined'&&typeof currentIndex!=='undefined'&&filteredQuestions[currentIndex]) askQid=filteredQuestions[currentIndex].id; }catch(e){}
     var realQ=q;
     if(q==='讲一下当前这道题') realQ='请讲一下这道题：\n'+getCurrentQuestion()+'\n按「考点→法条→逐项分析→结论」讲解。';
     else if(q==='我的错题怎么做') realQ='分析我的错题本并给出复习计划：'+getWrongSummary();
@@ -60,7 +69,7 @@
     send.disabled=true;
     var thinking=document.createElement('div'); thinking.className='aiqa-m aiqa-a'; thinking.textContent='思考中…'; msgs.appendChild(thinking); msgs.scrollTop=msgs.scrollHeight;
     window.XS_AI.chat(history,{maxTokens:900})
-      .then(function(ans){ thinking.remove(); var saved=ans; add('assistant',ans,function(){ saveToNote(saved); }); history.push({role:'assistant',content:ans}); })
+      .then(function(ans){ thinking.remove(); var saved=ans; add('assistant',ans,function(){ saveToNote(saved, askQid); }); history.push({role:'assistant',content:ans}); })
       .catch(function(e){ thinking.remove(); add('assistant','请求失败：'+(e.name==='AbortError'?'超时':e.message)); })
       .finally(function(){ send.disabled=false; inp.focus(); });
   }
