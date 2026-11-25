@@ -80,5 +80,8 @@ questions/*.bak_*
 /scripts/*
 !/scripts/build-questions.mjs
 !/scripts/validate-questions.mjs
+!/scripts/check-inline-scripts.mjs
+!/scripts/rehash-inline.mjs
+!/scripts/prune-questions.mjs
 # archify 技能生成的临时架构图产物（不随站点发布）
 .archify/

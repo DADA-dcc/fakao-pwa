@@ -312,35 +312,63 @@
       }
     }
 
-    function safeSaveJSON(key, data) {
-      let raw;
+    // P4-8：批量写 —— 同 key 合并 + requestIdleCallback 延迟落盘，避免每答一题都同步全量序列化并双写阻塞主线程
+const __pendingSaves = new Map();
+let __saveScheduled = false;
+function __flushSaves() {
+  if (!__pendingSaves.size) { __saveScheduled = false; return; }
+  const entries = Array.from(__pendingSaves.entries());
+  __pendingSaves.clear();
+  __saveScheduled = false;
+  let ok = true;
+  for (const [k, raw] of entries) {
+    try {
+      localStorage.setItem(k, raw);
+    } catch (e) {
+      ok = false;
+    }
+    if (!SECRET_STORAGE_KEYS.has(k)) {
       try {
-        raw = JSON.stringify(data);
-      } catch (e) {
-        if (typeof showToast === "function") showToast("保存失败：数据序列化异常", "error");
-        return false;
-      }
-      let ok = true;
-      try {
-        localStorage.setItem(key, raw);
+        IDBEngine.write(k, raw);
       } catch (e) {
         ok = false;
       }
-      if (!SECRET_STORAGE_KEYS.has(key)) {
-        try {
-          IDBEngine.write(key, raw);
-        } catch (e) {
-          ok = false;
-        }
-      }
-      if (!ok && typeof showToast === "function") {
-        showToast("本地存储写入失败（可能是空间不足），数据未丢失，请尽快导出备份", "error");
-      }
-      const nowStr = new Date().toLocaleTimeString();
-      const el = document.getElementById("idbSyncTimeText");
-      if (el) el.textContent = (ok ? "IndexedDB 已双写 (" : "写入异常 (") + nowStr + ")";
-      return ok;
     }
+  }
+  if (!ok && typeof showToast === "function") {
+    showToast("本地存储写入失败（可能是空间不足），数据未丢失，请尽快导出备份", "error");
+  }
+  const nowStr = new Date().toLocaleTimeString();
+  const el = document.getElementById("idbSyncTimeText");
+  if (el) el.textContent = (ok ? "IndexedDB 已双写 (" : "写入异常 (") + nowStr + ")";
+}
+function safeSaveJSON(key, data) {
+  let raw;
+  try {
+    raw = JSON.stringify(data);
+  } catch (e) {
+    if (typeof showToast === "function") showToast("保存失败：数据序列化异常", "error");
+    return false;
+  }
+  __pendingSaves.set(key, raw);
+  if (!__saveScheduled) {
+    __saveScheduled = true;
+    const sched = (typeof window.requestIdleCallback === "function")
+      ? window.requestIdleCallback
+      : (cb) => setTimeout(cb, 50);
+    try {
+      sched(__flushSaves, { timeout: 800 });
+    } catch (e) {
+      __flushSaves();
+    }
+  }
+  return true;
+}
+// P4-8：页面隐藏/卸载前立即落盘，避免延迟写窗口内丢数据
+try {
+  window.addEventListener("beforeunload", __flushSaves);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") __flushSaves(); });
+} catch (e) {}
     // 申请持久化存储，降低浏览器在磁盘紧张时回收答题数据的概率
     try {
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
@@ -399,6 +427,7 @@
     let currentTypeFilter = "ALL";
     let currentDiffFilter = "ALL";
     let searchQuery = "";
+let loadingSubjectName = null;   // P4-4：正在按需加载的科目（用于显示加载中骨架而非「暂无题目」）
 
     // P2-15：学习位置记忆
     const LAST_SUBJECT_KEY = "fk_last_subject";
@@ -920,17 +949,26 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
       };
 
       const fetchSubject = async (name) => {
-        const parts = filesOf(name);
-        for (const f of parts) {
-          try {
-            const json = await fetchJsonViaWorker([".", "questions", f].join("/"));
-            if (json) {
-              const extracted = await extractQuestionsFromData(json, name);
-              merge(Array.isArray(extracted) ? extracted : []);
-            }
-          } catch (e) {}
-        }
-      };
+    const parts = filesOf(name);
+    let failed = 0;
+    for (const f of parts) {
+      let ok = false;
+      // P4-5：单块失败指数退避重试 2 次（共 3 次尝试），避免弱网下静默丢题
+      for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+        try {
+          const json = await fetchJsonViaWorker([".", "questions", f].join("/"));
+          if (json) {
+            const extracted = await extractQuestionsFromData(json, name);
+            merge(Array.isArray(extracted) ? extracted : []);
+            ok = true;
+          }
+        } catch (e) {}
+        if (!ok && attempt < 2) await new Promise((r) => setTimeout(r, 400 * Math.pow(2, attempt)));
+      }
+      if (!ok) failed++;
+    }
+    return { failed, total: parts.length };
+  };
 
       // 供科目筛选切换时调用：按需加载某一科
       window.__ensureSubject = async function (name) {
@@ -938,14 +976,17 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
         if (loadedSubjects.has(name)) { applyFilters(false); return; }
         if (inflightSubjects.has(name)) { await inflightSubjects.get(name); return; }
         const p = (async () => {
-          await fetchSubject(name);
-          loadedSubjects.add(name);
+          loadingSubjectName = name;
+    let __subjRes = null;
+    try { __subjRes = await fetchSubject(name); } finally { loadingSubjectName = null; }
+    loadedSubjects.add(name);
           const norm = normalizeAll(loaded);
           allQuestions = norm.list;
           if (typeof currentIndex === "number" && currentIndex >= allQuestions.length) currentIndex = 0;
           applyFilters(false);
           restoreLastPosOnce();   // P2-15：优先科目失败时，由首个按需加载的科目完成恢复判定
           setSubtitle(`已加载 ${loadedSubjects.size}/${subjectNames.length} 科 · 共 ${norm.list.length} 题`);
+    if (__subjRes && __subjRes.failed > 0) showToast(`「${name}」有 ${__subjRes.failed}/${__subjRes.total} 个分块加载失败，可刷新页面重试`, "warn");   // P4-5
         })();
         inflightSubjects.set(name, p);
         await p;
@@ -1396,6 +1437,10 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
         const emptyIco = (paths) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
         let eIcon = emptyIco('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>');
         let eTitle = "当前筛选条件下暂无题目", eDesc = "试试切换科目，或点击上方“全部题目”清空筛选条件。";
+      if (loadingSubjectName && currentSubject === loadingSubjectName) {
+        eTitle = "正在加载「" + loadingSubjectName + "」…";
+        eDesc = "首次进入该科目需下载题库分块，请稍候；已下载的部分会先显示。";
+      }
         if (currentSubject === "我的收藏") {
           eIcon = emptyIco('<path d="M12 3l2.7 6.3 6.8.6-5.2 4.5 1.6 6.6L12 17.8 6.1 21l1.6-6.6L2.5 9.9l6.8-.6z"/>');
           eTitle = "还没有收藏的题目"; eDesc = "点击题目右上角的星标收藏重点题，考前随时回看。";
@@ -3182,6 +3227,13 @@ let aiExplainQid = null;
       const runSearch = () => {
         clearSearchBtn.classList.toggle("hidden", !searchQuery);
         applyFilters(true);
+    // P4-4：未全量加载时提示搜索范围，避免误以为题库缺失
+    try {
+      const __kw = searchQuery.trim();
+      if (__kw && loadedSubjects.size < subjectNames.length) {
+        setSubtitle(`搜索「${__kw}」· 仅在已加载的 ${loadedSubjects.size}/${subjectNames.length} 个科目中匹配`);
+      }
+    } catch (e) {}
       };
       searchInput.addEventListener("compositionstart", () => { searchComposing = true; });
       searchInput.addEventListener("compositionend", (e) => {
