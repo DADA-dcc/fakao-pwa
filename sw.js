@@ -25,7 +25,8 @@
 // v51：P2-18 Gist 同步补传错因标签、拉取改「较新优先」合并；P2-19 备份恢复逐字段类型清洗。
 // v52：P2-30 无障碍语义（弹窗 dialog + 标题关联、模式按钮 aria-pressed、输入框 aria-label、选项 radio/checkbox）。
 // v53：P2-20 错题本提示「未加载科目」中的错题数，并提供按钮按需加载（省流量默认行为不变）。
-const CACHE_VERSION = 'fakao-v63';
+// v64：导航兜底白名单 —— /cover、/cover.html 不再被回退成 index.html。
+const CACHE_VERSION = 'fakao-v64';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;   // 兜底外壳键：无元数据记录时使用
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
@@ -328,6 +329,19 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('api.github.com')
   ) {
     return;
+  }
+
+  // v64 修复：导航兜底白名单。最下方的导航分支会把任何 navigate 请求（包括 /cover）
+  // 回落到缓存里的 ./index.html，导致访问封面页时永远看到首页、根本进不去封面。
+  // 这里在任何缓存/兜底逻辑之前直接 return（不调用 event.respondWith），让浏览器按默认
+  // 网络请求加载封面页。白名单只对导航请求（request.mode === 'navigate'）生效，绝不
+  // 影响静态资源请求（如 /icon-192.png，其 mode 为 no-cors/cors，不会进入本分支）。
+  // 请勿把它"优化"回 index 兜底 —— 首页的兜底在第 400 行附近仍需保留。
+  if (request.mode === 'navigate') {
+    const navPath = url.pathname.replace(/\/+$/, ''); // 去掉尾部斜杠：/cover/ 也视作 /cover
+    if (navPath === '/cover' || navPath === '/cover.html') {
+      return;
+    }
   }
 
   // P2-3：questions/index.json 改为 Stale-While-Revalidate：
