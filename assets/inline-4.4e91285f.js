@@ -367,7 +367,11 @@ function safeSaveJSON(key, data) {
 // P4-8：页面隐藏/卸载前立即落盘，避免延迟写窗口内丢数据
 try {
   window.addEventListener("beforeunload", __flushSaves);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") __flushSaves(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") __flushSaves();
+    // P4-13：页面切到后台时给 html 加 page-hidden，CSS 暂停常驻装饰动画，降低后台耗电
+    try { document.documentElement.classList.toggle("page-hidden", document.visibilityState === "hidden"); } catch (e) {}
+  });
 } catch (e) {}
     // 申请持久化存储，降低浏览器在磁盘紧张时回收答题数据的概率
     try {
@@ -3762,16 +3766,20 @@ document.getElementById("redoQuestionBtn") && document.getElementById("redoQuest
       // 6. 手机端左右滑动切题手势
       const cardEl = document.getElementById("questionCard");
       let touchStartX = 0;
+  let touchEdge = false;   // P4-14：起点是否贴近屏幕左右边缘
       let touchStartY = 0;
       cardEl.addEventListener("touchstart", (e) => {
         if (!e.touches || e.touches.length !== 1) return;
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
+    touchEdge = e.touches[0].clientX < 24 || e.touches[0].clientX > (window.innerWidth - 24);   // P4-14
       }, { passive: true });
 
       cardEl.addEventListener("touchend", (e) => {
         if (!e.changedTouches || e.changedTouches.length !== 1) return;
-        const tag = (e.target && e.target.tagName) || "";
+        if (touchEdge) return;   // P4-14：屏幕边缘的滑动交给浏览器（后退/前进），不切题
+    try { if (window.getSelection && String(window.getSelection()).trim()) return; } catch (err) {}   // P4-14：正在选中文字时不切题
+    const tag = (e.target && e.target.tagName) || "";
         if (["TEXTAREA", "INPUT", "SELECT"].includes(tag)) return;
         const dx = e.changedTouches[0].clientX - touchStartX;
         const dy = e.changedTouches[0].clientY - touchStartY;

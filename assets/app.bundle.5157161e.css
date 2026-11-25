@@ -778,6 +778,14 @@
     }
 
     @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+/* P4-13：页面切到后台时暂停常驻装饰动画（光斑漂移 / 流光 / 顶栏边框流转 / 倒计时环辉光），降低后台耗电 */
+html.page-hidden header > .liquid-top .lt-blob,
+html.page-hidden header > .liquid-top .lt-sheen,
+html.page-hidden header::after,
+html.page-hidden .hero-cd-ring{
+  animation-play-state: paused !important;
+}
   
 /* ===== inline style #3 id="ui-v11" ===== */
 
