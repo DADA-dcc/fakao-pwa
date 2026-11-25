@@ -1314,10 +1314,11 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
 
     function applyFilters(resetIndex = true, preserveId = null, skipRender = false) {
       const qLower = searchQuery.trim().toLowerCase();
-      filteredQuestions = allQuestions.filter((q) => {
+      const __wrongSet = currentSubject === "错题重做" ? new Set(wrongQuestions) : null;   // P4-9：转 Set 避免每题 O(M) includes
+    filteredQuestions = allQuestions.filter((q) => {
         // 1. 科目或专项模式筛选
         if (currentSubject === "错题重做") {
-          if (!wrongQuestions.includes(q.id)) return false;
+          if (!__wrongSet.has(q.id)) return false;   // P4-9
           // 「按当前筛选重做」时只保留筛选出的那一批
           if (wrongPracticeIds && !wrongPracticeIds.includes(q.id)) return false;
         } else if (currentSubject === "我的收藏") {
@@ -1344,12 +1345,15 @@ function saveSettings(patch) { try { const st = loadSettings(); Object.assign(st
 
         // 4. 关键词搜索（预计算的 _search 全文 + 实时笔记）
         if (qLower) {
-          const noteStr = userNotes[q.id] || "";
-          const hay = (q._search !== undefined
-            ? q._search
-            : `${q.title} ${q.explanation} ${(q.options || []).map((o) => o.text).join(" ")} ${q.subject}`.toLowerCase()) + " " + String(noteStr).toLowerCase();
-          if (!hay.includes(qLower)) return false;
-        }
+      // P4-9：分开判断避免每次拼接大字符串（约 10MB/次分配）；基础命中即短路
+      const base = q._search !== undefined
+        ? q._search
+        : `${q.title} ${q.explanation} ${(q.options || []).map((o) => o.text).join(" ")} ${q.subject}`.toLowerCase();
+      if (!base.includes(qLower)) {
+        const noteStr = userNotes[q.id];
+        if (!noteStr || !String(noteStr).toLowerCase().includes(qLower)) return false;
+      }
+    }
 
         return true;
       });
@@ -3648,89 +3652,112 @@ document.getElementById("redoQuestionBtn") && document.getElementById("redoQuest
           gistId: document.getElementById("gistIdInput").value.trim()
         };
         safeSaveJSON(STORAGE_KEYS.GIST, cfg);
-        document.getElementById("gistSyncStatusText").textContent = "✓ Gist 配置已保存至本地与 IndexedDB";
+        document.getElementById("gistSyncStatusText").textContent = "✓ Gist 配置已保存至本地";
         showToast("Gist 配置已保存", "success");
       });
 
-      document.getElementById("pushToGistBtn").addEventListener("click", async () => {
-        const token = document.getElementById("gistTokenInput").value.trim();
-        let gistId = document.getElementById("gistIdInput").value.trim();
-        const statusEl = document.getElementById("gistSyncStatusText");
-        if (!token) {
-          showToast("请先填写 GitHub Personal Access Token", "warn");
-          return;
-        }
-        statusEl.textContent = "正在上传同步至 GitHub Gist...";
-        const contentStr = JSON.stringify({
-          fakao_progress: userProgress,
-          fakao_wrong_questions: wrongQuestions,
-          fakao_favorites_v1: favorites,
-          fakao_notes_v1: userNotes,
-          fakao_wrong_reasons_v1: wrongReasons,   // P2-18：之前漏传，错因标签无法跨设备同步
-          updatedAt: new Date().toISOString()
-        }, null, 2);
-
+  document.getElementById("pushToGistBtn").addEventListener("click", async () => {
+    const token = document.getElementById("gistTokenInput").value.trim();
+    let gistId = document.getElementById("gistIdInput").value.trim();
+    const statusEl = document.getElementById("gistSyncStatusText");
+    if (!token) { showToast("请先填写 GitHub Personal Access Token", "warn"); return; }
+    const ghHeaders = { Authorization: `token ${token}`, Accept: "application/vnd.github.v3+json" };
+    statusEl.textContent = "正在同步至 GitHub Gist...";
+    try {
+      // P4-12：上传前先拉取云端并「较新优先」合并，避免本机旧数据整体覆盖另一设备的新进度
+      if (gistId) {
         try {
-          const url = gistId ? `https://api.github.com/gists/${gistId}` : "https://api.github.com/gists";
-          const res = await fetch(url, {
-            method: gistId ? "PATCH" : "POST",
-            headers: {
-              Authorization: `token ${token}`,
-              Accept: "application/vnd.github.v3+json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              description: "法考智练 云同步备份",
-              public: false,
-              files: { "fakao_sync_data.json": { content: contentStr } }
-            })
-          });
-          const data = await res.json();
-          if (res.ok && data.id) {
-            gistId = data.id;
-            document.getElementById("gistIdInput").value = gistId;
-            safeSaveJSON(STORAGE_KEYS.GIST, { token, gistId });
-            statusEl.textContent = `同步成功！Gist ID: ${gistId}`;
-            showToast("已成功上传备份至 GitHub Gist", "success");
-          } else {
-            statusEl.textContent = "上传失败：" + (data.message || res.status);
-          }
-        } catch (err) {
-          statusEl.textContent = "网络请求失败，请检查 Token 权限与网络连接";
-        }
-      });
-
-      document.getElementById("pullFromGistBtn").addEventListener("click", async () => {
-        const token = document.getElementById("gistTokenInput").value.trim();
-        const gistId = document.getElementById("gistIdInput").value.trim();
-        const statusEl = document.getElementById("gistSyncStatusText");
-        if (!token || !gistId) {
-          showToast("拉取进度需要同时填写 Token 和 Gist ID", "warn");
-          return;
-        }
-        statusEl.textContent = "正在从 Gist 拉取进度...";
-        try {
-          const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-            headers: { Authorization: `token ${token}`, Accept: "application/vnd.github.v3+json" }
-          });
-          const data = await res.json();
-          const fileObj = data.files && (data.files["fakao_sync_data.json"] || Object.values(data.files)[0]);
-          if (fileObj && fileObj.content) {
-            // P2-18：云端拉取按「较新优先」合并，避免旧数据覆盖本机新进度
-            const r = restoreBackupPayload(JSON.parse(fileObj.content), { strategy: "newer" });
-            if (r && r.ok) {
-              statusEl.textContent = "已从 Gist 合并最新刷题进度（较新优先）！"
-                + (r.notesKept > 0 ? "（笔记保留本机，如需覆盖请用备份导入）" : "");
-            } else {
-              statusEl.textContent = "云端备份结构不合法，未导入";
+          const pullRes = await fetch(`https://api.github.com/gists/${gistId}`, { headers: ghHeaders });
+          if (pullRes.ok) {
+            const pd = await pullRes.json();
+            const pf = pd.files && (pd.files["fakao_sync_data.json"] || Object.values(pd.files)[0]);
+            let pcontent = pf && pf.content;
+            if (pf && pf.truncated && pf.raw_url) {
+              const rr = await fetch(pf.raw_url, { headers: ghHeaders });
+              if (rr.ok) pcontent = await rr.text();
             }
-          } else {
-            statusEl.textContent = "未在目标 Gist 中找到备份数据";
+            if (pcontent) restoreBackupPayload(JSON.parse(pcontent), { strategy: "newer" });
           }
-        } catch (err) {
-          statusEl.textContent = "拉取失败，请检查 Gist ID 是否正确";
+        } catch (e) {}
+      }
+      // P4-12：去缩进 + 排除体积大的 gradeResult，控制文件 < 1MB 避免被 GitHub 截断
+      const __cleanProgress = {};
+      try {
+        for (const k of Object.keys(userProgress)) {
+          const rec = userProgress[k];
+          if (rec && typeof rec === "object") { const { gradeResult, ...rest } = rec; __cleanProgress[k] = rest; }
+          else __cleanProgress[k] = rec;
         }
+      } catch (e) {}
+      const contentStr = JSON.stringify({
+        fakao_progress: __cleanProgress,
+        fakao_wrong_questions: wrongQuestions,
+        fakao_favorites_v1: favorites,
+        fakao_notes_v1: userNotes,
+        fakao_wrong_reasons_v1: wrongReasons,
+        updatedAt: new Date().toISOString()
       });
+      const url = gistId ? `https://api.github.com/gists/${gistId}` : "https://api.github.com/gists";
+      const res = await fetch(url, {
+        method: gistId ? "PATCH" : "POST",
+        headers: { ...ghHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ description: "法考智练 云同步备份", public: false, files: { "fakao_sync_data.json": { content: contentStr } } })
+      });
+      const data = await res.json();
+      if (res.ok && data.id) {
+        gistId = data.id;
+        document.getElementById("gistIdInput").value = gistId;
+        safeSaveJSON(STORAGE_KEYS.GIST, { token, gistId });
+        statusEl.textContent = `同步成功！Gist ID: ${gistId}`;
+        showToast("已成功上传备份至 GitHub Gist", "success");
+      } else {
+        statusEl.textContent = "上传失败：" + (data.message || res.status);
+      }
+    } catch (err) {
+      statusEl.textContent = "网络请求失败，请检查 Token 权限与网络连接";
+    }
+  });
+
+  document.getElementById("pullFromGistBtn").addEventListener("click", async () => {
+    const token = document.getElementById("gistTokenInput").value.trim();
+    const gistId = document.getElementById("gistIdInput").value.trim();
+    const statusEl = document.getElementById("gistSyncStatusText");
+    if (!token || !gistId) { showToast("拉取进度需要同时填写 Token 和 Gist ID", "warn"); return; }
+    statusEl.textContent = "正在从 Gist 拉取进度...";
+    try {
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        headers: { Authorization: `token ${token}`, Accept: "application/vnd.github.v3+json" }
+      });
+      // P4-12：按状态码分别提示，不再把 401 等一律说成「未找到」
+      if (!res.ok) {
+        if (res.status === 401) statusEl.textContent = "Token 无效或权限不足（401）";
+        else if (res.status === 404) statusEl.textContent = "未找到该 Gist（404），请检查 Gist ID 与 Token 权限";
+        else statusEl.textContent = "拉取失败：" + res.status;
+        return;
+      }
+      const data = await res.json();
+      const fileObj = data.files && (data.files["fakao_sync_data.json"] || Object.values(data.files)[0]);
+      let content = fileObj && fileObj.content;
+      // P4-12：Gist 超过 1MB 会返回 truncated，此时改从 raw_url 拉完整内容
+      if (fileObj && fileObj.truncated && fileObj.raw_url) {
+        const rawRes = await fetch(fileObj.raw_url, { headers: { Authorization: `token ${token}` } });
+        if (!rawRes.ok) { statusEl.textContent = "拉取完整备份失败（" + rawRes.status + "）"; return; }
+        content = await rawRes.text();
+      }
+      if (content) {
+        const r = restoreBackupPayload(JSON.parse(content), { strategy: "newer" });
+        if (r && r.ok) {
+          statusEl.textContent = "已从 Gist 合并最新刷题进度（较新优先）！" + (r.notesKept > 0 ? "（笔记保留本机，如需覆盖请用备份导入）" : "");
+        } else {
+          statusEl.textContent = "云端备份结构不合法，未导入";
+        }
+      } else {
+        statusEl.textContent = "未在目标 Gist 中找到备份数据";
+      }
+    } catch (err) {
+      statusEl.textContent = "拉取失败，请检查 Gist ID 是否正确";
+    }
+  });
 
       // 6. 手机端左右滑动切题手势
       const cardEl = document.getElementById("questionCard");
