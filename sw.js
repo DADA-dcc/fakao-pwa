@@ -26,7 +26,7 @@
 // v52：P2-30 无障碍语义（弹窗 dialog + 标题关联、模式按钮 aria-pressed、输入框 aria-label、选项 radio/checkbox）。
 // v53：P2-20 错题本提示「未加载科目」中的错题数，并提供按钮按需加载（省流量默认行为不变）。
 // v64：导航兜底白名单 —— /cover、/cover.html 不再被回退成 index.html。
-const CACHE_VERSION = 'fakao-v64';
+const CACHE_VERSION = 'fakao-v65';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;   // 兜底外壳键：无元数据记录时使用
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const JSON_REVALIDATE_MS = 24 * 60 * 60 * 1000;
