@@ -1,9 +1,10 @@
 /* ============================================================
- * 法考倒计时（原生实现）
- * - 顶部导航「倒计时」按钮 + 弹层
- * - 客观题 / 主观题 双阶段切换
- * - 设置：自定义考试名称 + 目标日期时间，localStorage 记忆
- * - 过期态「已开考」、移动端 2×2 自适应、法谚轮播
+ * 法考倒计时（原生实现 · v2）
+ * - 顶部导航「倒计时」按钮 + 弹层；开屏那句也升级为完整实时倒计时
+ * - 客观题 / 主观题 双阶段切换；设置自定义考试名称 / 目标时间 / 备考开始日
+ * - 备考进度环 + 每日打卡（连续/累计）+ 生成分享卡片（Canvas 导出 PNG）
+ * - 目标日期「跨年自动顺延」：年份落后于当前年时自动跟随到今年，无需手改
+ * - 过期态「已开考」、移动端 2×2、法谚轮播、Esc/遮罩关闭
  * - 跟随站点主题（日间/深色/护眼）：全部使用 CSS 变量，无外链、离线可用
  * ============================================================ */
 (function () {
@@ -14,9 +15,10 @@
   var LS_KEY = 'fakao_countdown_v1';
   var DEFAULTS = {
     current: 'subjective',
+    checkins: {},
     phases: {
-      objective: { label: '客观题', name: '国家统一法律职业资格考试 · 客观题', target: '2026-09-20T09:00' },
-      subjective: { label: '主观题', name: '国家统一法律职业资格考试 · 主观题', target: '2026-11-30T18:00' }
+      objective: { label: '客观题', name: '国家统一法律职业资格考试 · 客观题', target: '2026-09-20T09:00', start: '2025-10-01' },
+      subjective: { label: '主观题', name: '国家统一法律职业资格考试 · 主观题', target: '2026-11-30T18:00', start: '2026-01-01' }
     }
   };
   var QUOTES = [
@@ -34,53 +36,88 @@
 
   function deepDefault() { return JSON.parse(JSON.stringify(DEFAULTS)); }
   function load() {
+    var d = deepDefault();
     try {
       var s = JSON.parse(localStorage.getItem(LS_KEY));
-      if (s && s.phases && s.phases.objective && s.phases.subjective &&
-          s.phases.objective.target && s.phases.subjective.target) {
-        if (!s.current) s.current = 'subjective';
-        return s;
+      if (s && s.phases) {
+        if (s.current) d.current = s.current;
+        ['objective', 'subjective'].forEach(function (k) {
+          var sp = s.phases[k];
+          if (sp) {
+            if (sp.name) d.phases[k].name = sp.name;
+            if (sp.target) d.phases[k].target = sp.target;
+            if (sp.start) d.phases[k].start = sp.start;
+            if (sp.label) d.phases[k].label = sp.label;
+          }
+        });
+        if (s.checkins && typeof s.checkins === 'object') d.checkins = s.checkins;
       }
     } catch (e) {}
-    return deepDefault();
+    return d;
   }
   function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
 
   var state = load();
   var els = {};
-  var tickTimer = null, quoteTimer = null, quoteIdx = 0, isOpen = false;
+  var tickTimer = null, quoteTimer = null, quoteIdx = 0, isOpen = false, splashTimer = null;
 
   function pad(n, w) { n = String(Math.max(0, n)); while (n.length < w) n = '0' + n; return n; }
-
   function weekday(d) { return ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]; }
+  function dateKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1, 2) + '-' + pad(d.getDate(), 2); }
 
-  function fmtExam(iso) {
+  /* 跨年自动顺延：设定年份早于当前年 → 顺延到当前年（保持月日时分） */
+  function resolveTarget(iso) {
     var d = new Date(iso);
-    if (isNaN(d.getTime())) return iso;
+    if (isNaN(d.getTime())) return d;
+    var now = new Date();
+    if (d.getFullYear() < now.getFullYear()) {
+      d = new Date(now.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds());
+    }
+    return d;
+  }
+  function fmtExam(dateObj) {
+    var d = (dateObj instanceof Date) ? dateObj : new Date(dateObj);
+    if (isNaN(d.getTime())) return String(dateObj);
     return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 · 周' +
       weekday(d) + ' · ' + pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2) + ' 开考';
   }
+  function parts(ms) {
+    var ts = Math.floor(ms / 1000);
+    return { d: Math.floor(ts / 86400), h: Math.floor((ts % 86400) / 3600), m: Math.floor((ts % 3600) / 60), s: ts % 60, hours: Math.floor(ms / 3600000) };
+  }
 
-  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-  }); }
-
-  /* ---------- 样式（跟随主题变量） ---------- */
+  /* ---------- 样式 ---------- */
   function injectStyles() {
     if (document.getElementById('fkcdStyles')) return;
     var css = ''
       + '.fkcd-examline{font-size:12px;color:var(--text-muted);text-align:center;margin:10px 0 2px;line-height:1.5}'
       + '.fkcd-count{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 2px}'
       + '@media(max-width:430px){.fkcd-count{grid-template-columns:repeat(2,1fr);gap:8px}}'
-      + '.fkcd-box{background:var(--bg-subtle);border:1px solid var(--border-color);border-radius:12px;padding:14px 6px 10px;text-align:center;transition:background-color .2s ease,border-color .2s ease}'
+      + '.fkcd-box{background:var(--bg-subtle);border:1px solid var(--border-color);border-radius:12px;padding:14px 6px 10px;text-align:center}'
       + '.fkcd-num{display:block;font-size:clamp(26px,7.6vw,42px);font-weight:900;line-height:1;color:var(--text-main);font-variant-numeric:tabular-nums;letter-spacing:-.02em}'
       + '.fkcd-box.is-sec .fkcd-num{color:var(--brand-accent)}'
       + '.fkcd-lbl{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin-top:6px}'
       + '.fkcd-lbl-en{display:block;font-size:8px;letter-spacing:.12em;color:var(--text-muted);opacity:.55;margin-top:2px}'
       + '.fkcd-meta{text-align:center;font-size:11px;color:var(--text-muted);margin-top:10px}'
-      + '.fkcd-state{margin-top:10px;text-align:center;font-weight:800;font-size:13px;color:var(--brand-accent)}'
-      + '.fkcd-quote{text-align:center;font-size:13px;color:var(--text-main);margin-top:14px;line-height:1.65;min-height:46px;border-top:1px dashed var(--border-color);padding-top:12px;position:relative;transition:opacity .35s ease}'
-      + '.fkcd-quote .fkcd-q{opacity:1}'
+      + '.fkcd-state{margin-top:8px;text-align:center;font-weight:800;font-size:13px;color:var(--brand-accent)}'
+      + '.fkcd-stats{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin-top:14px;padding:12px;border-radius:12px;background:var(--bg-subtle);border:1px solid var(--border-color)}'
+      + '.fkcd-ring{position:relative;width:88px;height:88px;flex:0 0 auto}'
+      + '.fkcd-ring svg{width:88px;height:88px;transform:rotate(-90deg)}'
+      + '.fkcd-ring .fkcd-ring-track{fill:none;stroke:var(--border-color);stroke-width:8}'
+      + '.fkcd-ring .fkcd-ring-arc{fill:none;stroke:var(--brand-accent);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s ease}'
+      + '.fkcd-ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}'
+      + '.fkcd-ring-txt b{font-size:18px;font-weight:900;color:var(--text-main)}'
+      + '.fkcd-ring-txt span{font-size:9px;color:var(--text-muted);margin-top:2px}'
+      + '.fkcd-check{min-width:0}'
+      + '.fkcd-check .fkcd-check-title{font-size:12px;font-weight:800;color:var(--text-main);display:flex;align-items:center;gap:6px}'
+      + '.fkcd-check .fkcd-check-sub{font-size:11px;color:var(--text-muted);margin-top:4px}'
+      + '.fkcd-mini{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--brand-accent);background:var(--brand-accent);color:#fff;margin-top:8px}'
+      + '.fkcd-mini.done{background:var(--bg-card);color:var(--text-muted);border-color:var(--border-color);cursor:default}'
+      + '.fkcd-actions{display:flex;gap:8px;margin-top:12px}'
+      + '.fkcd-act{flex:1;padding:9px 10px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-main);display:inline-flex;align-items:center;justify-content:center;gap:6px}'
+      + '.fkcd-act.primary{background:var(--brand-accent);border-color:var(--brand-accent);color:#fff}'
+      + '.fkcd-quote{text-align:center;font-size:13px;color:var(--text-main);margin-top:14px;line-height:1.65;min-height:46px;border-top:1px dashed var(--border-color);padding-top:12px}'
+      + '.fkcd-quote .fkcd-q{opacity:1;transition:opacity .35s ease}'
       + '.fkcd-quote .fkcd-q.fade{opacity:0}'
       + '.fkcd-q-src{display:block;font-size:10.5px;color:var(--text-muted);margin-top:6px;opacity:.8}'
       + '.fkcd-gear{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-muted);cursor:pointer}'
@@ -92,7 +129,10 @@
       + '.fkcd-btn{flex:1;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border-color)}'
       + '.fkcd-btn.primary{background:var(--brand-accent);border-color:var(--brand-accent);color:#fff}'
       + '.fkcd-btn.ghost{background:var(--bg-card);color:var(--text-main)}'
-      + '.fkcd-hint{font-size:10.5px;color:var(--text-muted);opacity:.8;margin-top:8px;text-align:center}';
+      + '.fkcd-hint{font-size:10.5px;color:var(--text-muted);opacity:.8;margin-top:8px;text-align:center}'
+      + '.fkcd-cardwrap{margin-top:14px;border-top:1px dashed var(--border-color);padding-top:12px}'
+      + '.fkcd-cardwrap canvas{width:100%;max-width:300px;display:block;margin:0 auto;border-radius:12px;box-shadow:0 10px 30px -16px rgba(2,8,23,.6)}'
+      + '.fkcd-cardwrap .fkcd-card-actions{display:flex;gap:8px;margin-top:10px;justify-content:center}';
     var st = document.createElement('style');
     st.id = 'fkcdStyles';
     st.textContent = css;
@@ -102,9 +142,7 @@
   /* ---------- 顶部按钮 ---------- */
   function injectButton() {
     if (document.getElementById('fkcdOpenBtn')) return;
-    var anchor = document.getElementById('openAiModalBtn') ||
-                 document.getElementById('openReportModalBtn') ||
-                 document.getElementById('openSyncModalBtn');
+    var anchor = document.getElementById('openAiModalBtn') || document.getElementById('openReportModalBtn') || document.getElementById('openSyncModalBtn');
     if (!anchor || !anchor.parentNode) return;
     var btn = document.createElement('button');
     btn.id = 'fkcdOpenBtn';
@@ -137,7 +175,7 @@
         '<div class="modal-tabs flex items-center gap-1.5 pt-2.5">' +
           '<button id="fkcdTabObj" type="button" class="m-tab">客观题</button>' +
           '<button id="fkcdTabSubj" type="button" class="m-tab is-active">主观题</button>' +
-          '<button id="fkcdGear" type="button" class="fkcd-gear" aria-label="设置目标日期与名称" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>' +
+          '<button id="fkcdGear" type="button" class="fkcd-gear" aria-label="设置" title="设置名称/目标日期/备考开始日"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>' +
         '</div>' +
         '<div class="fkcd-examline" id="fkcdExamLine"></div>' +
         '<div class="fkcd-count" id="fkcdCount">' +
@@ -148,12 +186,22 @@
         '</div>' +
         '<div class="fkcd-meta" id="fkcdMeta"></div>' +
         '<div class="fkcd-state" id="fkcdState" hidden></div>' +
+        '<div class="fkcd-stats">' +
+          '<div class="fkcd-ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="fkcd-ring-track" cx="50" cy="50" r="42"></circle><circle class="fkcd-ring-arc" id="fkcdRingArc" cx="50" cy="50" r="42"></circle></svg><div class="fkcd-ring-txt"><b id="fkcdRingPct">0%</b><span>备考进度</span></div></div>' +
+          '<div class="fkcd-check"><div class="fkcd-check-title">📅 每日打卡</div><div class="fkcd-check-sub" id="fkcdCheckSub">连续 0 天 · 累计 0 天</div><button type="button" class="fkcd-mini" id="fkcdCheckBtn">今日打卡</button></div>' +
+        '</div>' +
+        '<div class="fkcd-actions"><button type="button" class="fkcd-act primary" id="fkcdShareBtn">生成分享卡片</button></div>' +
         '<div class="fkcd-quote" id="fkcdQuote"><span class="fkcd-q"></span><span class="fkcd-q-src"></span></div>' +
         '<div class="fkcd-settings hidden" id="fkcdSettings">' +
           '<label>考试名称<input id="fkcdNameInput" type="text" maxlength="40" placeholder="如：国家统一法律职业资格考试 · 主观题"></label>' +
           '<label>目标日期时间<input id="fkcdTargetInput" type="datetime-local"></label>' +
+          '<label>备考开始日（用于进度环）<input id="fkcdStartInput" type="date"></label>' +
           '<div class="fkcd-set-actions"><button type="button" class="fkcd-btn primary" id="fkcdSaveBtn">保存</button><button type="button" class="fkcd-btn ghost" id="fkcdResetBtn">恢复默认</button></div>' +
-          '<div class="fkcd-hint">保存后本机记住，换设备不跟随 · 完全离线</div>' +
+          '<div class="fkcd-hint">保存后本机记住，换设备不跟随 · 完全离线 · 目标日期跨年自动顺延</div>' +
+        '</div>' +
+        '<div class="fkcd-cardwrap hidden" id="fkcdCardWrap">' +
+          '<canvas id="fkcdCardCanvas"></canvas>' +
+          '<div class="fkcd-card-actions"><button type="button" class="fkcd-btn primary" id="fkcdDownloadBtn">下载 PNG</button><button type="button" class="fkcd-btn ghost" id="fkcdCardCloseBtn">收起</button></div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(wrap);
@@ -161,20 +209,16 @@
     els.modal = wrap;
     els.sub = wrap.querySelector('#fkcdSub');
     els.examLine = wrap.querySelector('#fkcdExamLine');
-    els.d = wrap.querySelector('#fkcdD');
-    els.h = wrap.querySelector('#fkcdH');
-    els.m = wrap.querySelector('#fkcdM');
-    els.s = wrap.querySelector('#fkcdS');
-    els.meta = wrap.querySelector('#fkcdMeta');
-    els.state = wrap.querySelector('#fkcdState');
-    els.quote = wrap.querySelector('#fkcdQuote');
-    els.quoteText = wrap.querySelector('.fkcd-q');
-    els.quoteSrc = wrap.querySelector('.fkcd-q-src');
+    els.d = wrap.querySelector('#fkcdD'); els.h = wrap.querySelector('#fkcdH'); els.m = wrap.querySelector('#fkcdM'); els.s = wrap.querySelector('#fkcdS');
+    els.meta = wrap.querySelector('#fkcdMeta'); els.state = wrap.querySelector('#fkcdState');
+    els.quote = wrap.querySelector('#fkcdQuote'); els.quoteText = wrap.querySelector('.fkcd-q'); els.quoteSrc = wrap.querySelector('.fkcd-q-src');
     els.settings = wrap.querySelector('#fkcdSettings');
-    els.nameInput = wrap.querySelector('#fkcdNameInput');
-    els.targetInput = wrap.querySelector('#fkcdTargetInput');
-    els.tabObj = wrap.querySelector('#fkcdTabObj');
-    els.tabSubj = wrap.querySelector('#fkcdTabSubj');
+    els.nameInput = wrap.querySelector('#fkcdNameInput'); els.targetInput = wrap.querySelector('#fkcdTargetInput'); els.startInput = wrap.querySelector('#fkcdStartInput');
+    els.tabObj = wrap.querySelector('#fkcdTabObj'); els.tabSubj = wrap.querySelector('#fkcdTabSubj');
+    els.ringArc = wrap.querySelector('#fkcdRingArc'); els.ringPct = wrap.querySelector('#fkcdRingPct');
+    els.checkSub = wrap.querySelector('#fkcdCheckSub'); els.checkBtn = wrap.querySelector('#fkcdCheckBtn');
+    els.cardWrap = wrap.querySelector('#fkcdCardWrap'); els.cardCanvas = wrap.querySelector('#fkcdCardCanvas');
+    els.RING_CIRC = 2 * Math.PI * 42;
 
     wrap.querySelector('#fkcdClose').addEventListener('click', closeModal);
     wrap.addEventListener('click', function (e) { if (e.target === wrap) closeModal(); });
@@ -185,129 +229,241 @@
       if (!els.settings.classList.contains('hidden')) fillSettings();
     });
     wrap.querySelector('#fkcdSaveBtn').addEventListener('click', saveSettings);
-    wrap.querySelector('#fkcdResetBtn').addEventListener('click', function () {
-      var c = state.current;
-      state = deepDefault();
-      state.current = c;
-      save();
-      fillSettings();
-      render();
-    });
+    wrap.querySelector('#fkcdResetBtn').addEventListener('click', function () { var c = state.current; state = deepDefault(); state.current = c; save(); fillSettings(); render(); });
+    els.checkBtn.addEventListener('click', doCheckin);
+    wrap.querySelector('#fkcdShareBtn').addEventListener('click', generateShareCard);
+    wrap.querySelector('#fkcdCardCloseBtn').addEventListener('click', function () { els.cardWrap.classList.add('hidden'); });
+    wrap.querySelector('#fkcdDownloadBtn').addEventListener('click', downloadCard);
   }
 
-  function switchPhase(key) {
-    if (!state.phases[key]) return;
-    state.current = key;
-    save();
-    render();
-  }
-
+  function switchPhase(key) { if (!state.phases[key]) return; state.current = key; save(); render(); }
   function fillSettings() {
     var p = state.phases[state.current];
     els.nameInput.value = p.name || '';
     els.targetInput.value = p.target || '';
+    els.startInput.value = (p.start || '').slice(0, 10);
+    els.settings.classList.remove('hidden');
   }
-
   function saveSettings() {
     var p = state.phases[state.current];
-    var name = els.nameInput.value.trim();
-    var target = els.targetInput.value;
-    if (target) p.target = target;
-    if (name) p.name = name;
-    save();
-    els.settings.classList.add('hidden');
-    render();
+    if (els.targetInput.value) p.target = els.targetInput.value;
+    if (els.nameInput.value.trim()) p.name = els.nameInput.value.trim();
+    if (els.startInput.value) p.start = els.startInput.value;
+    save(); els.settings.classList.add('hidden'); render();
   }
-
   function setTabActive(key) {
     if (key === 'objective') { els.tabObj.classList.add('is-active'); els.tabSubj.classList.remove('is-active'); }
     else { els.tabSubj.classList.add('is-active'); els.tabObj.classList.remove('is-active'); }
   }
 
   function render() {
-    var key = state.current;
-    var p = state.phases[key];
+    var key = state.current, p = state.phases[key];
     setTabActive(key);
     els.sub.textContent = (p.label || (key === 'objective' ? '客观题' : '主观题')) + ' · 备考倒计时';
-    els.examLine.textContent = fmtExam(p.target);
+    els.examLine.textContent = fmtExam(resolveTarget(p.target));
     updateCountdown();
+    updateRing();
+    renderCheckin();
   }
 
   function updateCountdown() {
     var p = state.phases[state.current];
-    var target = new Date(p.target).getTime();
-    var ms = target - Date.now();
-    if (isNaN(target)) { els.meta.textContent = '目标日期无效，请点右上角设置'; return; }
+    var tgt = resolveTarget(p.target);
+    var ms = tgt.getTime() - Date.now();
+    if (isNaN(tgt.getTime())) { els.meta.textContent = '目标日期无效，请点右上角设置'; return; }
     if (ms <= 0) {
       els.d.textContent = '00'; els.h.textContent = '00'; els.m.textContent = '00'; els.s.textContent = '00';
-      els.state.hidden = false;
-      els.state.textContent = '已开考 · 全力以赴';
-      els.meta.textContent = '距 ' + fmtExam(p.target).replace(' 开考', '') + ' 已过';
+      els.state.hidden = false; els.state.textContent = '已开考 · 全力以赴';
+      els.meta.textContent = '距 ' + fmtExam(tgt).replace(' 开考', '') + ' 已过';
       return;
     }
     els.state.hidden = true;
-    var totalSec = Math.floor(ms / 1000);
-    var days = Math.floor(totalSec / 86400);
-    var hours = Math.floor((totalSec % 86400) / 3600);
-    var mins = Math.floor((totalSec % 3600) / 60);
-    var secs = totalSec % 60;
-    els.d.textContent = pad(days, 2);
-    els.h.textContent = pad(hours, 2);
-    els.m.textContent = pad(mins, 2);
-    els.s.textContent = pad(secs, 2);
-    var totalHours = Math.floor(ms / 3600000);
-    els.meta.textContent = '约 ' + totalHours + ' 小时 · 剩余 ' + days + ' 天 ' + hours + ' 时 ' + mins + ' 分 · 最后冲刺';
+    var q = parts(ms);
+    els.d.textContent = pad(q.d, 2); els.h.textContent = pad(q.h, 2); els.m.textContent = pad(q.m, 2); els.s.textContent = pad(q.s, 2);
+    els.meta.textContent = '约 ' + q.hours + ' 小时 · 剩余 ' + q.d + ' 天 ' + q.h + ' 时 ' + q.m + ' 分 · 最后冲刺';
+  }
+
+  function updateRing() {
+    var p = state.phases[state.current];
+    var tgt = resolveTarget(p.target);
+    var storedT = new Date(p.target), storedS = new Date(p.start);
+    var span = storedT.getTime() - storedS.getTime();
+    if (!(span > 0)) span = 180 * 86400000;
+    var start = tgt.getTime() - span;
+    var now = Date.now();
+    var pct = (now - start) / span;
+    if (pct < 0) pct = 0; if (pct > 1) pct = 1;
+    var circ = els.RING_CIRC;
+    els.ringArc.setAttribute('stroke-dasharray', circ.toFixed(1));
+    els.ringArc.setAttribute('stroke-dashoffset', (circ * (1 - pct)).toFixed(1));
+    els.ringPct.textContent = Math.round(pct * 100) + '%';
+  }
+
+  function computeStreak() {
+    var d = new Date();
+    if (!state.checkins[dateKey(d)]) d.setDate(d.getDate() - 1);
+    var n = 0;
+    while (state.checkins[dateKey(d)]) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+  function renderCheckin() {
+    var total = Object.keys(state.checkins || {}).length;
+    var streak = computeStreak();
+    var today = !!state.checkins[dateKey(new Date())];
+    els.checkSub.textContent = '连续 ' + streak + ' 天 · 累计 ' + total + ' 天' + (today ? ' · 今日已打卡 ✓' : '');
+    els.checkBtn.textContent = today ? '今日已打卡' : '今日打卡';
+    els.checkBtn.classList.toggle('done', today);
+  }
+  function doCheckin() {
+    var k = dateKey(new Date());
+    if (state.checkins[k]) return;
+    state.checkins[k] = true; save(); renderCheckin();
   }
 
   function renderQuote(animate) {
     var q = QUOTES[quoteIdx % QUOTES.length];
     if (animate) {
       els.quoteText.classList.add('fade');
-      setTimeout(function () {
-        els.quoteText.textContent = q[0];
-        els.quoteSrc.textContent = '—— ' + q[1];
-        els.quoteText.classList.remove('fade');
-      }, 320);
+      setTimeout(function () { els.quoteText.textContent = q[0]; els.quoteSrc.textContent = '—— ' + q[1]; els.quoteText.classList.remove('fade'); }, 320);
+    } else { els.quoteText.textContent = q[0]; els.quoteSrc.textContent = '—— ' + q[1]; }
+  }
+
+  /* ---------- 分享卡片（Canvas 绘制 → PNG） ---------- */
+  function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function drawCard() {
+    var cv = els.cardCanvas;
+    var W = 720, H = 1000, scale = 2;
+    cv.width = W * scale; cv.height = H * scale;
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    // 背景
+    var g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#0a1420'); g.addColorStop(0.55, '#12233b'); g.addColorStop(1, '#0a1420');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    var rg = ctx.createRadialGradient(W * 0.78, H * 0.16, 0, W * 0.78, H * 0.16, 420);
+    rg.addColorStop(0, 'rgba(201,155,60,0.28)'); rg.addColorStop(1, 'rgba(201,155,60,0)');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+    // 细金边
+    ctx.strokeStyle = 'rgba(201,155,60,0.5)'; ctx.lineWidth = 2; rr(ctx, 28, 28, W - 56, H - 56, 22); ctx.stroke();
+    var p = state.phases[state.current];
+    var tgt = resolveTarget(p.target);
+    var ms = tgt.getTime() - Date.now();
+    ctx.textAlign = 'center';
+    // 顶部品牌
+    ctx.fillStyle = '#c9a24b'; ctx.font = '600 22px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('法考智练 · 陪你稳过法考', W / 2, 92);
+    // 标题
+    ctx.fillStyle = '#f3e6c4'; ctx.font = '700 34px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText((p.label || '主观题') + '考试倒计时', W / 2, 168);
+    // 考试名称（可能换行）
+    ctx.fillStyle = 'rgba(243,230,196,0.78)'; ctx.font = '400 20px "PingFang SC","Microsoft YaHei",sans-serif';
+    wrapText(ctx, p.name || '', W / 2, 210, W - 160, 28);
+    // 大数字
+    var y0 = 340;
+    var labY = 300;
+    if (ms <= 0) {
+      ctx.fillStyle = '#e9c766'; ctx.font = '900 64px "PingFang SC",sans-serif';
+      ctx.fillText('已开考 · 全力以赴', W / 2, y0 + 40);
     } else {
-      els.quoteText.textContent = q[0];
-      els.quoteSrc.textContent = '—— ' + q[1];
+      var q = parts(ms);
+      var cells = [[pad(q.d, 2), '天'], [pad(q.h, 2), '时'], [pad(q.m, 2), '分'], [pad(q.s, 2), '秒']];
+      var cw = 150, gap = 14, totalW = cw * 4 + gap * 3, x0 = (W - totalW) / 2;
+      for (var i = 0; i < 4; i++) {
+        var bx = x0 + i * (cw + gap);
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        rr(ctx, bx, y0, cw, 150, 16); ctx.fill();
+        ctx.strokeStyle = i === 3 ? 'rgba(233,199,102,0.85)' : 'rgba(201,155,60,0.35)'; ctx.lineWidth = 2;
+        rr(ctx, bx, y0, cw, 150, 16); ctx.stroke();
+        ctx.fillStyle = i === 3 ? '#f2cf6a' : '#f3e6c4';
+        ctx.font = '900 66px "PingFang SC",sans-serif';
+        ctx.fillText(cells[i][0], bx + cw / 2, y0 + 92);
+        ctx.fillStyle = 'rgba(243,230,196,0.72)'; ctx.font = '700 20px "PingFang SC",sans-serif';
+        ctx.fillText(cells[i][1], bx + cw / 2, y0 + 128);
+      }
     }
+    // 开考时间
+    ctx.fillStyle = 'rgba(243,230,196,0.9)'; ctx.font = '600 24px "PingFang SC",sans-serif';
+    ctx.fillText(fmtExam(tgt), W / 2, 580);
+    // 分隔
+    ctx.strokeStyle = 'rgba(201,155,60,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(120, 630); ctx.lineTo(W - 120, 630); ctx.stroke();
+    // 法谚
+    var qq = QUOTES[quoteIdx % QUOTES.length];
+    ctx.fillStyle = '#f3e6c4'; ctx.font = '400 24px "PingFang SC","Microsoft YaHei",sans-serif';
+    wrapText(ctx, '「' + qq[0] + '」', W / 2, 700, W - 180, 38);
+    ctx.fillStyle = 'rgba(201,162,75,0.9)'; ctx.font = '400 18px "PingFang SC",sans-serif';
+    ctx.fillText('—— ' + qq[1], W / 2, 830);
+    // 底部
+    ctx.fillStyle = 'rgba(243,230,196,0.55)'; ctx.font = '400 18px "PingFang SC",sans-serif';
+    ctx.fillText(dateKey(new Date()) + ' · 距离法考还有 ' + (ms > 0 ? parts(ms).d + ' 天' : '0 天'), W / 2, 900);
+    ctx.fillStyle = '#c9a24b'; ctx.font = '700 20px "PingFang SC",sans-serif';
+    ctx.fillText('法考智练 FAKAO · 刷题 · 背诵 · 错题 · 离线守护', W / 2, 936);
+  }
+  function wrapText(ctx, text, cx, y, maxW, lh) {
+    var chars = String(text).split('');
+    var line = '', lines = [];
+    for (var i = 0; i < chars.length; i++) {
+      var test = line + chars[i];
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = chars[i]; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    for (var j = 0; j < lines.length; j++) ctx.fillText(lines[j], cx, y + j * lh);
+  }
+  function generateShareCard() {
+    drawCard();
+    els.cardWrap.classList.remove('hidden');
+    try { els.cardWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+  }
+  function downloadCard() {
+    try {
+      var url = els.cardCanvas.toDataURL('image/png');
+      var a = document.createElement('a');
+      a.href = url; a.download = '法考倒计时_' + dateKey(new Date()) + '.png';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } catch (e) {}
   }
 
+  /* ---------- 开屏那句 → 完整实时倒计时 ---------- */
+  function enhanceSplash() {
+    var count = document.querySelector('#splashCover .sc-count');
+    if (!count) return;
+    count.innerHTML = '<span class="sc-spark" aria-hidden="true">✦</span><span>距离<span id="scCdYearX"></span>法考还有 <b id="scCdDaysX">—</b> 天 <span id="scCdHX">—</span> 时 <span id="scCdMX">—</span> 分 <span id="scCdSX">—</span> 秒</span>';
+    function set(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; }
+    function tick() {
+      var host = document.getElementById('scCdDaysX');
+      if (!host || !document.body.contains(count)) { if (splashTimer) { clearInterval(splashTimer); splashTimer = null; } return; }
+      var p = state.phases[state.current];
+      var tgt = resolveTarget(p.target);
+      var ms = tgt.getTime() - Date.now();
+      set('scCdYearX', ' ' + tgt.getFullYear() + ' ');
+      if (isNaN(tgt.getTime())) return;
+      if (ms <= 0) { set('scCdDaysX', '0'); set('scCdHX', '00'); set('scCdMX', '00'); set('scCdSX', '00'); return; }
+      var q = parts(ms);
+      set('scCdDaysX', q.d); set('scCdHX', pad(q.h, 2)); set('scCdMX', pad(q.m, 2)); set('scCdSX', pad(q.s, 2));
+    }
+    tick();
+    if (splashTimer) clearInterval(splashTimer);
+    splashTimer = setInterval(tick, 1000);
+  }
+
+  /* ---------- 开关 ---------- */
   function openModal() {
-    buildModal();
-    isOpen = true;
+    buildModal(); isOpen = true;
     els.modal.classList.remove('hidden');
-    render();
-    quoteIdx = 0; renderQuote(false);
-    if (tickTimer) clearInterval(tickTimer);
-    tickTimer = setInterval(updateCountdown, 1000);
-    if (quoteTimer) clearInterval(quoteTimer);
-    quoteTimer = setInterval(function () { quoteIdx++; renderQuote(true); }, 7000);
-    var cb = document.getElementById('fkcdClose');
-    if (cb) cb.focus();
+    render(); quoteIdx = 0; renderQuote(false); els.cardWrap.classList.add('hidden');
+    if (tickTimer) clearInterval(tickTimer); tickTimer = setInterval(function () { updateCountdown(); updateRing(); }, 1000);
+    if (quoteTimer) clearInterval(quoteTimer); quoteTimer = setInterval(function () { quoteIdx++; renderQuote(true); }, 7000);
   }
-
   function closeModal() {
-    isOpen = false;
-    if (els.modal) els.modal.classList.add('hidden');
+    isOpen = false; if (els.modal) els.modal.classList.add('hidden');
     if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
     if (quoteTimer) { clearInterval(quoteTimer); quoteTimer = null; }
   }
 
   function init() {
-    injectStyles();
-    buildModal();
-    injectButton();
-    // Esc 关闭
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && isOpen) closeModal();
-    });
+    injectStyles(); buildModal(); injectButton(); enhanceSplash();
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen) closeModal(); });
   }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
